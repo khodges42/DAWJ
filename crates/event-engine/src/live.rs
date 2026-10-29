@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Bounded musical scheduling using the M0 TempoMap and M2 Part reducer.
+use crate::rules::{CompiledRule, RulePhase, RuleStatus, RuleUnit, TriggerRule};
 use parts::{Applied, Command, Deck, Part, SLOTS, State};
 use timebase::{BeatTicks, SampleFrame, TICKS_PER_QUARTER, TempoChange, TempoMap};
 
@@ -24,6 +25,12 @@ pub struct Event {
     pub slot: usize,
     pub action: Applied,
     pub frame: SampleFrame,
+    pub origin: EventOrigin,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EventOrigin {
+    Manual,
+    Rule,
 }
 pub struct MusicalScheduler {
     map: TempoMap,
@@ -33,6 +40,8 @@ pub struct MusicalScheduler {
     frame: SampleFrame,
     started: [[Option<BeatTicks>; SLOTS]; 2],
     immediate: [[Option<SampleFrame>; SLOTS]; 2],
+    rules: [[Option<CompiledRule>; SLOTS]; 2],
+    manual_frame: [[Option<SampleFrame>; SLOTS]; 2],
 }
 impl MusicalScheduler {
     pub fn new(
@@ -58,10 +67,195 @@ impl MusicalScheduler {
             frame: SampleFrame(0),
             started: [[None; SLOTS]; 2],
             immediate: [[None; SLOTS]; 2],
+            rules: [[None; SLOTS]; 2],
+            manual_frame: [[None; SLOTS]; 2],
         })
     }
     pub fn frame(&self) -> SampleFrame {
         self.frame
+    }
+    fn compile_rule(
+        &self,
+        deck: usize,
+        part: Part,
+        definition: TriggerRule,
+    ) -> Result<CompiledRule, &'static str> {
+        if deck >= 2 {
+            return Err("deck out of range");
+        }
+        part.validate()?;
+        let (next, period) = match definition {
+            TriggerRule::Once { boundary } => (self.boundary(deck, boundary)?, None),
+            TriggerRule::Every { n, unit, phase } => {
+                if !(1..=1024).contains(&n) {
+                    return Err("rule period outside 1..=1024");
+                }
+                let period = BeatTicks(
+                    i64::from(n) * TICKS_PER_QUARTER * if unit == RuleUnit::Bars { 4 } else { 1 },
+                );
+                let epoch = if phase == RulePhase::Global {
+                    BeatTicks(0)
+                } else {
+                    self.epochs[deck]
+                };
+                (self.grid_boundary(period, epoch)?, Some(period))
+            }
+            TriggerRule::PhraseBar {
+                bar,
+                phrase_bars,
+                phase,
+            } => {
+                if !matches!(phrase_bars, 4 | 8) || bar == 0 || bar > phrase_bars {
+                    return Err("invalid phrase bar");
+                }
+                let period = BeatTicks(i64::from(phrase_bars) * 4 * TICKS_PER_QUARTER);
+                let epoch = if phase == RulePhase::Global {
+                    BeatTicks(0)
+                } else {
+                    if self.phrases[deck] != period {
+                        return Err("rule and deck phrase lengths differ");
+                    }
+                    self.epochs[deck]
+                };
+                let offset = epoch
+                    .0
+                    .checked_add(i64::from(bar - 1) * 4 * TICKS_PER_QUARTER)
+                    .ok_or("phase overflow")?;
+                (self.grid_boundary(period, BeatTicks(offset))?, Some(period))
+            }
+        };
+        Ok(CompiledRule {
+            part,
+            status: RuleStatus {
+                rule: definition,
+                next: Some(next),
+                consumed: false,
+                fired: 0,
+                skipped: 0,
+            },
+            period,
+        })
+    }
+    pub fn install_rule(
+        &mut self,
+        deck: usize,
+        slot: usize,
+        part: Part,
+        rule: TriggerRule,
+    ) -> Result<(), &'static str> {
+        if slot >= SLOTS {
+            return Err("slot out of range");
+        }
+        let compiled = self.compile_rule(deck, part, rule)?;
+        self.rules[deck][slot] = Some(compiled);
+        Ok(())
+    }
+    pub fn enable_rule(
+        &mut self,
+        deck: usize,
+        slot: usize,
+        enabled: bool,
+    ) -> Result<(), &'static str> {
+        let old = self
+            .rules
+            .get(deck)
+            .and_then(|d| d.get(slot))
+            .copied()
+            .flatten()
+            .ok_or("no rule")?;
+        if !enabled {
+            self.rules[deck][slot]
+                .as_mut()
+                .ok_or("no rule")?
+                .status
+                .next = None;
+            return Ok(());
+        }
+        if old.status.consumed {
+            return Err("one-time rule spent; install a new rule to rearm");
+        }
+        if old.status.next.is_some() {
+            return Ok(());
+        }
+        let next = self
+            .compile_rule(deck, old.part, old.status.rule)?
+            .status
+            .next;
+        self.rules[deck][slot]
+            .as_mut()
+            .ok_or("no rule")?
+            .status
+            .next = next;
+        Ok(())
+    }
+    pub fn cancel_rule(&mut self, deck: usize, slot: usize) -> Result<(), &'static str> {
+        *self
+            .rules
+            .get_mut(deck)
+            .and_then(|d| d.get_mut(slot))
+            .ok_or("invalid address")? = None;
+        Ok(())
+    }
+    pub fn rule_status(&self, deck: usize, slot: usize) -> Option<RuleStatus> {
+        Some(self.rules.get(deck)?.get(slot)?.as_ref()?.status)
+    }
+    fn rules_due(&mut self, apply: &mut impl FnMut(Event)) -> Result<(), &'static str> {
+        for deck in 0..2 {
+            for slot in 0..SLOTS {
+                let Some(mut rule) = self.rules[deck][slot] else {
+                    continue;
+                };
+                let Some(at) = rule.status.next else {
+                    continue;
+                };
+                let immediate = matches!(
+                    rule.status.rule,
+                    TriggerRule::Once {
+                        boundary: Quantization::Immediate
+                    }
+                );
+                if !immediate
+                    && self
+                        .map
+                        .frame_at(at)
+                        .map_err(|_| "rule horizon exhausted")?
+                        > self.frame
+                {
+                    continue;
+                }
+                rule.status.next = if let Some(period) = rule.period {
+                    let next = BeatTicks(at.0.checked_add(period.0).ok_or("rule tick overflow")?);
+                    self.map
+                        .frame_at(next)
+                        .map_err(|_| "rule horizon exhausted")?;
+                    Some(next)
+                } else {
+                    rule.status.consumed = true;
+                    None
+                };
+                let blocked = self.manual_frame[deck][slot] == Some(self.frame)
+                    || !matches!(
+                        self.state(deck, slot),
+                        Some(State::Stopped | State::Playing(_))
+                    );
+                if blocked {
+                    rule.status.skipped = rule.status.skipped.saturating_add(1);
+                } else {
+                    let action = self.decks[deck].apply_trigger(slot, rule.part, at)?;
+                    self.started[deck][slot] = Some(at);
+                    rule.status.fired = rule.status.fired.saturating_add(1);
+                    apply(Event {
+                        deck,
+                        slot,
+                        action,
+                        frame: self.frame,
+                        origin: EventOrigin::Rule,
+                    });
+                }
+                self.rules[deck][slot] = Some(rule);
+            }
+        }
+        Ok(())
     }
     pub fn rate(&self) -> u32 {
         self.map.sample_rate()
@@ -104,6 +298,14 @@ impl MusicalScheduler {
             Quantization::Phrase => (self.phrases[deck], self.epochs[deck]),
             Quantization::Immediate => unreachable!(),
         };
+        self.grid_boundary(quantum, epoch)
+    }
+    fn grid_boundary(
+        &self,
+        quantum: BeatTicks,
+        epoch: BeatTicks,
+    ) -> Result<BeatTicks, &'static str> {
+        let now = self.beat()?;
         let mut at = now
             .quantize(quantum, epoch, false)
             .map_err(|_| "boundary overflow")?;
@@ -151,6 +353,12 @@ impl MusicalScheduler {
             .get_mut(deck)
             .ok_or("deck out of range")?
             .command(slot, command)?;
+        self.manual_frame[deck][slot] = Some(self.frame);
+        if matches!(action, Action::Stop) {
+            if let Some(rule) = &mut self.rules[deck][slot] {
+                rule.status.next = None;
+            }
+        }
         self.immediate[deck][slot] = if q == Quantization::Immediate {
             Some(self.frame)
         } else {
@@ -199,7 +407,9 @@ impl MusicalScheduler {
                     Applied::Start { at, .. } => Some(at),
                     Applied::Stop { .. } => None,
                 };
+                self.manual_frame[deck][slot] = Some(self.frame);
                 apply(Event {
+                    origin: EventOrigin::Manual,
                     deck,
                     slot,
                     action,
@@ -207,6 +417,7 @@ impl MusicalScheduler {
                 });
             }
         }
+        self.rules_due(&mut apply)?;
         Ok(())
     }
     pub fn complete(&mut self, deck: usize, slot: usize) -> Result<(), &'static str> {

@@ -145,6 +145,30 @@ impl Deck {
         }
         Ok(effect)
     }
+    /// Synchronous periodic trigger, after the scheduler has validated frame eligibility.
+    /// Musical ticks can round to the same frame, so this does not reject a tick
+    /// just before another slot's logical time. Pending manual actions always win.
+    pub fn apply_trigger(
+        &mut self,
+        slot: usize,
+        part: Part,
+        at: BeatTicks,
+    ) -> Result<Applied, &'static str> {
+        part.validate()?;
+        let state = self.slots.get_mut(slot).ok_or("slot out of range")?;
+        let retrigger = match *state {
+            State::Stopped => false,
+            State::Playing(active) => active.id == part.id,
+            _ => return Err("pending manual action"),
+        };
+        *state = State::Playing(part);
+        self.now = self.now.max(at);
+        Ok(Applied::Start {
+            part,
+            at,
+            retrigger,
+        })
+    }
     pub fn states(&self) -> &[State; SLOTS] {
         &self.slots
     }

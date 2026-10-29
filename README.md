@@ -1,5 +1,8 @@
 # DAWJ
 
+[M2.6 periodic triggers and fills](docs/M2_6.md) add bounded declarative once,
+every-N and phrase-bar rules with explicit manual-command precedence and phase.
+
 [M2.4/M2.5 part mixing and controls](docs/M2_4_M2_5.md) add per-slot state/meters,
 smoothed gain/mute and a stable low-pass filter to the existing sixteen-part
 live engine. The `part_controls` example provides an offline stdin/WAV interface.

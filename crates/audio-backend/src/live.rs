@@ -9,6 +9,7 @@ use crate::{
 };
 pub use event_engine::live::Quantization as Quantize;
 use event_engine::live::{Action, Event, MusicalScheduler, Quantization};
+pub use event_engine::rules::{RulePhase, RuleUnit, TriggerRule};
 use parts::{Applied, SLOTS, State};
 use std::sync::{
     Arc,
@@ -16,6 +17,7 @@ use std::sync::{
 };
 use timebase::SampleFrame;
 const CAPACITY: usize = 32;
+pub const MAX_TRACE_EVENTS: usize = 128;
 #[derive(Clone, Copy, Debug)]
 pub enum Request {
     Launch(u8),
@@ -25,6 +27,9 @@ pub enum Request {
     Cancel(u64),
     Tempo(f64),
     Parameters(PartParameters),
+    Rule { bank: u8, rule: TriggerRule },
+    EnableRule(bool),
+    CancelRule,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
@@ -49,6 +54,9 @@ struct SlotMeter {
     peak: AtomicU64,
     processed: AtomicU64,
     parameters: AtomicU64,
+    rule: AtomicU64,
+    rule_fired: AtomicU64,
+    rule_skipped: AtomicU64,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SlotState {
@@ -67,6 +75,11 @@ pub struct SlotStatus {
     pub processed_frames: u64,
     pub parameters: PartParameters,
     pub closed: bool,
+    pub rule_installed: bool,
+    pub rule_enabled: bool,
+    pub rule_spent: bool,
+    pub rule_fired: u64,
+    pub rule_skipped: u64,
 }
 struct Queue {
     slots: [[SlotMeter; SLOTS]; 2],
@@ -136,6 +149,7 @@ impl LiveControl {
             _ => SlotState::Stopped,
         };
         let peaks = meter.peak.load(Ordering::Relaxed);
+        let rule = meter.rule.load(Ordering::Relaxed);
         Ok(SlotStatus {
             state,
             part_id: if state == SlotState::Stopped {
@@ -151,6 +165,11 @@ impl LiveControl {
             processed_frames: meter.processed.load(Ordering::Relaxed),
             parameters: PartParameters::decode(meter.parameters.load(Ordering::Relaxed)),
             closed: self.queue.closed.load(Ordering::Acquire),
+            rule_installed: rule & 1 != 0,
+            rule_enabled: rule & 2 != 0,
+            rule_spent: rule & 4 != 0,
+            rule_fired: meter.rule_fired.load(Ordering::Relaxed),
+            rule_skipped: meter.rule_skipped.load(Ordering::Relaxed),
         })
     }
 
@@ -175,7 +194,14 @@ impl LiveControl {
         if write.wrapping_sub(self.queue.read.load(Ordering::Acquire)) >= CAPACITY {
             return Err("command queue full");
         }
-        if matches!(request, Request::Parameters(_)) && q != Quantization::Immediate {
+        if matches!(
+            request,
+            Request::Parameters(_)
+                | Request::Rule { .. }
+                | Request::EnableRule(_)
+                | Request::CancelRule
+        ) && q != Quantization::Immediate
+        {
             return Err("part parameters require Immediate");
         }
         let (kind, arg) = match request {
@@ -186,6 +212,9 @@ impl LiveControl {
             Request::Cancel(id) => (4, id),
             Request::Tempo(bpm) => (5, bpm.to_bits()),
             Request::Parameters(parameters) => (6, parameters.encode()?),
+            Request::Rule { bank, rule } => (7, encode_rule(bank, rule)),
+            Request::EnableRule(enabled) => (8, enabled as u64),
+            Request::CancelRule => (9, 0),
         };
         let quant = match q {
             Quantization::Immediate => 0,
@@ -233,7 +262,8 @@ pub struct LiveEngine {
     active: [[Option<Active>; SLOTS]; 2],
     dsp: [[PartDsp; SLOTS]; 2],
     pending: [[Option<Receipt>; SLOTS]; 2],
-    events: [Option<Event>; 2 * SLOTS],
+    events: [Option<Event>; MAX_TRACE_EVENTS],
+    dropped_events: u64,
     event_count: usize,
     failed: bool,
 }
@@ -264,6 +294,9 @@ impl LiveEngine {
         let queue = Arc::new(Queue {
             slots: std::array::from_fn(|_| {
                 std::array::from_fn(|_| SlotMeter {
+                    rule: AtomicU64::new(0),
+                    rule_fired: AtomicU64::new(0),
+                    rule_skipped: AtomicU64::new(0),
                     state: AtomicU64::new(0),
                     part: AtomicU64::new(0),
                     position: AtomicU64::new(0),
@@ -293,7 +326,8 @@ impl LiveEngine {
                 active: [[None; SLOTS]; 2],
                 dsp: std::array::from_fn(|_| std::array::from_fn(|_| PartDsp::default())),
                 pending: [[None; SLOTS]; 2],
-                events: [None; 2 * SLOTS],
+                events: [None; MAX_TRACE_EVENTS],
+                dropped_events: 0,
                 event_count: 0,
                 failed: false,
             },
@@ -312,6 +346,9 @@ impl LiveEngine {
     }
     pub fn failed(&self) -> bool {
         self.failed
+    }
+    pub fn dropped_events(&self) -> u64 {
+        self.dropped_events
     }
     pub fn events(&self) -> impl Iterator<Item = Event> + '_ {
         self.events[..self.event_count].iter().flatten().copied()
@@ -336,7 +373,17 @@ impl LiveEngine {
                 _ => Quantization::Phrase,
             };
             let kind = (word >> 4) & 15;
-            let result = if kind == 6 {
+            let result = if kind == 7 {
+                let (bank, rule) = decode_rule(arg);
+                self.bank
+                    .get(bank as usize)
+                    .ok_or("invalid bank index")
+                    .and_then(|voice| self.scheduler.install_rule(deck, slot, voice.part(), rule))
+            } else if kind == 8 {
+                self.scheduler.enable_rule(deck, slot, arg != 0)
+            } else if kind == 9 {
+                self.scheduler.cancel_rule(deck, slot)
+            } else if kind == 6 {
                 self.dsp[deck][slot].set(
                     PartParameters::decode(arg),
                     self.scheduler.rate(),
@@ -369,7 +416,7 @@ impl LiveEngine {
             };
             if result.is_err() {
                 publish(&self.queue, row, id, Outcome::Rejected);
-            } else if kind == 5 || kind == 6 {
+            } else if kind >= 5 {
                 // Applied means tempo intent installed in the map, not that its boundary passed.
                 publish(&self.queue, row, id, Outcome::Applied);
             } else {
@@ -415,6 +462,7 @@ impl LiveEngine {
     ) {
         output.fill(convert(0.0));
         self.event_count = 0;
+        self.dropped_events = 0;
         if self.failed || output.len() < usize::from(routing.channels()) {
             return;
         }
@@ -434,6 +482,7 @@ impl LiveEngine {
                 queue,
                 events,
                 event_count,
+                dropped_events,
                 ..
             } = self;
             if scheduler
@@ -454,6 +503,8 @@ impl LiveEngine {
                     if *event_count < events.len() {
                         events[*event_count] = Some(event);
                         *event_count += 1;
+                    } else {
+                        *dropped_events = dropped_events.saturating_add(1);
                     }
                 })
                 .is_err()
@@ -532,6 +583,19 @@ impl LiveEngine {
                 meter
                     .parameters
                     .store(dsp.parameters.encode().unwrap_or(0), Ordering::Relaxed);
+                let rule = self.scheduler.rule_status(deck, slot);
+                meter.rule.store(
+                    rule.map_or(0, |r| {
+                        1 | ((r.next.is_some() as u64) << 1) | ((r.consumed as u64) << 2)
+                    }),
+                    Ordering::Relaxed,
+                );
+                meter
+                    .rule_fired
+                    .store(rule.map_or(0, |r| r.fired), Ordering::Relaxed);
+                meter
+                    .rule_skipped
+                    .store(rule.map_or(0, |r| r.skipped), Ordering::Relaxed);
                 meter.state.store(code, Ordering::Release);
             }
         }
@@ -544,4 +608,68 @@ impl Drop for LiveEngine {
     fn drop(&mut self) {
         self.queue.closed.store(true, Ordering::Release);
     }
+}
+
+fn encode_rule(bank: u8, rule: TriggerRule) -> u64 {
+    let phase = |phase| {
+        if phase == RulePhase::Deck {
+            1_u64 << 10
+        } else {
+            0
+        }
+    };
+    u64::from(bank)
+        | match rule {
+            TriggerRule::Once { boundary } => {
+                let q = match boundary {
+                    Quantization::Immediate => 0,
+                    Quantization::Beat => 1,
+                    Quantization::Bar => 2,
+                    Quantization::Phrase => 3,
+                };
+                q << 11
+            }
+            TriggerRule::Every { n, unit, phase: p } => {
+                ((if unit == RuleUnit::Beats { 1 } else { 2 }) << 8)
+                    | phase(p)
+                    | (u64::from(n) << 16)
+            }
+            TriggerRule::PhraseBar {
+                bar,
+                phrase_bars,
+                phase: p,
+            } => (3 << 8) | phase(p) | (u64::from(bar) << 32) | (u64::from(phrase_bars) << 40),
+        }
+}
+fn decode_rule(bits: u64) -> (u8, TriggerRule) {
+    let phase = if bits & (1 << 10) == 0 {
+        RulePhase::Global
+    } else {
+        RulePhase::Deck
+    };
+    let rule = match (bits >> 8) & 3 {
+        0 => TriggerRule::Once {
+            boundary: match (bits >> 11) & 3 {
+                0 => Quantization::Immediate,
+                1 => Quantization::Beat,
+                2 => Quantization::Bar,
+                _ => Quantization::Phrase,
+            },
+        },
+        1 | 2 => TriggerRule::Every {
+            n: ((bits >> 16) & 65535) as u16,
+            unit: if (bits >> 8) & 3 == 1 {
+                RuleUnit::Beats
+            } else {
+                RuleUnit::Bars
+            },
+            phase,
+        },
+        _ => TriggerRule::PhraseBar {
+            bar: ((bits >> 32) & 255) as u8,
+            phrase_bars: ((bits >> 40) & 255) as u8,
+            phase,
+        },
+    };
+    (bits as u8, rule)
 }

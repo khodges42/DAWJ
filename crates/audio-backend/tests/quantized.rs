@@ -58,6 +58,9 @@ fn voice(id: u64, rate: u32, oneshot: bool) -> SampleVoice {
     .unwrap()
 }
 fn engine(rate: u32) -> (LiveEngine, LiveControl) {
+    engine_phrase(rate, [BeatTicks(7680), BeatTicks(3840)])
+}
+fn engine_phrase(rate: u32, phrases: [BeatTicks; 2]) -> (LiveEngine, LiveControl) {
     let map = TempoMap::new(
         rate,
         &[TempoChange {
@@ -66,12 +69,7 @@ fn engine(rate: u32) -> (LiveEngine, LiveControl) {
         }],
     )
     .unwrap();
-    let scheduler = MusicalScheduler::new(
-        map,
-        [BeatTicks(0), BeatTicks(-960)],
-        [BeatTicks(7680), BeatTicks(3840)],
-    )
-    .unwrap();
+    let scheduler = MusicalScheduler::new(map, [BeatTicks(0), BeatTicks(-960)], phrases).unwrap();
     let (engine, control, mixer) = LiveEngine::new(
         scheduler,
         vec![
@@ -621,4 +619,480 @@ fn dsp_automation_partition_invariance() {
     }
     assert_eq!(run(1), run(127));
     assert_eq!(run(8192), run(31));
+}
+
+#[test]
+fn eight_bar_fills_have_deck_relative_phase_and_partition_invariance() {
+    use audio_backend::live::{RulePhase, TriggerRule};
+    fn run(block: usize) -> (Vec<f32>, Vec<(usize, i64)>) {
+        let (mut e, mut c) = engine_phrase(8000, [BeatTicks(32 * 960); 2]);
+        render(&mut e, 1, 1);
+        for deck in 0..2 {
+            c.submit(
+                deck,
+                0,
+                Request::Rule {
+                    bank: 2,
+                    rule: TriggerRule::PhraseBar {
+                        bar: 8,
+                        phrase_bars: 8,
+                        phase: RulePhase::Deck,
+                    },
+                },
+                Quantize::Immediate,
+            )
+            .unwrap();
+        }
+        let (audio, events) = render(&mut e, 256000, block);
+        assert_eq!(e.dropped_events(), 0);
+        let trace: Vec<_> = events
+            .iter()
+            .map(|event| (event.deck, event.frame.0))
+            .collect();
+        assert_eq!(
+            trace,
+            vec![(1, 108000), (0, 112000), (1, 236000), (0, 240000)]
+        );
+        for deck in 0..2 {
+            let status = c.slot(deck, 0).unwrap();
+            assert_eq!(status.rule_fired, 2);
+            assert_eq!(status.state, audio_backend::live::SlotState::Stopped);
+        }
+        (audio, trace)
+    }
+    assert_eq!(run(31), run(8192));
+    assert_eq!(run(127), run(16384));
+}
+
+#[test]
+fn four_bar_global_phase_and_every_beats_or_bars() {
+    use audio_backend::live::{RulePhase, RuleUnit, TriggerRule};
+    let (mut e, mut c) = engine_phrase(8000, [BeatTicks(16 * 960); 2]);
+    render(&mut e, 1, 1);
+    c.submit(
+        1,
+        0,
+        Request::Rule {
+            bank: 2,
+            rule: TriggerRule::PhraseBar {
+                bar: 4,
+                phrase_bars: 4,
+                phase: RulePhase::Global,
+            },
+        },
+        Quantize::Immediate,
+    )
+    .unwrap();
+    c.submit(
+        0,
+        0,
+        Request::Rule {
+            bank: 2,
+            rule: TriggerRule::Every {
+                n: 2,
+                unit: RuleUnit::Beats,
+                phase: RulePhase::Global,
+            },
+        },
+        Quantize::Immediate,
+    )
+    .unwrap();
+    c.submit(
+        0,
+        1,
+        Request::Rule {
+            bank: 2,
+            rule: TriggerRule::Every {
+                n: 2,
+                unit: RuleUnit::Bars,
+                phase: RulePhase::Global,
+            },
+        },
+        Quantize::Immediate,
+    )
+    .unwrap();
+    let (_, events) = render(&mut e, 64000, 1024);
+    assert_eq!(
+        events
+            .iter()
+            .filter(|v| v.deck == 1)
+            .map(|v| v.frame.0)
+            .collect::<Vec<_>>(),
+        vec![48000]
+    );
+    assert_eq!(
+        events
+            .iter()
+            .filter(|v| v.deck == 0 && v.slot == 0)
+            .map(|v| v.frame.0)
+            .collect::<Vec<_>>(),
+        (1..=8).map(|i| i * 8000).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        events
+            .iter()
+            .filter(|v| v.deck == 0 && v.slot == 1)
+            .map(|v| v.frame.0)
+            .collect::<Vec<_>>(),
+        vec![32000, 64000]
+    );
+}
+
+#[test]
+fn once_fill_is_spent_after_one_boundary_and_cannot_be_enabled_again() {
+    use audio_backend::live::TriggerRule;
+    let (mut e, mut c) = engine(8000);
+    render(&mut e, 3999, 8192);
+    c.submit(
+        0,
+        0,
+        Request::Rule {
+            bank: 2,
+            rule: TriggerRule::Once {
+                boundary: Quantize::Beat,
+            },
+        },
+        Quantize::Immediate,
+    )
+    .unwrap();
+    let (_, events) = render(&mut e, 9000, 1024);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].frame.0, 4000);
+    let status = c.slot(0, 0).unwrap();
+    assert!(status.rule_spent && !status.rule_enabled);
+    assert_eq!(status.state, audio_backend::live::SlotState::Stopped);
+    let ticket = c
+        .submit(0, 0, Request::EnableRule(true), Quantize::Immediate)
+        .unwrap();
+    let (_, events) = render(&mut e, 8000, 8192);
+    assert!(events.is_empty());
+    assert_eq!(ticket.outcome(), Outcome::Rejected);
+    c.submit(
+        0,
+        0,
+        Request::Rule {
+            bank: 2,
+            rule: TriggerRule::Once {
+                boundary: Quantize::Immediate,
+            },
+        },
+        Quantize::Immediate,
+    )
+    .unwrap();
+    let before = e.frame();
+    let (_, events) = render(&mut e, 1, 1);
+    assert_eq!(events[0].frame, before);
+}
+
+#[test]
+fn disable_enable_and_cancel_rule_are_not_manual_part_cancellation() {
+    use audio_backend::live::{RulePhase, RuleUnit, TriggerRule};
+    let (mut e, mut c) = engine(8000);
+    render(&mut e, 1, 1);
+    c.submit(
+        0,
+        0,
+        Request::Rule {
+            bank: 2,
+            rule: TriggerRule::Every {
+                n: 1,
+                unit: RuleUnit::Beats,
+                phase: RulePhase::Global,
+            },
+        },
+        Quantize::Immediate,
+    )
+    .unwrap();
+    c.submit(0, 0, Request::EnableRule(false), Quantize::Immediate)
+        .unwrap();
+    assert!(render(&mut e, 10000, 8192).1.is_empty());
+    c.submit(0, 0, Request::EnableRule(true), Quantize::Immediate)
+        .unwrap();
+    let (_, events) = render(&mut e, 2000, 1024);
+    assert_eq!(events[0].frame.0, 12000);
+    c.submit(0, 0, Request::CancelRule, Quantize::Immediate)
+        .unwrap();
+    assert!(render(&mut e, 16000, 8192).1.is_empty());
+    assert!(!c.slot(0, 0).unwrap().rule_installed);
+}
+
+#[test]
+fn manual_actions_win_collisions_and_stop_disables_recurring_restart() {
+    use audio_backend::live::{RulePhase, RuleUnit, TriggerRule};
+    use event_engine::live::EventOrigin;
+    let (mut e, mut c) = engine(8000);
+    render(&mut e, 1, 1);
+    c.submit(
+        0,
+        0,
+        Request::Rule {
+            bank: 0,
+            rule: TriggerRule::Every {
+                n: 1,
+                unit: RuleUnit::Beats,
+                phase: RulePhase::Global,
+            },
+        },
+        Quantize::Immediate,
+    )
+    .unwrap();
+    c.submit(0, 0, Request::Launch(0), Quantize::Beat).unwrap();
+    let (_, events) = render(&mut e, 4000, 8192);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].origin, EventOrigin::Manual);
+    assert_eq!(c.slot(0, 0).unwrap().rule_skipped, 1);
+    c.submit(0, 0, Request::Retrigger, Quantize::Beat).unwrap();
+    let (_, events) = render(&mut e, 4000, 8192);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].origin, EventOrigin::Manual);
+    c.submit(0, 0, Request::Stop, Quantize::Beat).unwrap();
+    let (_, events) = render(&mut e, 12000, 8192);
+    assert_eq!(events.len(), 1);
+    assert!(matches!(events[0].action, Applied::Stop { .. }));
+    assert!(!c.slot(0, 0).unwrap().rule_enabled);
+}
+
+#[test]
+fn periodic_deadlines_retime_and_trace_overflow_is_explicit() {
+    use audio_backend::live::{RulePhase, RuleUnit, TriggerRule};
+    let (mut e, mut c) = engine(8000);
+    render(&mut e, 1, 1);
+    c.submit(
+        0,
+        0,
+        Request::Rule {
+            bank: 2,
+            rule: TriggerRule::Every {
+                n: 1,
+                unit: RuleUnit::Beats,
+                phase: RulePhase::Global,
+            },
+        },
+        Quantize::Immediate,
+    )
+    .unwrap();
+    c.submit(0, 0, Request::Tempo(60.0), Quantize::Beat)
+        .unwrap();
+    let (_, events) = render(&mut e, 20000, 16384);
+    assert_eq!(
+        events.iter().map(|v| v.frame.0).collect::<Vec<_>>(),
+        vec![4000, 12000, 20000]
+    );
+    let (mut e, mut c) = engine(8000);
+    render(&mut e, 1, 1);
+    for deck in 0..2 {
+        for slot in 0..parts::SLOTS {
+            c.submit(
+                deck,
+                slot,
+                Request::Rule {
+                    bank: 2,
+                    rule: TriggerRule::Every {
+                        n: 1,
+                        unit: RuleUnit::Beats,
+                        phase: RulePhase::Global,
+                    },
+                },
+                Quantize::Immediate,
+            )
+            .unwrap();
+        }
+    }
+    let mut output = vec![0.0; 40001 * 4];
+    e.render(
+        &mut output,
+        OutputRouting::new(4, [0, 1], Some([2, 3])).unwrap(),
+    );
+    assert_eq!(e.events().count(), 128);
+    assert_eq!(e.dropped_events(), 32);
+    assert!(!e.failed());
+    assert_eq!(c.slot(0, 0).unwrap().rule_fired, 10);
+}
+
+#[test]
+fn invalid_rule_replacement_is_transactional() {
+    use audio_backend::live::{RulePhase, RuleUnit, TriggerRule};
+    let (mut e, mut c) = engine_phrase(8000, [BeatTicks(16 * 960); 2]);
+    let valid = TriggerRule::Every {
+        n: 1,
+        unit: RuleUnit::Beats,
+        phase: RulePhase::Global,
+    };
+    c.submit(
+        0,
+        0,
+        Request::Rule {
+            bank: 2,
+            rule: valid,
+        },
+        Quantize::Immediate,
+    )
+    .unwrap();
+    render(&mut e, 1, 1);
+    for rule in [
+        TriggerRule::Every {
+            n: 0,
+            unit: RuleUnit::Beats,
+            phase: RulePhase::Global,
+        },
+        TriggerRule::PhraseBar {
+            bar: 9,
+            phrase_bars: 8,
+            phase: RulePhase::Global,
+        },
+        TriggerRule::PhraseBar {
+            bar: 1,
+            phrase_bars: 8,
+            phase: RulePhase::Deck,
+        },
+    ] {
+        let ticket = c
+            .submit(0, 0, Request::Rule { bank: 2, rule }, Quantize::Immediate)
+            .unwrap();
+        render(&mut e, 1, 1);
+        assert_eq!(ticket.outcome(), Outcome::Rejected);
+        assert_eq!(e.scheduler().rule_status(0, 0).unwrap().rule, valid);
+    }
+}
+
+#[test]
+fn rule_boundary_inclusion_and_disable_at_due_frame() {
+    use audio_backend::live::TriggerRule;
+    for (arrival, expected) in [(3999, 4000), (4000, 4000), (4001, 8000)] {
+        let (mut e, mut c) = engine(8000);
+        render(&mut e, arrival, 8192);
+        c.submit(
+            0,
+            0,
+            Request::Rule {
+                bank: 2,
+                rule: TriggerRule::Once {
+                    boundary: Quantize::Beat,
+                },
+            },
+            Quantize::Immediate,
+        )
+        .unwrap();
+        let (_, events) = render(&mut e, expected - arrival + 1, 8192);
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].frame.0, expected as i64);
+    }
+    let (mut e, mut c) = engine(8000);
+    render(&mut e, 1, 1);
+    c.submit(
+        0,
+        0,
+        Request::Rule {
+            bank: 2,
+            rule: TriggerRule::Once {
+                boundary: Quantize::Beat,
+            },
+        },
+        Quantize::Immediate,
+    )
+    .unwrap();
+    render(&mut e, 3999, 8192);
+    c.submit(0, 0, Request::EnableRule(false), Quantize::Immediate)
+        .unwrap();
+    assert!(render(&mut e, 1, 1).1.is_empty());
+    assert!(!c.slot(0, 0).unwrap().rule_spent);
+}
+
+#[test]
+fn pending_manual_action_skips_occurrences_without_postponing_them() {
+    use audio_backend::live::{RulePhase, RuleUnit, TriggerRule};
+    let (mut e, mut c) = engine(8000);
+    render(&mut e, 1, 1);
+    c.submit(
+        0,
+        0,
+        Request::Rule {
+            bank: 2,
+            rule: TriggerRule::Every {
+                n: 1,
+                unit: RuleUnit::Beats,
+                phase: RulePhase::Global,
+            },
+        },
+        Quantize::Immediate,
+    )
+    .unwrap();
+    c.submit(0, 0, Request::Launch(0), Quantize::Bar).unwrap();
+    let (_, events) = render(&mut e, 20000, 8192);
+    assert_eq!(
+        events.iter().map(|v| v.frame.0).collect::<Vec<_>>(),
+        vec![16000, 20000]
+    );
+    assert_eq!(c.slot(0, 0).unwrap().rule_skipped, 4);
+}
+
+#[test]
+fn rule_tempo_and_audio_matrix_at_device_rates() {
+    use audio_backend::live::{RulePhase, RuleUnit, TriggerRule};
+    fn run(rate: u32, block: usize) -> (Vec<f32>, Vec<i64>) {
+        let (mut e, mut c) = engine(rate);
+        render(&mut e, 1, 1);
+        c.submit(
+            0,
+            0,
+            Request::Rule {
+                bank: 2,
+                rule: TriggerRule::Every {
+                    n: 1,
+                    unit: RuleUnit::Beats,
+                    phase: RulePhase::Global,
+                },
+            },
+            Quantize::Immediate,
+        )
+        .unwrap();
+        c.submit(0, 0, Request::Tempo(60.0), Quantize::Beat)
+            .unwrap();
+        let (audio, events) = render(&mut e, rate as usize * 3, block);
+        let frames: Vec<_> = events.iter().map(|v| v.frame.0).collect();
+        assert_eq!(
+            frames,
+            vec![
+                i64::from(rate) / 2,
+                i64::from(rate) * 3 / 2,
+                i64::from(rate) * 5 / 2
+            ]
+        );
+        (audio, frames)
+    }
+    for rate in [44100, 48000, 96000] {
+        assert_eq!(run(rate, 31), run(rate, 8192));
+    }
+}
+
+#[test]
+fn once_fill_losing_to_manual_launch_is_spent_not_deferred() {
+    use audio_backend::live::TriggerRule;
+    let (mut e, mut c) = engine(8000);
+    render(&mut e, 1, 1);
+    c.submit(
+        0,
+        0,
+        Request::Rule {
+            bank: 2,
+            rule: TriggerRule::Once {
+                boundary: Quantize::Beat,
+            },
+        },
+        Quantize::Immediate,
+    )
+    .unwrap();
+    c.submit(0, 0, Request::Launch(2), Quantize::Beat).unwrap();
+    let (_, events) = render(&mut e, 16000, 8192);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].frame.0, 4000);
+    let status = c.slot(0, 0).unwrap();
+    assert!(status.rule_spent);
+    assert_eq!(status.rule_fired, 0);
+    assert_eq!(status.rule_skipped, 1);
+    let enable = c
+        .submit(0, 0, Request::EnableRule(true), Quantize::Immediate)
+        .unwrap();
+    assert!(render(&mut e, 8000, 8192).1.is_empty());
+    assert_eq!(enable.outcome(), Outcome::Rejected);
 }
