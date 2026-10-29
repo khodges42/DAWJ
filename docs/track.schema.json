@@ -1,0 +1,683 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/duettrack-0.1.json",
+  "title": "DUETTrack Package Manifest Prototype 0.1",
+  "description": "Exploratory MVP manifest. Additional semantic validation required for cross-references and safe DSP.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "engine_min_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "feature_flags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 64
+      },
+      "uniqueItems": true,
+      "maxItems": 32
+    },
+    "track_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "artist": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "nominal_bpm": {
+      "type": "number",
+      "minimum": 20,
+      "maximum": 300
+    },
+    "recommended_bpm_range": {
+      "$ref": "#/$defs/tempo_range"
+    },
+    "time_signature": {
+      "type": "string",
+      "enum": [
+        "4/4"
+      ]
+    },
+    "phrase_bars": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 32
+    },
+    "harmonic": {
+      "$ref": "#/$defs/harmonic"
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/asset"
+      },
+      "maxItems": 256
+    },
+    "patches": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/patch"
+      },
+      "maxItems": 16
+    },
+    "parts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/part"
+      },
+      "minItems": 1,
+      "maxItems": 8
+    },
+    "macros": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/macro"
+      },
+      "maxItems": 16
+    },
+    "redistribution_notes": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "extensions": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "engine_min_version",
+    "track_id",
+    "title",
+    "artist",
+    "nominal_bpm",
+    "recommended_bpm_range",
+    "time_signature",
+    "phrase_bars",
+    "harmonic",
+    "assets",
+    "parts"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "license": {
+      "type": "object",
+      "properties": {
+        "redistribution": {
+          "type": "string",
+          "enum": [
+            "permitted",
+            "restricted",
+            "unknown"
+          ]
+        },
+        "attribution": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 1024
+        }
+      },
+      "required": [
+        "redistribution"
+      ],
+      "additionalProperties": false
+    },
+    "asset": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^assets/(audio|midi)/[^/]+\\.(wav|flac|aiff|mid)$",
+          "maxLength": 256
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "wav",
+            "flac",
+            "aiff",
+            "mid"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "audio",
+            "midi"
+          ]
+        },
+        "license": {
+          "$ref": "#/$defs/license"
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "sample_rate": {
+          "type": "integer",
+          "minimum": 8000,
+          "maximum": 192000
+        },
+        "duration_samples": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "id",
+        "path",
+        "sha256",
+        "format",
+        "kind",
+        "license"
+      ],
+      "additionalProperties": false
+    },
+    "pitch_policy": {
+      "type": "string",
+      "enum": [
+        "fixed",
+        "resample_with_tempo",
+        "transpose_allowed",
+        "no_transpose"
+      ]
+    },
+    "tempo_policy": {
+      "type": "string",
+      "enum": [
+        "time_stretch",
+        "resample",
+        "one_shot",
+        "free_run",
+        "mute_outside_range"
+      ]
+    },
+    "variation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "audio",
+            "midi"
+          ]
+        },
+        "asset_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "length_beats": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 256
+        },
+        "launch_quantize": {
+          "type": "string",
+          "enum": [
+            "none",
+            "beat",
+            "bar",
+            "2bars",
+            "4bars",
+            "8bars",
+            "deck_phrase"
+          ]
+        },
+        "start_mode": {
+          "type": "string",
+          "enum": [
+            "restart",
+            "legato_deck",
+            "legato_part"
+          ]
+        },
+        "tempo_policy": {
+          "$ref": "#/$defs/tempo_policy"
+        },
+        "pitch_policy": {
+          "$ref": "#/$defs/pitch_policy"
+        },
+        "loop": {
+          "type": "boolean"
+        },
+        "note_range": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 127
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "source_type",
+        "asset_id",
+        "length_beats",
+        "launch_quantize",
+        "start_mode",
+        "tempo_policy",
+        "pitch_policy",
+        "loop"
+      ],
+      "additionalProperties": false
+    },
+    "engine": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "sample",
+            "synth"
+          ]
+        },
+        "patch_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "max_voices": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        }
+      },
+      "required": [
+        "type",
+        "max_voices"
+      ],
+      "additionalProperties": false
+    },
+    "rule": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "periodic",
+            "one_shot"
+          ]
+        },
+        "every_bars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "bar_index_zero_based": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "variation_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "on_manual_stop": {
+          "type": "string",
+          "enum": [
+            "disarm",
+            "continue"
+          ]
+        },
+        "fill_policy": {
+          "type": "string",
+          "enum": [
+            "overlay",
+            "replace_base",
+            "exclusive_choke"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "variation_id"
+      ],
+      "additionalProperties": false
+    },
+    "part": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "kick",
+            "snare",
+            "hats",
+            "bass",
+            "chords",
+            "lead",
+            "texture",
+            "fill",
+            "vocal",
+            "fx",
+            "other"
+          ]
+        },
+        "engine": {
+          "$ref": "#/$defs/engine"
+        },
+        "default_gain_db": {
+          "type": "number",
+          "minimum": -96,
+          "maximum": 12
+        },
+        "max_gain_db": {
+          "type": "number",
+          "minimum": -96,
+          "maximum": 18
+        },
+        "bass_role": {
+          "type": "string",
+          "enum": [
+            "primary",
+            "secondary",
+            "none"
+          ]
+        },
+        "exclusive_group": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "default_variation_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "variations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/variation"
+          },
+          "minItems": 1,
+          "maxItems": 16
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/rule"
+          },
+          "maxItems": 32
+        }
+      },
+      "required": [
+        "id",
+        "slot",
+        "label",
+        "role",
+        "engine",
+        "default_gain_db",
+        "max_gain_db",
+        "bass_role",
+        "default_variation_id",
+        "variations"
+      ],
+      "additionalProperties": false
+    },
+    "patch": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "engine": {
+          "type": "string",
+          "enum": [
+            "subtractive_mono_v1"
+          ]
+        },
+        "schema_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "osc1_wave": {
+              "type": "string",
+              "enum": [
+                "saw",
+                "square",
+                "sine"
+              ]
+            },
+            "osc2_wave": {
+              "type": "string",
+              "enum": [
+                "saw",
+                "square",
+                "sine"
+              ]
+            },
+            "detune_cents": {
+              "type": "number",
+              "minimum": -1200,
+              "maximum": 1200
+            },
+            "filter_cutoff_hz": {
+              "type": "number",
+              "minimum": 20,
+              "maximum": 20000
+            },
+            "filter_resonance": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "attack_ms": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5000
+            },
+            "decay_ms": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            "sustain": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "release_ms": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 30000
+            }
+          },
+          "required": [
+            "osc1_wave",
+            "osc2_wave",
+            "filter_cutoff_hz",
+            "filter_resonance",
+            "attack_ms",
+            "decay_ms",
+            "sustain",
+            "release_ms"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "engine",
+        "schema_version",
+        "parameters"
+      ],
+      "additionalProperties": false
+    },
+    "target": {
+      "type": "object",
+      "properties": {
+        "part_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "parameter": {
+          "type": "string",
+          "enum": [
+            "gain_db",
+            "filter.cutoff",
+            "filter.resonance",
+            "delay.send",
+            "synth.density"
+          ]
+        },
+        "low": {
+          "type": "number"
+        },
+        "high": {
+          "type": "number"
+        },
+        "curve": {
+          "type": "string",
+          "enum": [
+            "linear",
+            "logarithmic",
+            "exponential"
+          ]
+        }
+      },
+      "required": [
+        "part_id",
+        "parameter",
+        "low",
+        "high",
+        "curve"
+      ],
+      "additionalProperties": false
+    },
+    "macro": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "default": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/target"
+          },
+          "minItems": 1,
+          "maxItems": 16
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "default",
+        "targets"
+      ],
+      "additionalProperties": false
+    },
+    "harmonic": {
+      "type": "object",
+      "properties": {
+        "camelot": {
+          "type": "string",
+          "pattern": "^(?:[1-9]|1[0-2])[AB]$"
+        },
+        "written_key": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "camelot"
+      ],
+      "additionalProperties": false
+    },
+    "tempo_range": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 300
+        },
+        "max": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 300
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

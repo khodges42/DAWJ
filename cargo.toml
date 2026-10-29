@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/timebase", "crates/event-engine", "tools/offline-render"]
+members = ["crates/timebase", "crates/event-engine", "crates/audio-backend", "tools/offline-render"]
 resolver = "3"
 
 [workspace.package]

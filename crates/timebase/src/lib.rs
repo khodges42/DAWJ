@@ -127,135 +127,135 @@ impl TempoMap {
         if !(-MAX_ABS_TICKS..=MAX_ABS_TICKS).contains(&beat.0) {
             return Err(TimeError::OutOfRange);
         }
-let index = self
-    .segments
-    .partition_point(|segment| segment.change.at <= beat);
-let segment = &self.segments[index.saturating_sub(1)];
-let frame =
-    segment.start_frame + (beat.0 - segment.change.at.0) as f64 * segment.frames_per_tick;
-if frame.abs() >= MAX_ABS_FRAME {
-    return Err(TimeError::OutOfRange);
-}
-Ok(SampleFrame(frame.round() as i64))
-}
+        let index = self
+            .segments
+            .partition_point(|segment| segment.change.at <= beat);
+        let segment = &self.segments[index.saturating_sub(1)];
+        let frame =
+            segment.start_frame + (beat.0 - segment.change.at.0) as f64 * segment.frames_per_tick;
+        if frame.abs() >= MAX_ABS_FRAME {
+            return Err(TimeError::OutOfRange);
+        }
+        Ok(SampleFrame(frame.round() as i64))
+    }
 
-/// Nearest storage tick at a frame; this inverse intentionally loses subtick detail.
-pub fn beat_at(&self, frame: SampleFrame) -> Result<BeatTicks, TimeError> {
-let value = frame.0 as f64;
-if value.abs() >= MAX_ABS_FRAME {
-    return Err(TimeError::OutOfRange);
-}
-let index = self
-    .segments
-    .partition_point(|segment| segment.start_frame <= value);
-let segment = &self.segments[index.saturating_sub(1)];
-let beat =
-    segment.change.at.0 as f64 + (value - segment.start_frame) / segment.frames_per_tick;
-if beat.abs() > MAX_ABS_TICKS as f64 {
-    return Err(TimeError::OutOfRange);
-}
-Ok(BeatTicks(beat.round() as i64))
-}
+    /// Nearest storage tick at a frame; this inverse intentionally loses subtick detail.
+    pub fn beat_at(&self, frame: SampleFrame) -> Result<BeatTicks, TimeError> {
+        let value = frame.0 as f64;
+        if value.abs() >= MAX_ABS_FRAME {
+            return Err(TimeError::OutOfRange);
+        }
+        let index = self
+            .segments
+            .partition_point(|segment| segment.start_frame <= value);
+        let segment = &self.segments[index.saturating_sub(1)];
+        let beat =
+            segment.change.at.0 as f64 + (value - segment.start_frame) / segment.frames_per_tick;
+        if beat.abs() > MAX_ABS_TICKS as f64 {
+            return Err(TimeError::OutOfRange);
+        }
+        Ok(BeatTicks(beat.round() as i64))
+    }
 }
 
 #[cfg(test)]
 mod tests {
-use super::*;
+    use super::*;
 
-#[test]
-fn boundaries_include_preroll_and_deck_epochs() {
-for (input, strict, expected) in [
-    (-961, false, -960),
-    (-960, false, -960),
-    (-960, true, 0),
-    (-1, false, 0),
-    (0, true, 960),
-    (1, false, 960),
-] {
-    assert_eq!(
-        BeatTicks(input).quantize(BeatTicks(960), BeatTicks(0), strict),
-        Ok(BeatTicks(expected))
-    );
-}
-assert_eq!(
-    BeatTicks(4000).quantize(BeatTicks(7680), BeatTicks(3840), true),
-    Ok(BeatTicks(11520))
-);
-assert_eq!(
-    BeatTicks(i64::MAX).quantize(BeatTicks(1), BeatTicks(0), true),
-    Err(TimeError::OutOfRange)
-);
-assert_eq!(
-    BeatTicks(0).quantize(BeatTicks(0), BeatTicks(0), false),
-    Err(TimeError::InvalidQuantum)
-);
-}
-
-#[test]
-fn absolute_conversion_does_not_accumulate_period_rounding() {
-for rate in [44_100, 48_000, 96_000] {
-    let map = TempoMap::new(
-        rate,
-        &[TempoChange {
-            at: BeatTicks(0),
-            bpm: 140.0,
-        }],
-    )
-    .unwrap();
-    for quarter in -16..=10_000 {
-        let expected = (f64::from(quarter) * f64::from(rate) * 3.0 / 7.0).round() as i64;
-        let beat = BeatTicks(i64::from(quarter) * 960);
-        assert_eq!(map.frame_at(beat), Ok(SampleFrame(expected)));
-        assert_eq!(map.beat_at(SampleFrame(expected)), Ok(beat));
+    #[test]
+    fn boundaries_include_preroll_and_deck_epochs() {
+        for (input, strict, expected) in [
+            (-961, false, -960),
+            (-960, false, -960),
+            (-960, true, 0),
+            (-1, false, 0),
+            (0, true, 960),
+            (1, false, 960),
+        ] {
+            assert_eq!(
+                BeatTicks(input).quantize(BeatTicks(960), BeatTicks(0), strict),
+                Ok(BeatTicks(expected))
+            );
+        }
+        assert_eq!(
+            BeatTicks(4000).quantize(BeatTicks(7680), BeatTicks(3840), true),
+            Ok(BeatTicks(11520))
+        );
+        assert_eq!(
+            BeatTicks(i64::MAX).quantize(BeatTicks(1), BeatTicks(0), true),
+            Err(TimeError::OutOfRange)
+        );
+        assert_eq!(
+            BeatTicks(0).quantize(BeatTicks(0), BeatTicks(0), false),
+            Err(TimeError::InvalidQuantum)
+        );
     }
-}
-}
 
-#[test]
-fn tempo_change_keeps_fractional_frame_remainder() {
-let map = TempoMap::new(
-    48_000,
-    &[
-        TempoChange {
-            at: BeatTicks(0),
-            bpm: 140.0,
-        },
-        TempoChange {
-            at: BeatTicks(960),
-            bpm: 120.0,
-        },
-    ],
-)
-.unwrap();
-assert_eq!(map.frame_at(BeatTicks(-960)), Ok(SampleFrame(-20571)));
-assert_eq!(map.frame_at(BeatTicks(960)), Ok(SampleFrame(20571)));
-assert_eq!(map.frame_at(BeatTicks(1920)), Ok(SampleFrame(44571)));
-assert_eq!(map.beat_at(SampleFrame(44571)), Ok(BeatTicks(1920)));
-}
+    #[test]
+    fn absolute_conversion_does_not_accumulate_period_rounding() {
+        for rate in [44_100, 48_000, 96_000] {
+            let map = TempoMap::new(
+                rate,
+                &[TempoChange {
+                    at: BeatTicks(0),
+                    bpm: 140.0,
+                }],
+            )
+            .unwrap();
+            for quarter in -16..=10_000 {
+                let expected = (f64::from(quarter) * f64::from(rate) * 3.0 / 7.0).round() as i64;
+                let beat = BeatTicks(i64::from(quarter) * 960);
+                assert_eq!(map.frame_at(beat), Ok(SampleFrame(expected)));
+                assert_eq!(map.beat_at(SampleFrame(expected)), Ok(beat));
+            }
+        }
+    }
 
-#[test]
-fn rejects_invalid_maps_and_conversion_ranges() {
-assert!(TempoMap::new(48_000, &[]).is_err());
-for bpm in [0.0, -1.0, f64::NAN, f64::INFINITY, 1001.0] {
-    assert!(
-        TempoMap::new(
+    #[test]
+    fn tempo_change_keeps_fractional_frame_remainder() {
+        let map = TempoMap::new(
             48_000,
-            &[TempoChange {
-                at: BeatTicks(0),
-                bpm
-            }]
+            &[
+                TempoChange {
+                    at: BeatTicks(0),
+                    bpm: 140.0,
+                },
+                TempoChange {
+                    at: BeatTicks(960),
+                    bpm: 120.0,
+                },
+            ],
         )
-        .is_err()
-    );
-}
-let change = TempoChange {
-    at: BeatTicks(0),
-    bpm: 120.0,
-};
-assert!(TempoMap::new(0, &[change]).is_err());
-assert!(TempoMap::new(48_000, &[change, change]).is_err());
-let map = TempoMap::new(48_000, &[change]).unwrap();
-assert!(map.frame_at(BeatTicks(i64::MIN)).is_err());
-assert!(map.beat_at(SampleFrame(i64::MAX)).is_err());
-}
+        .unwrap();
+        assert_eq!(map.frame_at(BeatTicks(-960)), Ok(SampleFrame(-20571)));
+        assert_eq!(map.frame_at(BeatTicks(960)), Ok(SampleFrame(20571)));
+        assert_eq!(map.frame_at(BeatTicks(1920)), Ok(SampleFrame(44571)));
+        assert_eq!(map.beat_at(SampleFrame(44571)), Ok(BeatTicks(1920)));
+    }
+
+    #[test]
+    fn rejects_invalid_maps_and_conversion_ranges() {
+        assert!(TempoMap::new(48_000, &[]).is_err());
+        for bpm in [0.0, -1.0, f64::NAN, f64::INFINITY, 1001.0] {
+            assert!(
+                TempoMap::new(
+                    48_000,
+                    &[TempoChange {
+                        at: BeatTicks(0),
+                        bpm
+                    }]
+                )
+                .is_err()
+            );
+        }
+        let change = TempoChange {
+            at: BeatTicks(0),
+            bpm: 120.0,
+        };
+        assert!(TempoMap::new(0, &[change]).is_err());
+        assert!(TempoMap::new(48_000, &[change, change]).is_err());
+        let map = TempoMap::new(48_000, &[change]).unwrap();
+        assert!(map.frame_at(BeatTicks(i64::MIN)).is_err());
+        assert!(map.beat_at(SampleFrame(i64::MAX)).is_err());
+    }
 }

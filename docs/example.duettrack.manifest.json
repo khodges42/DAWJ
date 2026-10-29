@@ -1,0 +1,387 @@
+{
+  "schema_version": "0.1.0",
+  "engine_min_version": "0.1.0",
+  "feature_flags": [
+    "sample",
+    "built_in_synth",
+    "midi_pattern"
+  ],
+  "track_id": "4cbfb3c4-ec41-5a5c-9136-d090fc23c2d9",
+  "title": "Iron Rain (Illustrative Fixture)",
+  "artist": "Example Author",
+  "nominal_bpm": 140,
+  "recommended_bpm_range": {
+    "min": 132,
+    "max": 148
+  },
+  "time_signature": "4/4",
+  "phrase_bars": 8,
+  "harmonic": {
+    "camelot": "8A",
+    "written_key": "A minor",
+    "notes": "Example only. Verify actual chord progression and stems."
+  },
+  "assets": [
+    {
+      "id": "kick-asset",
+      "path": "assets/audio/kick.wav",
+      "sha256": "4cb11485ff1f4a6ae6b24771f344844f2cd5d078fe911ce1f0b6f16849bb7b04",
+      "format": "wav",
+      "kind": "audio",
+      "license": {
+        "redistribution": "permitted",
+        "attribution": "Generated illustrative fixture, no source files included"
+      }
+    },
+    {
+      "id": "snare-asset",
+      "path": "assets/audio/snare.wav",
+      "sha256": "9363514d2813942436176dfd3a5c1bc3b3227881718ebabcfefc5d94a13d918c",
+      "format": "wav",
+      "kind": "audio",
+      "license": {
+        "redistribution": "permitted",
+        "attribution": "Generated illustrative fixture, no source files included"
+      }
+    },
+    {
+      "id": "hats-asset",
+      "path": "assets/audio/hats.wav",
+      "sha256": "04fec7938ac3e4b71f55feea517f49d5431e790008dcaff5346e9c38418818a4",
+      "format": "wav",
+      "kind": "audio",
+      "license": {
+        "redistribution": "permitted",
+        "attribution": "Generated illustrative fixture, no source files included"
+      }
+    },
+    {
+      "id": "bass-asset",
+      "path": "assets/midi/bass.mid",
+      "sha256": "d7f2fb3d5f5e2406cccdb8fab335a21e7415885718d09dd5140581d752c57a92",
+      "format": "mid",
+      "kind": "midi",
+      "license": {
+        "redistribution": "permitted",
+        "attribution": "Generated illustrative fixture, no source files included"
+      }
+    },
+    {
+      "id": "chords-asset",
+      "path": "assets/audio/chords.wav",
+      "sha256": "25929a7da2e675cf502648751dcaf156a03ab3a0308d012d1f71eb56060280c2",
+      "format": "wav",
+      "kind": "audio",
+      "license": {
+        "redistribution": "permitted",
+        "attribution": "Generated illustrative fixture, no source files included"
+      }
+    },
+    {
+      "id": "lead-asset",
+      "path": "assets/audio/lead.wav",
+      "sha256": "710621b262eeb751e4081e8b090faa71b23f423438831b55827029e3d8894b1d",
+      "format": "wav",
+      "kind": "audio",
+      "license": {
+        "redistribution": "permitted",
+        "attribution": "Generated illustrative fixture, no source files included"
+      }
+    },
+    {
+      "id": "texture-asset",
+      "path": "assets/audio/texture.wav",
+      "sha256": "3e5906e0feff5ece1e857c292e2eae234d1450e928000111a5cf4177bfa980b3",
+      "format": "wav",
+      "kind": "audio",
+      "license": {
+        "redistribution": "permitted",
+        "attribution": "Generated illustrative fixture, no source files included"
+      }
+    },
+    {
+      "id": "fill-asset",
+      "path": "assets/audio/fill.wav",
+      "sha256": "66d144c00c2873ba78889f89b648cf86c0d625fa3b1301bbdfad580263cc46ac",
+      "format": "wav",
+      "kind": "audio",
+      "license": {
+        "redistribution": "permitted",
+        "attribution": "Generated illustrative fixture, no source files included"
+      }
+    }
+  ],
+  "patches": [
+    {
+      "id": "subbass-v1",
+      "engine": "subtractive_mono_v1",
+      "schema_version": "1.0.0",
+      "parameters": {
+        "osc1_wave": "saw",
+        "osc2_wave": "square",
+        "detune_cents": -4,
+        "filter_cutoff_hz": 300,
+        "filter_resonance": 0.3,
+        "attack_ms": 2,
+        "decay_ms": 150,
+        "sustain": 0.65,
+        "release_ms": 100
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "e8227bf8-546e-51dd-81ed-9be825eb567e",
+      "slot": 1,
+      "label": "Kick",
+      "role": "kick",
+      "engine": {
+        "type": "sample",
+        "max_voices": 2
+      },
+      "default_gain_db": -8,
+      "max_gain_db": 0,
+      "bass_role": "none",
+      "default_variation_id": "7ab5efa6-3ae3-5bd5-ac12-87fbd7dc7a24",
+      "variations": [
+        {
+          "id": "7ab5efa6-3ae3-5bd5-ac12-87fbd7dc7a24",
+          "label": "Main",
+          "source_type": "audio",
+          "asset_id": "kick-asset",
+          "length_beats": 4,
+          "launch_quantize": "bar",
+          "start_mode": "legato_deck",
+          "tempo_policy": "time_stretch",
+          "pitch_policy": "fixed",
+          "loop": true
+        }
+      ]
+    },
+    {
+      "id": "b45c9e87-93b5-535f-b650-a81757b0962f",
+      "slot": 2,
+      "label": "Snare",
+      "role": "snare",
+      "engine": {
+        "type": "sample",
+        "max_voices": 2
+      },
+      "default_gain_db": -8,
+      "max_gain_db": 0,
+      "bass_role": "none",
+      "default_variation_id": "8d37f37c-100e-590f-9c3f-d99479f3e0b3",
+      "variations": [
+        {
+          "id": "8d37f37c-100e-590f-9c3f-d99479f3e0b3",
+          "label": "Main",
+          "source_type": "audio",
+          "asset_id": "snare-asset",
+          "length_beats": 4,
+          "launch_quantize": "bar",
+          "start_mode": "legato_deck",
+          "tempo_policy": "time_stretch",
+          "pitch_policy": "fixed",
+          "loop": true
+        }
+      ]
+    },
+    {
+      "id": "c022acc7-d80f-5afe-96ee-a96194002a9a",
+      "slot": 3,
+      "label": "Hats",
+      "role": "hats",
+      "engine": {
+        "type": "sample",
+        "max_voices": 2
+      },
+      "default_gain_db": -8,
+      "max_gain_db": 0,
+      "bass_role": "none",
+      "default_variation_id": "379bbaf8-36bd-5767-a954-4b9e36afb30d",
+      "variations": [
+        {
+          "id": "379bbaf8-36bd-5767-a954-4b9e36afb30d",
+          "label": "Main",
+          "source_type": "audio",
+          "asset_id": "hats-asset",
+          "length_beats": 4,
+          "launch_quantize": "bar",
+          "start_mode": "legato_deck",
+          "tempo_policy": "time_stretch",
+          "pitch_policy": "fixed",
+          "loop": true
+        }
+      ]
+    },
+    {
+      "id": "cbbf7783-5d87-5600-a5f4-2194915fbbf9",
+      "slot": 4,
+      "label": "Bass",
+      "role": "bass",
+      "engine": {
+        "type": "synth",
+        "max_voices": 4,
+        "patch_id": "subbass-v1"
+      },
+      "default_gain_db": -10,
+      "max_gain_db": 0,
+      "bass_role": "primary",
+      "default_variation_id": "043d46bb-72da-5a90-ab6d-b1cbeb275bda",
+      "variations": [
+        {
+          "id": "043d46bb-72da-5a90-ab6d-b1cbeb275bda",
+          "label": "Main",
+          "source_type": "midi",
+          "asset_id": "bass-asset",
+          "length_beats": 8,
+          "launch_quantize": "bar",
+          "start_mode": "legato_deck",
+          "tempo_policy": "free_run",
+          "pitch_policy": "fixed",
+          "loop": true
+        }
+      ]
+    },
+    {
+      "id": "c36eba2f-005e-594e-8c76-5b1ceb420730",
+      "slot": 5,
+      "label": "Chords",
+      "role": "chords",
+      "engine": {
+        "type": "sample",
+        "max_voices": 2
+      },
+      "default_gain_db": -8,
+      "max_gain_db": 0,
+      "bass_role": "none",
+      "default_variation_id": "11a421e1-b7f4-5f11-a8c7-8259a66dda38",
+      "variations": [
+        {
+          "id": "11a421e1-b7f4-5f11-a8c7-8259a66dda38",
+          "label": "Main",
+          "source_type": "audio",
+          "asset_id": "chords-asset",
+          "length_beats": 16,
+          "launch_quantize": "bar",
+          "start_mode": "legato_deck",
+          "tempo_policy": "time_stretch",
+          "pitch_policy": "fixed",
+          "loop": true
+        }
+      ]
+    },
+    {
+      "id": "7d6884df-8151-588e-96b2-3262cb577439",
+      "slot": 6,
+      "label": "Lead",
+      "role": "lead",
+      "engine": {
+        "type": "sample",
+        "max_voices": 2
+      },
+      "default_gain_db": -8,
+      "max_gain_db": 0,
+      "bass_role": "none",
+      "default_variation_id": "4c159fea-02ee-5487-82fd-6d7c5a35a2de",
+      "variations": [
+        {
+          "id": "4c159fea-02ee-5487-82fd-6d7c5a35a2de",
+          "label": "Main",
+          "source_type": "audio",
+          "asset_id": "lead-asset",
+          "length_beats": 16,
+          "launch_quantize": "bar",
+          "start_mode": "legato_deck",
+          "tempo_policy": "time_stretch",
+          "pitch_policy": "fixed",
+          "loop": true
+        }
+      ]
+    },
+    {
+      "id": "7b450275-3dd1-5c6e-86a4-937b02b18ed2",
+      "slot": 7,
+      "label": "Texture",
+      "role": "texture",
+      "engine": {
+        "type": "sample",
+        "max_voices": 2
+      },
+      "default_gain_db": -8,
+      "max_gain_db": 0,
+      "bass_role": "none",
+      "default_variation_id": "f0b14168-3a13-5995-aa4b-a406a8e3a505",
+      "variations": [
+        {
+          "id": "f0b14168-3a13-5995-aa4b-a406a8e3a505",
+          "label": "Main",
+          "source_type": "audio",
+          "asset_id": "texture-asset",
+          "length_beats": 16,
+          "launch_quantize": "bar",
+          "start_mode": "legato_deck",
+          "tempo_policy": "time_stretch",
+          "pitch_policy": "fixed",
+          "loop": true
+        }
+      ]
+    },
+    {
+      "id": "f196df15-f04d-5491-8f88-9ba5fe51894e",
+      "slot": 8,
+      "label": "Fill",
+      "role": "fill",
+      "engine": {
+        "type": "sample",
+        "max_voices": 2
+      },
+      "default_gain_db": -8,
+      "max_gain_db": 0,
+      "bass_role": "none",
+      "default_variation_id": "e319cd83-fb45-5170-92db-fcadd43c583a",
+      "variations": [
+        {
+          "id": "e319cd83-fb45-5170-92db-fcadd43c583a",
+          "label": "Main",
+          "source_type": "audio",
+          "asset_id": "fill-asset",
+          "length_beats": 16,
+          "launch_quantize": "bar",
+          "start_mode": "restart",
+          "tempo_policy": "one_shot",
+          "pitch_policy": "fixed",
+          "loop": false
+        }
+      ],
+      "rules": [
+        {
+          "id": "11e4ca9a-5fa1-5036-a3eb-163669bf7e76",
+          "kind": "periodic",
+          "every_bars": 8,
+          "bar_index_zero_based": 7,
+          "variation_id": "e319cd83-fb45-5170-92db-fcadd43c583a",
+          "on_manual_stop": "disarm",
+          "fill_policy": "replace_base"
+        }
+      ]
+    }
+  ],
+  "macros": [
+    {
+      "id": "4e71c809-fc89-5126-bc44-f8e015f77a77",
+      "label": "Tension",
+      "default": 0.2,
+      "targets": [
+        {
+          "part_id": "cbbf7783-5d87-5600-a5f4-2194915fbbf9",
+          "parameter": "filter.cutoff",
+          "low": 140,
+          "high": 1600,
+          "curve": "logarithmic"
+        }
+      ]
+    }
+  ],
+  "redistribution_notes": "Illustrative metadata; placeholder paths/hashes. Assets are NOT bundled; not directly loadable."
+}

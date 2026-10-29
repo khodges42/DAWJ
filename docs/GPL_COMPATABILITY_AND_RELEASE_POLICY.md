@@ -28,3 +28,25 @@ this task. Recheck the Rust standard library and compiler-runtime notices for th
 actual distributed executable. This prototype policy needs owner/legal review
 before commercial redistribution.
 
+
+## M1.1 Windows x64 dependency review
+
+The Windows build now uses CPAL 0.15.3 (Apache-2.0) with default features
+and optional ASIO/JACK disabled. `windows-dependencies.json` records exact
+versions, registry source, license expressions, selected Apache-2.0 alternatives
+and upstream license filenames for all seven external Windows x64 packages.
+CPAL uses dasp_sample and Microsoft's windows/windows-core/windows-result,
+windows-targets and windows_x86_64_msvc crates. Apache-2.0 is compatible with
+GPLv3; retain upstream license texts, copyright and applicable NOTICE files,
+mark modifications, and provide GPL corresponding source/build instructions
+when distributing. No proprietary driver SDK or ASIO SDK is bundled. The
+windows target crate includes upstream Windows import libraries; preserve its
+upstream license as well. OS audio services/drivers remain system components.
+
+`scripts/audio_dependencies.py` replaces the M0 zero-dependency gate with an
+exact Windows x64 version/source/license inventory check. Cargo.lock also
+contains dependencies for other CPAL platforms; those are not part of this
+Windows build and require their own inventory and native-library review before
+shipping another target. This review does not claim cross-platform release
+clearance. Cargo-deny remains an additional release check when installed.
+

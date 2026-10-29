@@ -36,3 +36,10 @@ Their referenced assets are absent and checksums are placeholders; import and
 semantic validation are not implemented. Initial hardware target is Windows 11
 64-bit with an as-yet unselected interface. Audio backends and channel routing
 must remain hardware independent.
+
+M1.1 adds CPAL output discovery only. See docs/M1_1.md and
+`cargo run -p audio-backend --example inspect_outputs --locked`.
+Core timing/render crates remain independent of CPAL. CPAL and the Windows
+transitive dependency inventory are in docs/windows-dependencies.json; run
+`python scripts/audio_dependencies.py` for the Windows x64 inventory gate.
+The earlier M0 no-external-dependencies statements describe the original baseline.

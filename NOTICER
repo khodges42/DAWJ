@@ -16,3 +16,8 @@ as design inputs. No separate redistribution license accompanied that bundle;
 this notice does not assert ownership of, or relicense, those supplied artifacts.
 The manifest references missing media and placeholder checksums; it is not a pack.
 
+
+M1.1 Windows audio discovery uses Apache-2.0 CPAL and permissively licensed
+transitive crates; see docs/windows-dependencies.json and the M1.1 dependency
+review in docs/GPL_COMPATABILITY_AND_RELEASE_POLICY.md. Preserve upstream
+licenses/notices with any distribution. The M0 statement above is historical.
