@@ -47,6 +47,10 @@ pub(crate) struct Shared {
     pub clock: AtomicU64,
     pub source_frames: AtomicU64,
     pub max_callback_frames: AtomicU64,
+    pub callbacks: AtomicU64,
+    pub callback_total_ns: AtomicU64,
+    pub callback_max_ns: AtomicU64,
+    pub callback_over_budget: AtomicU64,
 }
 
 /// Atomic telemetry only: no locks, commands carrying heap ownership, or source mutation.
@@ -61,6 +65,11 @@ pub struct PlaybackStatus {
     pub finished: bool,
     pub failed: bool,
     pub max_callback_frames: u64,
+    pub callbacks: u64,
+    pub callback_total_ns: u64,
+    pub callback_max_ns: u64,
+    /// Render duration exceeding frames/rate; not a measured device dropout.
+    pub callback_over_budget: u64,
 }
 
 impl PlaybackMonitor {
@@ -72,6 +81,10 @@ impl PlaybackMonitor {
             finished: self.0.finished.load(Ordering::Acquire),
             failed: self.0.failed.load(Ordering::Acquire),
             max_callback_frames: self.0.max_callback_frames.load(Ordering::Relaxed),
+            callbacks: self.0.callbacks.load(Ordering::Relaxed),
+            callback_total_ns: self.0.callback_total_ns.load(Ordering::Relaxed),
+            callback_max_ns: self.0.callback_max_ns.load(Ordering::Relaxed),
+            callback_over_budget: self.0.callback_over_budget.load(Ordering::Relaxed),
         }
     }
 }

@@ -276,15 +276,46 @@ fn build<T: cpal::SizedSample + cpal::FromSample<f32> + Copy>(
     mut renderer: Engine,
     shared: Arc<Shared>,
 ) -> Result<cpal::Stream, cpal::BuildStreamError> {
+    let timing = shared.clone();
+    let channels = usize::from(config.channels);
+    let rate = config.sample_rate.0;
     device.build_output_stream(
         config,
-        move |data: &mut [T], _| renderer.render(data, T::from_sample),
+        move |data: &mut [T], _| {
+            let start = std::time::Instant::now();
+            renderer.render(data, T::from_sample);
+            record_timing(
+                &timing,
+                start.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64,
+                (data.len() / channels) as u64,
+                rate,
+            );
+        },
         move |_| {
             shared.failed.store(true, Ordering::Release);
             shared.enabled.store(false, Ordering::Release);
         },
         None,
     )
+}
+
+// Single callback writer; diagnostic publication never uses a retry loop.
+fn record_timing(shared: &Shared, ns: u64, frames: u64, rate: u32) {
+    let add = |counter: &std::sync::atomic::AtomicU64, amount| {
+        counter.store(
+            counter.load(Ordering::Relaxed).saturating_add(amount),
+            Ordering::Relaxed,
+        )
+    };
+    add(&shared.callbacks, 1);
+    add(&shared.callback_total_ns, ns);
+    shared.callback_max_ns.store(
+        shared.callback_max_ns.load(Ordering::Relaxed).max(ns),
+        Ordering::Relaxed,
+    );
+    if frames > 0 && u128::from(ns) * u128::from(rate) > u128::from(frames) * 1_000_000_000 {
+        add(&shared.callback_over_budget, 1);
+    }
 }
 
 use crate::{BufferCapabilities, InspectionError, OutputConfig, OutputDevice, OutputDiscovery};
@@ -358,6 +389,59 @@ impl OutputDiscovery for CpalDiscovery {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn timing_accounting_is_deterministic_and_not_a_dropout_counter() {
+        let shared = Shared::default();
+        record_timing(&shared, 1_000_000, 48, 48000); // exactly the nominal budget
+        record_timing(&shared, 1_000_001, 48, 48000);
+        record_timing(&shared, 5, 0, 48000); // empty callback has no frame budget
+        assert_eq!(shared.callbacks.load(Ordering::Relaxed), 3);
+        assert_eq!(shared.callback_total_ns.load(Ordering::Relaxed), 2_000_006);
+        assert_eq!(shared.callback_max_ns.load(Ordering::Relaxed), 1_000_001);
+        assert_eq!(shared.callback_over_budget.load(Ordering::Relaxed), 1);
+    }
+
+    #[test]
+    fn clock_continuity_matrix_and_fresh_engine_reset() {
+        for rate in [44100, 48000, 96000] {
+            for channels in [2, 4] {
+                for _restart in 0..2 {
+                    let shared = Arc::new(Shared::default());
+                    let tone = || PlaybackSource::Tone {
+                        frequency_hz: 220.0,
+                        amplitude: 0.0,
+                        frames: 100000,
+                    };
+                    let (mixer, _) = StereoMixer::new(tone(), tone(), rate).unwrap();
+                    let route = OutputRouting::new(
+                        channels,
+                        [0, 1],
+                        if channels == 4 { Some([2, 3]) } else { None },
+                    )
+                    .unwrap();
+                    let mut engine = Engine::Mixer(mixer, route, shared.clone());
+                    assert_eq!(shared.clock.load(Ordering::Relaxed), 0);
+                    shared.enabled.store(true, Ordering::Release);
+                    let mut expected = 0;
+                    for frames in [0, 1, 31, 128, 8192, 16384] {
+                        let mut output = vec![1.0; frames * usize::from(channels)];
+                        engine.render(&mut output, |s| s);
+                        expected += frames as u64;
+                        assert_eq!(shared.clock.load(Ordering::Relaxed), expected);
+                        assert_eq!(shared.source_frames.load(Ordering::Relaxed), expected);
+                    }
+                    shared.enabled.store(false, Ordering::Release);
+                    engine.render(&mut [1.0; 128], |s| s);
+                    assert_eq!(shared.source_frames.load(Ordering::Relaxed), expected);
+                    assert_eq!(
+                        shared.clock.load(Ordering::Relaxed),
+                        expected + 128 / u64::from(channels)
+                    );
+                }
+            }
+        }
+    }
 
     #[test]
     fn multichannel_adapter_counts_frames_and_silences_unused_outputs_on_failure() {

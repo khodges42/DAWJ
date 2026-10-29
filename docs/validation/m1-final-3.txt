@@ -1,0 +1,108 @@
+
+running 18 tests
+test cpal_backend::tests::unknown_buffer_and_single_rate_remain_explicit ... ok
+test cpal_backend::tests::preserves_correlated_ranges_and_frame_units ... ok
+test cpal_backend::tests::timing_accounting_is_deterministic_and_not_a_dropout_counter ... ok
+test cpal_backend::tests::mismatched_routing_is_rejected_before_hardware_access ... ok
+test cpal_backend::tests::adapter_gates_mixer_and_caps_legacy_output ... ok
+test mixer::tests::curves_have_exact_endpoints_and_equal_power_center ... ok
+test playback::tests::buffer_is_exact_across_variable_callbacks_and_silences_eof ... ok
+test playback::tests::control_gate_and_errors_silence_without_advancing_source ... ok
+test playback::tests::rejects_bad_sources_before_callback ... ok
+test playback::tests::tone_partition_does_not_change_phase_or_clock ... ok
+test mixer::tests::heterogeneous_sources_and_partial_frames_are_safe ... ok
+test cpal_backend::tests::multichannel_adapter_counts_frames_and_silences_unused_outputs_on_failure ... ok
+test mixer::tests::parameter_ramps_are_bounded_and_bad_updates_rejected ... ok
+test mixer::tests::correlated_full_scale_sources_are_limited_and_metered ... ok
+test mixer::tests::muted_decks_advance_and_eof_is_independent ... ok
+test mixer::tests::stereo_endpoints_and_deck_gain_are_isolated ... ok
+test mixer::tests::callback_partition_does_not_change_automation ... ok
+test cpal_backend::tests::clock_continuity_matrix_and_fresh_engine_reset ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+
+running 1 test
+test consumers_distinguish_empty_failure_and_partial_inspection ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test sample_rate_callback_and_automation_matrix ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+
+running 8 tests
+test invalid_maps_are_rejected ... ok
+test selected_b_cannot_leak_into_a_only_master ... ok
+test stereo_fallback_never_folds_cue_into_master ... ok
+test four_and_six_channel_mapping_preserves_polarity_and_silences_unused_channels ... ok
+test cue_overload_has_its_own_limiter_and_meters ... ok
+test cue_selection_changes_ramp_without_affecting_master ... ok
+test routing_is_partition_invariant_through_cue_automation ... ok
+test cue_selection_is_post_gain_and_pre_crossfader ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test tests::right_boundary_and_empty_block_do_not_consume_event ... ok
+test tests::collision_preroll_and_errors_are_explicit ... ok
+test tests::exact_offsets_are_independent_of_callback_partition ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test tests::tempo_change_keeps_fractional_frame_remainder ... ok
+test tests::rejects_invalid_maps_and_conversion_ranges ... ok
+test tests::boundaries_include_preroll_and_deck_epochs ... ok
+test tests::absolute_conversion_does_not_accumulate_period_rounding ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.15s
+     Running unittests src\lib.rs (target\debug\deps\audio_backend-fa462b92ab46e80f.exe)
+     Running tests\discovery.rs (target\debug\deps\discovery-ef5b2732f3715c37.exe)
+     Running tests\m1_integration.rs (target\debug\deps\m1_integration-dbd2fed354596aca.exe)
+     Running tests\routing.rs (target\debug\deps\routing-335cd15537118bff.exe)
+     Running unittests examples\inspect_outputs.rs (target\debug\examples\inspect_outputs-2f34fbf2d7b3489b.exe)
+     Running unittests examples\mixer.rs (target\debug\examples\mixer-35164d28e303c12a.exe)
+     Running unittests examples\playback.rs (target\debug\examples\playback-f7b3941d7dfc2b83.exe)
+     Running unittests examples\routing_check.rs (target\debug\examples\routing_check-001cb00972ef34f1.exe)
+     Running unittests examples\soak.rs (target\debug\examples\soak-32a1f06e1e48257f.exe)
+     Running unittests src\lib.rs (target\debug\deps\event_engine-9166495b7791ea40.exe)
+     Running unittests src\main.rs (target\debug\deps\offline_render-8b940790d584236d.exe)
+     Running unittests src\lib.rs (target\debug\deps\timebase-dfba5550cc6cbcf6.exe)

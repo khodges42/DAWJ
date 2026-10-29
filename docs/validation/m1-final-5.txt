@@ -1,0 +1,1 @@
+Windows x64 inventory passed: 7 external packages; Apache-2.0 selected.

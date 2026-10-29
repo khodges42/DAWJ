@@ -1,0 +1,27 @@
+PROBE 44100 2 Default: rejected: configure output: unsupported requested configuration
+PROBE 44100 2 Fixed(128): rejected: configure output: unsupported requested configuration
+PROBE 44100 2 Fixed(512): rejected: configure output: unsupported requested configuration
+PROBE 44100 2 Fixed(0): rejected: configure output: unsupported requested configuration
+PROBE 44100 4 Default: rejected: configure output: unsupported requested configuration
+PROBE 44100 4 Fixed(128): rejected: configure output: unsupported requested configuration
+PROBE 44100 4 Fixed(512): rejected: configure output: unsupported requested configuration
+PROBE 44100 4 Fixed(0): rejected: configure output: unsupported requested configuration
+PROBE 48000 2 Default: paused build OK, Speakers (HyperX Cloud III S Wireless)
+PROBE 48000 2 Fixed(128): paused build OK, Speakers (HyperX Cloud III S Wireless)
+PROBE 48000 2 Fixed(512): paused build OK, Speakers (HyperX Cloud III S Wireless)
+PROBE 48000 2 Fixed(0): rejected: configure output: unsupported requested configuration
+PROBE 48000 4 Default: rejected: configure output: unsupported requested configuration
+PROBE 48000 4 Fixed(128): rejected: configure output: unsupported requested configuration
+PROBE 48000 4 Fixed(512): rejected: configure output: unsupported requested configuration
+PROBE 48000 4 Fixed(0): rejected: configure output: unsupported requested configuration
+PROBE 96000 2 Default: rejected: configure output: unsupported requested configuration
+PROBE 96000 2 Fixed(128): rejected: configure output: unsupported requested configuration
+PROBE 96000 2 Fixed(512): rejected: configure output: unsupported requested configuration
+PROBE 96000 2 Fixed(0): rejected: configure output: unsupported requested configuration
+PROBE 96000 4 Default: rejected: configure output: unsupported requested configuration
+PROBE 96000 4 Fixed(128): rejected: configure output: unsupported requested configuration
+PROBE 96000 4 Fixed(512): rejected: configure output: unsupported requested configuration
+PROBE 96000 4 Fixed(0): rejected: configure output: unsupported requested configuration
+   Compiling audio-backend v0.1.0 (C:\Users\metis\Documents\DAWJ\DAWJ\crates\audio-backend)
+    Finished `release` profile [optimized] target(s) in 1.21s
+     Running `target\release\examples\soak.exe --probe`

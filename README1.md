@@ -1,5 +1,9 @@
 # DAWJ
 
+[M1 integration validation report](docs/M1_VALIDATION.md): reproduce software
+checks with `python scripts/validate_m1.py`. Add `--hardware` for paused probes
+and a 15-minute silent device soak with callback diagnostics and stream restart.
+
 A GPL-3.0-or-later prototype for a two-deck live composition instrument. The
 current foundation implements deterministic musical timing, an offline impulse
 renderer, output discovery, realtime playback, a stereo two-deck mixer and

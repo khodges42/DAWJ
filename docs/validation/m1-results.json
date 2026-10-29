@@ -1,0 +1,114 @@
+[
+  {
+    "command": [
+      "cargo",
+      "fmt",
+      "--all",
+      "--check"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.18999489999987418,
+    "log": "m1-final-0.txt"
+  },
+  {
+    "command": [
+      "cargo",
+      "check",
+      "--workspace",
+      "--all-targets",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.15041740000015125,
+    "log": "m1-final-1.txt"
+  },
+  {
+    "command": [
+      "cargo",
+      "clippy",
+      "--workspace",
+      "--all-targets",
+      "--locked",
+      "--offline",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.27362189999985276,
+    "log": "m1-final-2.txt"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--workspace",
+      "--all-targets",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.8105663999995159,
+    "log": "m1-final-3.txt"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--workspace",
+      "--doc",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.26454070000181673,
+    "log": "m1-final-4.txt"
+  },
+  {
+    "command": [
+      "C:\\Python314\\python.exe",
+      "scripts/audio_dependencies.py"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.20834149999791407,
+    "log": "m1-final-5.txt"
+  },
+  {
+    "command": [
+      "cargo",
+      "run",
+      "--release",
+      "-p",
+      "audio-backend",
+      "--example",
+      "soak",
+      "--locked",
+      "--offline",
+      "--",
+      "--probe"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 4.652314999999362,
+    "log": "m1-final-6.txt"
+  },
+  {
+    "command": [
+      "cargo",
+      "run",
+      "--release",
+      "-p",
+      "audio-backend",
+      "--example",
+      "soak",
+      "--locked",
+      "--offline",
+      "--",
+      "--run",
+      "900"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 901.5445388000007,
+    "log": "m1-final-7.txt"
+  }
+]

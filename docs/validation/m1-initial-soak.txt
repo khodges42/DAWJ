@@ -1,0 +1,51 @@
+﻿cargo :    Compiling windows_x86_64_msvc v0.52.6
+At line:2 char:18
++ ...  fmt --all; cargo run --release -p audio-backend --example soak --loc ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling windows_x86_64_msvc v0.52.6:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   Compiling cpal v0.15.3
+   Compiling dasp_sample v0.11.0
+   Compiling timebase v0.1.0 (C:\Users\metis\Documents\DAWJ\DAWJ\crates\timebase)
+   Compiling event-engine v0.1.0 (C:\Users\metis\Documents\DAWJ\DAWJ\crates\event-engine)
+   Compiling windows-targets v0.52.6
+   Compiling windows-result v0.1.2
+   Compiling windows-core v0.54.0
+   Compiling windows v0.54.0
+   Compiling audio-backend v0.1.0 (C:\Users\metis\Documents\DAWJ\DAWJ\crates\audio-backend)
+    Finished `release` profile [optimized] target(s) in 13.71s
+     Running `target\release\examples\soak.exe --run 900`
+START cycle=0 seconds=900 device=Speakers (HyperX Cloud III S Wireless) config=PlaybackConfig { sample_rate_hz: 48000, channels: 2, encoding: F32, buffer: Default } route=Some(OutputRouting { channels: 2, master: [0, 1], cue: None })
+PROGRESS elapsed=30 updates=2945 PlaybackStatus { sample_clock: 1441056, source_frames: 1441056, finished: false, failed: false, max_callback_frames: 1056, callbacks: 3001, callback_total_ns: 68953600, callback_max_ns: 258000, callback_over_budget: 0 }
+PROGRESS elapsed=60 updates=5889 PlaybackStatus { sample_clock: 2881056, source_frames: 2881056, finished: false, failed: false, max_callback_frames: 1056, callbacks: 6001, callback_total_ns: 136358400, callback_max_ns: 281500, callback_over_budget: 0 }
+PROGRESS elapsed=90 updates=8837 PlaybackStatus { sample_clock: 4321056, source_frames: 4321056, finished: false, failed: false, max_callback_frames: 1056, callbacks: 9001, callback_total_ns: 201519900, callback_max_ns: 281500, callback_over_budget: 0 }
+PROGRESS elapsed=120 updates=11787 PlaybackStatus { sample_clock: 5760576, source_frames: 5760576, finished: false, failed: false, max_callback_frames: 1056, callbacks: 12000, callback_total_ns: 266254800, callback_max_ns: 281500, callback_over_budget: 0 }
+PROGRESS elapsed=150 updates=14735 PlaybackStatus { sample_clock: 7200576, source_frames: 7200576, finished: false, failed: false, max_callback_frames: 1056, callbacks: 15000, callback_total_ns: 330112800, callback_max_ns: 281500, callback_over_budget: 0 }
+PROGRESS elapsed=180 updates=17685 PlaybackStatus { sample_clock: 8640576, source_frames: 8640576, finished: false, failed: false, max_callback_frames: 1056, callbacks: 18000, callback_total_ns: 393687300, callback_max_ns: 281500, callback_over_budget: 0 }
+PROGRESS elapsed=210 updates=20633 PlaybackStatus { sample_clock: 10080576, source_frames: 10080576, finished: false, failed: false, max_callback_frames: 1056, callbacks: 21000, callback_total_ns: 458765400, callback_max_ns: 281500, callback_over_budget: 0 }
+PROGRESS elapsed=240 updates=23583 PlaybackStatus { sample_clock: 11521056, source_frames: 11521056, finished: false, failed: false, max_callback_frames: 1056, callbacks: 24001, callback_total_ns: 521953700, callback_max_ns: 281500, callback_over_budget: 0 }
+PROGRESS elapsed=270 updates=26533 PlaybackStatus { sample_clock: 12960576, source_frames: 12960576, finished: false, failed: false, max_callback_frames: 1056, callbacks: 27000, callback_total_ns: 583938300, callback_max_ns: 281500, callback_over_budget: 0 }
+PROGRESS elapsed=300 updates=29481 PlaybackStatus { sample_clock: 14400576, source_frames: 14400576, finished: false, failed: false, max_callback_frames: 1056, callbacks: 30000, callback_total_ns: 647659600, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=330 updates=32431 PlaybackStatus { sample_clock: 15840576, source_frames: 15840576, finished: false, failed: false, max_callback_frames: 1056, callbacks: 33000, callback_total_ns: 711245400, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=360 updates=35384 PlaybackStatus { sample_clock: 17280576, source_frames: 17280576, finished: false, failed: false, max_callback_frames: 1056, callbacks: 36000, callback_total_ns: 773723300, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=390 updates=38334 PlaybackStatus { sample_clock: 18720576, source_frames: 18720576, finished: false, failed: false, max_callback_frames: 1056, callbacks: 39000, callback_total_ns: 836277400, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=420 updates=41282 PlaybackStatus { sample_clock: 20160576, source_frames: 20160576, finished: false, failed: false, max_callback_frames: 1056, callbacks: 42000, callback_total_ns: 899993800, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=450 updates=44231 PlaybackStatus { sample_clock: 21600576, source_frames: 21600576, finished: false, failed: false, max_callback_frames: 1056, callbacks: 45000, callback_total_ns: 964046900, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=480 updates=47183 PlaybackStatus { sample_clock: 23040576, source_frames: 23040576, finished: false, failed: false, max_callback_frames: 1056, callbacks: 48000, callback_total_ns: 1027240000, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=510 updates=50132 PlaybackStatus { sample_clock: 24480096, source_frames: 24480096, finished: false, failed: false, max_callback_frames: 1056, callbacks: 50999, callback_total_ns: 1089175400, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=540 updates=53077 PlaybackStatus { sample_clock: 25920096, source_frames: 25920096, finished: false, failed: false, max_callback_frames: 1056, callbacks: 53999, callback_total_ns: 1154030600, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=570 updates=56028 PlaybackStatus { sample_clock: 27360096, source_frames: 27360096, finished: false, failed: false, max_callback_frames: 1056, callbacks: 56999, callback_total_ns: 1217850000, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=600 updates=58975 PlaybackStatus { sample_clock: 28800096, source_frames: 28800096, finished: false, failed: false, max_callback_frames: 1056, callbacks: 59999, callback_total_ns: 1282707400, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=630 updates=61922 PlaybackStatus { sample_clock: 30240096, source_frames: 30240096, finished: false, failed: false, max_callback_frames: 1056, callbacks: 62999, callback_total_ns: 1348602700, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=660 updates=64872 PlaybackStatus { sample_clock: 31680096, source_frames: 31680096, finished: false, failed: false, max_callback_frames: 1056, callbacks: 65999, callback_total_ns: 1412104700, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=690 updates=67822 PlaybackStatus { sample_clock: 33120576, source_frames: 33120576, finished: false, failed: false, max_callback_frames: 1056, callbacks: 69000, callback_total_ns: 1476118900, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=720 updates=70770 PlaybackStatus { sample_clock: 34560096, source_frames: 34560096, finished: false, failed: false, max_callback_frames: 1056, callbacks: 71999, callback_total_ns: 1540440300, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=750 updates=73717 PlaybackStatus { sample_clock: 36000096, source_frames: 36000096, finished: false, failed: false, max_callback_frames: 1056, callbacks: 74999, callback_total_ns: 1605727500, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=780 updates=76668 PlaybackStatus { sample_clock: 37440096, source_frames: 37440096, finished: false, failed: false, max_callback_frames: 1056, callbacks: 77999, callback_total_ns: 1670681100, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=810 updates=79619 PlaybackStatus { sample_clock: 38880576, source_frames: 38880576, finished: false, failed: false, max_callback_frames: 1056, callbacks: 81000, callback_total_ns: 1737080700, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=840 updates=82568 PlaybackStatus { sample_clock: 40320096, source_frames: 40320096, finished: false, failed: false, max_callback_frames: 1056, callbacks: 83999, callback_total_ns: 1801942300, callback_max_ns: 372400, callback_over_budget: 0 }
+PROGRESS elapsed=870 updates=85520 PlaybackStatus { sample_clock: 41760096, source_frames: 41760096, finished: false, failed: false, max_callback_frames: 1056, callbacks: 86999, callback_total_ns: 1866179100, callback_max_ns: 372400, callback_over_budget: 0 }
+PASS cycle=0 wall_seconds=900.063 updates=88468 PlaybackStatus { sample_clock: 43200096, source_frames: 43200000, finished: true, failed: false, max_callback_frames: 1056, callbacks: 89999, callback_total_ns: 1931232600, callback_max_ns: 372400, callback_over_budget: 0 }; silent samples only; dropout count unmeasured
+START cycle=1 seconds=1 device=Speakers (HyperX Cloud III S Wireless) config=PlaybackConfig { sample_rate_hz: 48000, channels: 2, encoding: F32, buffer: Default } route=Some(OutputRouting { channels: 2, master: [0, 1], cue: None })
+PASS cycle=1 wall_seconds=1.048 updates=98 PlaybackStatus { sample_clock: 48096, source_frames: 48000, finished: true, failed: false, max_callback_frames: 1056, callbacks: 99, callback_total_ns: 2209200, callback_max_ns: 49900, callback_over_budget: 0 }; silent samples only; dropout count unmeasured
