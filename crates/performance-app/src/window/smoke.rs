@@ -39,6 +39,15 @@ impl PerformanceWindow {
             return;
         };
         let elapsed = smoke.started.elapsed().as_secs_f32();
+        if !smoke.audio {
+            if let Some(midi) = &mut self.midi {
+                midi.open = true;
+            }
+            if smoke.step == 0 {
+                smoke.last_step = Instant::now();
+                smoke.step = 1;
+            }
+        }
         if smoke.audio {
             // Space test gestures after each completed UI operation. Startup can
             // take seconds; overdue wall-clock steps must not collapse into one
@@ -132,7 +141,7 @@ impl PerformanceWindow {
                             && (a.parameters.gain - 0.6).abs() < 0.001
                             && a.parameters.cutoff_hz == Some(500.0)
                     });
-                    actual && s.available() && s.peaks().into_iter().any(|p| p > 0.0)
+                    actual && s.available() && s.peaks().into_iter().any(|p| p > 0.02)
                 }) && self.stream.as_ref().is_some_and(|s| {
                     let status = s.monitor().status();
                     status.callbacks > 0 && !status.failed
@@ -141,6 +150,9 @@ impl PerformanceWindow {
                 true
             };
             let passed = smoke.captured && engine_ok && !smoke.command_failed;
+            if let Some(midi) = &self.midi {
+                eprintln!("MIDI_STATUS {:?}", midi.devices.status());
+            }
             eprintln!(
                 "SMOKE_RESULT passed={passed} audio={} captured={} error={}",
                 smoke.audio, smoke.captured, self.error

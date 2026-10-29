@@ -153,3 +153,17 @@ verify keyboard/text focus and that sixteen pending-state cards fit both viewpor
 sizes. Those tests do not establish hardware output, listening quality, private
 cue, accessibility completeness or stage usability. See the implementation report
 for the separate Windows smoke evidence and remaining acceptance gates.
+
+## M3.3–M3.4 extension
+
+`controls.rs` now provides source-tagged semantic dispatch and addressed part
+actions. GUI, keyboard and MIDI share the coordinator; controller messages never
+obtain `LiveControl`. `midi/` contains normalization, bounded input bridging,
+validated profile persistence, pickup/mode routing, snapshot-driven feedback and
+a worker owning midir connections. `window/midi_settings.rs` is rendering and
+settings orchestration. No audio-thread I/O, locks, serialization or device work
+was introduced. The temporary-mode stack holds at most sixteen source/token
+records, and parameter coalescing has sixteen slots, four admissions per GUI
+update and round-robin fairness. This supersedes the earlier M3.3 coordinator
+work item above. Detailed bounds, lifecycle, configuration and hardware limits
+are in [M3_HANDS_ON_CONTROLS.md](M3_HANDS_ON_CONTROLS.md).

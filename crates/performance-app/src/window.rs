@@ -6,9 +6,10 @@ use audio_backend::{
     live::Quantize,
     routing::OutputRouting,
 };
-use dawj::{Coordinator, Intent, Mode, lifecycle_label, musical_position};
+use dawj::{Coordinator, InputSource, Intent, Mode, lifecycle_label, musical_position};
 use eframe::egui::{self, Color32, RichText};
 use std::time::Duration;
+mod midi_settings;
 mod smoke;
 pub use smoke::Smoke;
 
@@ -66,6 +67,13 @@ const BINDINGS: &[(egui::Key, Intent, &str)] = &[
     (egui::Key::W, Intent::Cue(1), ""),
 ];
 
+fn plain_key(ctx: &egui::Context, key: egui::Key) -> bool {
+    ctx.input_mut(|i| {
+        let exact=i.events.iter().any(|event|matches!(event,egui::Event::Key{key:k,pressed:true,repeat,modifiers,..} if *k==key && *modifiers==egui::Modifiers::NONE && (!repeat || matches!(key,egui::Key::ArrowLeft|egui::Key::ArrowRight))));
+        exact && i.consume_key(egui::Modifiers::NONE,key)
+    })
+}
+
 pub struct PerformanceWindow {
     session: Option<Coordinator>,
     stream: Option<CpalPlayback>,
@@ -76,8 +84,12 @@ pub struct PerformanceWindow {
     help: bool,
     bpm_edit: f64,
     smoke: Option<Smoke>,
+    midi: Option<midi_settings::MidiPanel>,
+    window_focused: bool,
     #[cfg(test)]
     cards: Vec<egui::Rect>,
+    #[cfg(test)]
+    contextual_rect: Option<egui::Rect>,
 }
 impl PerformanceWindow {
     pub fn new(cc: &eframe::CreationContext<'_>, smoke: Option<Smoke>) -> Self {
@@ -85,6 +97,7 @@ impl PerformanceWindow {
         let mut app = Self::empty();
         app.scan();
         app.smoke = smoke;
+        app.midi = Some(midi_settings::MidiPanel::new());
         app
     }
     fn configure(ctx: &egui::Context) {
@@ -112,8 +125,12 @@ impl PerformanceWindow {
             help: false,
             bpm_edit: 120.0,
             smoke: None,
+            midi: None,
+            window_focused: true,
             #[cfg(test)]
             cards: Vec::new(),
+            #[cfg(test)]
+            contextual_rect: None,
         }
     }
     fn scan(&mut self) {
@@ -184,6 +201,9 @@ impl PerformanceWindow {
         session.notice = "Output started. Parts are stopped; select a slot and Launch.".into();
         self.stream = Some(stream);
         self.session = Some(session);
+        if let Some(midi) = &mut self.midi {
+            midi.reset(self.session.as_mut());
+        }
         self.error.clear();
         self.bpm_edit = 120.0;
         Ok(())
@@ -209,28 +229,74 @@ impl PerformanceWindow {
         }
     }
     fn keyboard(&mut self, ctx: &egui::Context) {
+        let focused = ctx.input(|i| i.focused);
+        if self.window_focused && !focused {
+            if let Some(s) = &mut self.session {
+                s.release_modes(InputSource::Keyboard);
+                s.release_modes(InputSource::Midi);
+            }
+        }
+        self.window_focused = focused;
+        // Release before the text-entry guard: editing or modifier release must
+        // never strand a temporary mode. Repeated key-down events are idempotent.
+        let editing = ctx
+            .memory(|m| m.focused())
+            .is_some_and(|id| egui::TextEdit::load_state(ctx, id).is_some());
+        for event in ctx.input(|i| i.events.clone()) {
+            if let egui::Event::Key {
+                key,
+                pressed,
+                repeat,
+                modifiers,
+                ..
+            } = event
+            {
+                let hold = match key {
+                    egui::Key::V => Some((1, Mode::Volume)),
+                    egui::Key::F => Some((2, Mode::Filter)),
+                    _ => None,
+                };
+                if let (Some((token, mode)), Some(s)) = (hold, &mut self.session) {
+                    if !pressed || (modifiers.shift && !repeat && !editing) {
+                        let _ = s.dispatch(
+                            Intent::HoldMode {
+                                token,
+                                mode,
+                                pressed,
+                            },
+                            InputSource::Keyboard,
+                        );
+                    }
+                }
+            }
+        }
         if ctx
             .memory(|m| m.focused())
             .is_some_and(|id| egui::TextEdit::load_state(ctx, id).is_some())
         {
             return;
         }
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::H)) {
+        if plain_key(ctx, egui::Key::H) {
             self.help = !self.help;
         }
         let Some(session) = &mut self.session else {
             return;
         };
         for &(key, intent, _) in BINDINGS {
-            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, key)) {
-                session.act(intent);
+            if plain_key(ctx, key) {
+                if let Err(e) = session.dispatch(intent, InputSource::Keyboard) {
+                    session.notice = format!("Keyboard rejected: {e}");
+                }
             }
         }
         for (key, delta) in [(egui::Key::ArrowLeft, -0.05), (egui::Key::ArrowRight, 0.05)] {
-            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, key)) {
-                session.act(Intent::Crossfader(
-                    (session.parameters.crossfader + delta).clamp(0.0, 1.0),
-                ));
+            if plain_key(ctx, key) {
+                if let Err(e) = session.dispatch(
+                    Intent::Crossfader((session.parameters.crossfader + delta).clamp(0.0, 1.0)),
+                    InputSource::Keyboard,
+                ) {
+                    session.notice = format!("Keyboard rejected: {e}");
+                }
             }
         }
     }
@@ -282,6 +348,17 @@ impl PerformanceWindow {
                 if ui.button("Help [H]").clicked() {
                     self.help = !self.help;
                 }
+                let (midi_label, midi_hint) = self
+                    .midi
+                    .as_ref()
+                    .map_or(("MIDI: off", String::from("MIDI settings")), |m| {
+                        (m.badge(), m.hint())
+                    });
+                if ui.button(midi_label).on_hover_text(midi_hint).clicked() {
+                    if let Some(midi) = &mut self.midi {
+                        midi.open = !midi.open;
+                    }
+                }
             });
             ui.horizontal(|ui| {
                 ui.add_enabled_ui(self.stream.is_none(), |ui| {
@@ -315,11 +392,12 @@ impl PerformanceWindow {
         egui::TopBottomPanel::bottom("mixer").show(ctx, |ui| {
             if let Some(s) = &mut self.session {
                 let (d, slot) = s.focus.address();
-                ui.horizontal(|ui| {
+                let _contextual=ui.horizontal(|ui| {
                     ui.strong(format!("{}{} {}", ['A','B'][d], slot + 1, NAMES[slot]));
                     for (mode, label) in [(Mode::Volume, "VOLUME [V]"), (Mode::Filter, "FILTER [F]")] {
                         if ui.selectable_label(s.focus.mode == mode, label).clicked() { s.act(Intent::Mode(mode)); }
                     }
+                    if s.temporary_mode() {ui.small(format!("HELD (base {:?})",s.persistent_mode));}
                     let part = s.snapshot.map(|state| state.decks[d].slots[slot]);
                     ui.add_enabled_ui(s.available(), |ui| {
                         if let Some(part) = part {
@@ -339,6 +417,8 @@ impl PerformanceWindow {
                         if ui.button("Cancel [Esc]").clicked() { s.act(Intent::Cancel); }
                     });
                 });
+                #[cfg(test)]
+                {self.contextual_rect=Some(_contextual.response.rect);}
                 ui.horizontal(|ui| {
                     ui.label("Launch quantization");
                     for (q, label) in [(Quantize::Immediate, "Immediate"), (Quantize::Beat, "Beat"), (Quantize::Bar, "Bar"), (Quantize::Phrase, "Phrase")] {
@@ -602,13 +682,23 @@ impl eframe::App for PerformanceWindow {
             self.error = "Audio stream / engine failed. Output closed. Check device, rescan, then Start for a fresh session.".into();
         }
         self.keyboard(ctx);
+        if let Some(midi) = &mut self.midi {
+            midi.poll(self.session.as_mut());
+        }
         self.transport(ctx);
         self.bottom(ctx);
         self.decks(ctx);
+        if let Some(midi) = &mut self.midi {
+            midi.show(ctx, self.session.as_mut());
+        }
+        if let Some(s) = &mut self.session {
+            s.flush_parameters();
+        }
         egui::Window::new("Performance help").open(&mut self.help).resizable(false).show(ctx, |ui| {
             ui.label("Select a deck and slot, then Launch. All lifecycle labels come from the engine.");
             for &(_, _, help) in BINDINGS { if !help.is_empty() { ui.label(help); } }
             ui.label("Left / Right: crossfader by 5% | H: this help panel");
+            ui.label("Hold Shift+V / Shift+F: temporary VOLUME / FILTER; release restores persistent mode.");
             ui.separator();
             ui.label("Controls are ignored while editing a value or text field.");
             ui.label("Stop output is terminal. Start creates a new clock and stopped demo parts.");
@@ -621,6 +711,9 @@ impl eframe::App for PerformanceWindow {
 impl Drop for PerformanceWindow {
     fn drop(&mut self) {
         self.stop();
+        if let Some(midi) = &mut self.midi {
+            midi.shutdown();
+        }
     }
 }
 
@@ -712,10 +805,106 @@ mod tests {
             });
         });
         assert_eq!(app.session.as_ref().unwrap().focus.deck, 0);
+        let _ = ctx.run(typed.clone(), |ctx| {
+            ctx.memory_mut(|m| m.request_focus(egui::Id::new("a performance button")));
+            app.keyboard(ctx);
+        });
+        // A key held while leaving text entry is a repeat, not a fresh
+        // performance gesture. Release it before testing the next press.
+        assert_eq!(app.session.as_ref().unwrap().focus.deck, 0);
+        let mut release = input([1280.0, 820.0]);
+        release.events.push(egui::Event::Key {
+            key: egui::Key::B,
+            physical_key: None,
+            pressed: false,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        });
+        let _ = ctx.run(release, |ctx| app.keyboard(ctx));
         let _ = ctx.run(typed, |ctx| {
             ctx.memory_mut(|m| m.request_focus(egui::Id::new("a performance button")));
             app.keyboard(ctx);
         });
         assert_eq!(app.session.as_ref().unwrap().focus.deck, 1);
+    }
+
+    #[test]
+    fn momentary_keyboard_release_and_focus_loss_restore_base_mode() {
+        let (_e, control, mixer) = demo::prepare().unwrap();
+        let mut app = PerformanceWindow::empty();
+        app.session = Some(Coordinator::new(control, mixer, false));
+        app.session
+            .as_mut()
+            .unwrap()
+            .try_act(Intent::Mode(Mode::Filter))
+            .unwrap();
+        let ctx = egui::Context::default();
+        let key = |pressed, repeat, modifiers| egui::Event::Key {
+            key: egui::Key::V,
+            physical_key: None,
+            pressed,
+            repeat,
+            modifiers,
+        };
+        let mut down = input([1100.0, 740.0]);
+        down.events.push(key(true, false, egui::Modifiers::SHIFT));
+        let _ = ctx.run(down.clone(), |ctx| app.keyboard(ctx));
+        assert_eq!(app.session.as_ref().unwrap().focus.mode, Mode::Volume);
+        let mut repeat = down;
+        repeat.events = vec![key(true, true, egui::Modifiers::SHIFT)];
+        let _ = ctx.run(repeat, |ctx| app.keyboard(ctx));
+        let mut up = input([1100.0, 740.0]);
+        up.events.push(key(false, false, egui::Modifiers::NONE));
+        let _ = ctx.run(up, |ctx| app.keyboard(ctx));
+        assert_eq!(app.session.as_ref().unwrap().focus.mode, Mode::Filter);
+        let s = app.session.as_mut().unwrap();
+        s.dispatch(
+            Intent::HoldMode {
+                token: 0,
+                mode: Mode::Volume,
+                pressed: true,
+            },
+            InputSource::Midi,
+        )
+        .unwrap();
+        let mut unfocused = input([1100.0, 740.0]);
+        unfocused.focused = false;
+        let _ = ctx.run(unfocused, |ctx| app.keyboard(ctx));
+        assert!(!app.session.as_ref().unwrap().temporary_mode());
+        assert_eq!(app.session.as_ref().unwrap().focus.mode, Mode::Filter);
+    }
+
+    #[test]
+    fn contextual_controls_remain_visible_in_both_modes_including_temporary_mode() {
+        let (_e, control, mixer) = demo::prepare().unwrap();
+        let mut app = PerformanceWindow::empty();
+        app.session = Some(Coordinator::new(control, mixer, false));
+        let ctx = egui::Context::default();
+        PerformanceWindow::configure(&ctx);
+        for mode in [Mode::Volume, Mode::Filter] {
+            for held in [false, true] {
+                let s = app.session.as_mut().unwrap();
+                s.try_act(Intent::Mode(mode)).unwrap();
+                s.dispatch(
+                    Intent::HoldMode {
+                        token: 0,
+                        mode,
+                        pressed: held,
+                    },
+                    InputSource::Keyboard,
+                )
+                .unwrap();
+                let _ = ctx.run(input([1100.0, 740.0]), |ctx| {
+                    app.transport(ctx);
+                    app.bottom(ctx);
+                    app.decks(ctx);
+                    let rect = app.contextual_rect.unwrap();
+                    assert!(
+                        rect.right() <= 1100.0,
+                        "contextual controls clipped: {rect:?}"
+                    );
+                });
+            }
+        }
     }
 }

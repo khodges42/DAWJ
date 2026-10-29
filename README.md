@@ -12,6 +12,12 @@ Tide. [Performance walkthrough and keyboard map](docs/M3_PERFORMANCE_WALKTHROUGH
 Stereo output is master-only; independent cue requires four-channel routing and
 separate physical verification. [Implementation and verification report](docs/M3_IMPLEMENTATION_REPORT.md).
 
+[M3.3–M3.4 hands-on controls](docs/M3_HANDS_ON_CONTROLS.md) add generic MIDI
+input/output, learn, persistent mappings, state feedback, soft pickup and held
+VOLUME/FILTER modes. Open **MIDI: off/on** for settings. No controller is needed:
+`cargo run -p dawj --example synthetic_midi --locked --offline` exercises the
+real engine through synthetic MIDI. [MIDI implementation report](docs/M3_3_4_IMPLEMENTATION_REPORT.md).
+
 [M2.9 hardening report](docs/M2_9_HARDENING_REPORT.md) and
 [performance state contract](docs/PERFORMANCE_STATE_CONTRACT.md) define the
 coherent read-only API for future UI/controller feedback and bounded audio transitions.
