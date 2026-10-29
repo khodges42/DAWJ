@@ -55,3 +55,48 @@ Windows build and require their own inventory and native-library review before
 shipping another target. This review does not claim cross-platform release
 clearance. Cargo-deny remains an additional release check when installed.
 
+## M3 native GUI dependency review
+
+Eframe/egui 0.31.1 adds a native Glow window to the existing GPL-3.0-or-later
+application. Default eframe features are disabled; selected features are
+`default_fonts`, `glow`, `x11`, `wayland`. Eframe's source declares Rust 1.81,
+within the pinned Rust 1.85.1 toolchain. CPAL remains 0.15.3, without ASIO.
+No new sample library, synthesizer or proprietary SDK is included.
+
+`windows-dependencies.json` now records **174** registry packages from locked,
+Windows-filtered Cargo metadata, including optional resolved packages that may
+not be compiled by Glow. Each row preserves exact version, source, upstream
+license expression, selected alternative, repository and packaged license-file
+paths. The existing inventory gate still compares exact name/version/source/
+license tuples. Slash-separated legacy MIT/Apache expressions select Apache-2.0.
+Other selected software licenses are MIT, ISC, Zlib, CC0-1.0, BSL-1.0 and
+Unicode-3.0, with AND terms preserved for combined works. These selections are
+compatible with GPLv3 distribution subject to retaining their notices. The
+Boost Software License was added to the screening allowlist for its transitive
+code; no unknown or proprietary software license was accepted.
+
+The [pinned default-font crate](https://github.com/emilk/egui/tree/0.31.1/crates/epaint_default_fonts)
+also embeds **unmodified, separately licensed fonts**. Its package expression is
+`(MIT OR Apache-2.0) AND OFL-1.1 AND Ubuntu-font-1.0`. Select Apache-2.0 for the
+Rust wrapper, retain the fonts' original licenses and names, and distribute all
+of `fonts/OFL.txt`, `fonts/UFL.txt`, `fonts/Hack-Regular.txt` and
+`fonts/emoji-icon-font-mit-license.txt`, including their copyright notices.
+Hack's notice also covers its Bitstream Vera ancestry. Font assets are not
+relicensed as GPL application source. Ubuntu's license explicitly permits
+bundling/embedding under its conditions, and the OFL permits software bundling:
+[Ubuntu font terms](https://ubuntu.com/legal/font-licence),
+[OFL software bundling guidance](https://openfontlicense.org/how-to-use-ofl-fonts).
+The cargo-deny font exceptions are scoped to `epaint_default_fonts =0.31.1`;
+they do not approve those licenses for arbitrary application code. Modifying or
+substituting fonts needs a fresh asset/rename review.
+
+Several upstream registry packages do not include standalone license files
+despite declaring permissive metadata (including the egui family and the existing
+dasp_sample). Empty `license_files` entries record that fact rather than invent
+files. Before distribution, collect the declared licenses and notices from the
+corresponding exact upstream revision/repository, include source/build information,
+and verify all bundled fonts and native import libraries. No release package is
+created here. Cargo-deny/advisory checking was not available in this environment;
+metadata review and the exact inventory gate are not a vulnerability audit.
+Linux native-system dependency licensing/packaging still needs a separate review.
+

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Exact inventory gate for M1.1 Windows x64; other targets need review."""
+"""Exact reviewed Windows x64 Cargo metadata inventory; other targets need review."""
 import json
 from pathlib import Path
 import subprocess
@@ -21,4 +21,4 @@ for package in metadata['packages']:
         actual.add(tuple(package[k] for k in fields))
 if actual != expected:
     raise SystemExit(f'Dependency review required. Added: {actual - expected}; removed: {expected - actual}')
-print(f'Windows x64 inventory passed: {len(actual)} external packages; Apache-2.0 selected.')
+print(f'Windows x64 inventory passed: {len(actual)} external packages; see inventory for selected licenses and font terms.')

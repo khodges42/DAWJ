@@ -231,6 +231,29 @@ mod tests {
     use super::*;
 
     #[test]
+    fn reported_tempo_changes_at_rounded_sample_boundary() {
+        for rate in [44100, 48000, 96000] {
+            let map = TempoMap::new(
+                rate,
+                &[
+                    TempoChange {
+                        at: BeatTicks(0),
+                        bpm: 137.0,
+                    },
+                    TempoChange {
+                        at: BeatTicks(960),
+                        bpm: 113.0,
+                    },
+                ],
+            )
+            .unwrap();
+            let boundary = map.frame_at(BeatTicks(960)).unwrap();
+            assert_eq!(map.bpm_at(SampleFrame(boundary.0 - 1)).unwrap(), 137.0);
+            assert_eq!(map.bpm_at(boundary).unwrap(), 113.0);
+        }
+    }
+
+    #[test]
     fn boundaries_include_preroll_and_deck_epochs() {
         for (input, strict, expected) in [
             (-961, false, -960),

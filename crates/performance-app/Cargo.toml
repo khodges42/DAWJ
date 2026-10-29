@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+[package]
+name = "dawj"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+audio-backend = { path = "../audio-backend" }
+parts.workspace = true
+timebase.workspace = true
+eframe = { version = "=0.31.1", default-features = false, features = ["default_fonts", "glow", "x11", "wayland"] }
+# Already used by eframe; encode opt-in native smoke captures without desktop capture.
+image = { version = "=0.25.9", default-features = false, features = ["png"] }
+
+[lints]
+workspace = true
