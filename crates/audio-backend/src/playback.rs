@@ -37,6 +37,8 @@ pub enum PlaybackSource {
         frames: u64,
     },
     Buffer(PreparedBuffer),
+    Sample(crate::samples::SampleVoice),
+    Parts(Box<crate::samples::SampleDeck>),
 }
 
 #[derive(Default)]
@@ -99,12 +101,20 @@ pub(crate) struct Renderer {
 }
 
 impl Renderer {
+    pub(crate) fn prepared_boundaries(&self) -> bool {
+        matches!(
+            self.source,
+            PlaybackSource::Sample(_) | PlaybackSource::Parts(_)
+        )
+    }
     pub(crate) fn position(&self) -> u64 {
         self.position
     }
     pub(crate) fn length(&self) -> u64 {
         match &self.source {
             PlaybackSource::Tone { frames, .. } => *frames,
+            PlaybackSource::Sample(v) => v.length(),
+            PlaybackSource::Parts(d) => d.length(),
             PlaybackSource::Buffer(b) => (b.samples.len() / self.channels) as u64,
         }
     }
@@ -113,15 +123,17 @@ impl Renderer {
         if self.position >= self.length() {
             return;
         }
-        match &self.source {
+        match &mut self.source {
+            PlaybackSource::Sample(v) => frame.copy_from_slice(&v.next_frame()),
+            PlaybackSource::Parts(d) => frame.copy_from_slice(&d.next_frame()),
             PlaybackSource::Tone {
                 frequency_hz,
                 amplitude,
                 ..
             } => {
-                frame.fill(self.phase.sin() as f32 * amplitude);
+                frame.fill(self.phase.sin() as f32 * *amplitude);
                 self.phase = (self.phase
-                    + std::f64::consts::TAU * frequency_hz / f64::from(self.rate))
+                    + std::f64::consts::TAU * *frequency_hz / f64::from(self.rate))
                     % std::f64::consts::TAU;
             }
             PlaybackSource::Buffer(buffer) => {
@@ -141,6 +153,16 @@ impl Renderer {
             return Err("zero rate or channels");
         }
         match &source {
+            PlaybackSource::Sample(v) => {
+                if v.rate() != rate || channels != 2 {
+                    return Err("sample rate/channels mismatch");
+                }
+            }
+            PlaybackSource::Parts(d) => {
+                if d.rate() != rate || channels != 2 {
+                    return Err("sample parts require stereo stream");
+                }
+            }
             PlaybackSource::Tone {
                 frequency_hz,
                 amplitude,
@@ -181,6 +203,8 @@ impl Renderer {
             && !self.shared.failed.load(Ordering::Acquire);
         let length = match &self.source {
             PlaybackSource::Tone { frames, .. } => *frames,
+            PlaybackSource::Sample(v) => v.length(),
+            PlaybackSource::Parts(d) => d.length(),
             PlaybackSource::Buffer(buffer) => (buffer.samples.len() / self.channels) as u64,
         };
         if active {
@@ -188,16 +212,26 @@ impl Renderer {
                 if self.position >= length {
                     break;
                 }
-                match &self.source {
+                match &mut self.source {
+                    PlaybackSource::Sample(v) => {
+                        for (dst, sample) in frame.iter_mut().zip(v.next_frame()) {
+                            *dst = convert(sample);
+                        }
+                    }
+                    PlaybackSource::Parts(d) => {
+                        for (dst, sample) in frame.iter_mut().zip(d.next_frame()) {
+                            *dst = convert(sample);
+                        }
+                    }
                     PlaybackSource::Tone {
                         frequency_hz,
                         amplitude,
                         ..
                     } => {
-                        let sample = self.phase.sin() as f32 * amplitude;
+                        let sample = self.phase.sin() as f32 * *amplitude;
                         frame.fill(convert(sample));
                         self.phase = (self.phase
-                            + std::f64::consts::TAU * frequency_hz / f64::from(self.rate))
+                            + std::f64::consts::TAU * *frequency_hz / f64::from(self.rate))
                             % std::f64::consts::TAU;
                     }
                     PlaybackSource::Buffer(buffer) => {

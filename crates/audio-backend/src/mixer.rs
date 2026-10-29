@@ -276,6 +276,11 @@ impl StereoMixer {
             let envelope = (position as f32 / self.ramp_frames as f32)
                 .min(remaining.saturating_sub(1) as f32 / self.ramp_frames as f32)
                 .min(1.0);
+            let envelope = if self.decks[deck].prepared_boundaries() {
+                1.0
+            } else {
+                envelope
+            };
             let master_gain =
                 self.ramps[deck].next(gains[deck] * weights[deck], self.ramp_frames) * envelope;
             // Post deck gain, pre crossfader: crossfade weights never affect cue.

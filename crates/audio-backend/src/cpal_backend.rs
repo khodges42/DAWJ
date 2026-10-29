@@ -146,7 +146,7 @@ impl CpalPlayback {
                 )
                 .map_err(|e| error("prepare renderer", e))?,
             ),
-            Input::Mixer(mixer, routing) => Engine::Mixer(*mixer, routing, shared.clone()),
+            Input::Mixer(mixer, routing) => Engine::Mixer(mixer, routing, shared.clone()),
         };
         let stream_config = cpal::StreamConfig {
             channels: config.channels,
@@ -231,7 +231,7 @@ enum Input {
 }
 enum Engine {
     Single(Renderer),
-    Mixer(StereoMixer, OutputRouting, Arc<Shared>),
+    Mixer(Box<StereoMixer>, OutputRouting, Arc<Shared>),
 }
 
 impl Engine {
@@ -420,7 +420,7 @@ mod tests {
                         if channels == 4 { Some([2, 3]) } else { None },
                     )
                     .unwrap();
-                    let mut engine = Engine::Mixer(mixer, route, shared.clone());
+                    let mut engine = Engine::Mixer(Box::new(mixer), route, shared.clone());
                     assert_eq!(shared.clock.load(Ordering::Relaxed), 0);
                     shared.enabled.store(true, Ordering::Release);
                     let mut expected = 0;
@@ -453,7 +453,7 @@ mod tests {
         let routing = OutputRouting::new(6, [5, 2], Some([3, 0])).unwrap();
         let shared = Arc::new(Shared::default());
         shared.enabled.store(true, Ordering::Release);
-        let mut engine = Engine::Mixer(mixer, routing, shared.clone());
+        let mut engine = Engine::Mixer(Box::new(mixer), routing, shared.clone());
         let mut output = [0_u8; 7201];
         engine.render(&mut output, <u8 as cpal::FromSample<f32>>::from_sample_);
         assert_eq!(shared.clock.load(Ordering::Relaxed), 1200);
@@ -499,7 +499,11 @@ mod tests {
             || PlaybackSource::Buffer(PreparedBuffer::new(vec![1.0; 4000], 48000, 2).unwrap());
         let shared = Arc::new(Shared::default());
         let (mixer, _) = StereoMixer::new(source(), source(), 48000).unwrap();
-        let mut engine = Engine::Mixer(mixer, OutputRouting::stereo_master_only(), shared.clone());
+        let mut engine = Engine::Mixer(
+            Box::new(mixer),
+            OutputRouting::stereo_master_only(),
+            shared.clone(),
+        );
         let mut samples = [0_u8; 64];
         engine.render(&mut samples, <u8 as cpal::FromSample<f32>>::from_sample_);
         assert_eq!(samples, [128; 64]);

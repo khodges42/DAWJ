@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/timebase", "crates/event-engine", "crates/audio-backend", "tools/offline-render"]
+members = ["crates/timebase", "crates/event-engine", "crates/parts", "crates/audio-backend", "tools/offline-render"]
 resolver = "3"
 
 [workspace.package]
@@ -17,3 +17,4 @@ all = "warn"
 [workspace.dependencies]
 timebase = { path = "crates/timebase" }
 event-engine = { path = "crates/event-engine" }
+parts = { path = "crates/parts" }
