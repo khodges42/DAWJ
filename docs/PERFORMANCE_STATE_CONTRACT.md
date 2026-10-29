@@ -28,6 +28,12 @@ failure details still require `PlaybackMonitor`. Terminal stop/restart uses a
 new stream/engine with a new clock and generation domain; no pause/resume API is
 introduced. Closing a ready stream also reports Closed.
 
+M3 adds `bpm: Option<f64>` to the same coherent publication. This is the tempo
+at the next unrendered frame, resolved from the scheduler map at its rounded
+sample boundary. A tempo ticket reporting Applied means future map intent was
+installed; it does not imply that the displayed current BPM has changed. None
+means the scheduler cannot provide a valid tempo, and must display unavailable.
+
 `generation` changes by two per audio publication. The reader performs one
 bounded attempt and returns None if publication overlaps it. Retain the previous
 snapshot and try on the next UI update; do not spin on the audio thread. Compare
@@ -36,7 +42,7 @@ further audio publication. Generations are engine-local, wrapping u64 counters
 (wrap is not a practical session horizon). Do not compare generations between
 newly created engines. Snapshot copies do not retain PCM ownership.
 
-The fixed publication has 166 atomic words and one atomic generation. All are
+The fixed publication has 167 atomic words and one atomic generation. All are
 sequentially consistent: the writer marks odd, stores the words, then marks even;
 the reader accepts only an unchanged even generation. There are no non-atomic
 concurrent payload accesses, locks, allocation, retry loops or reader-dependent

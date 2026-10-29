@@ -60,3 +60,5 @@ pub trait OutputDiscovery {
     fn output_devices(&self) -> Result<Vec<OutputDevice>, InspectionError>;
 }
 pub mod performance_state;
+
+pub mod demo;

@@ -703,6 +703,7 @@ impl LiveEngine {
             frame: self.frame(),
             beat: self.scheduler.beat().unwrap_or(timebase::BeatTicks(0)),
             sample_rate: self.rate(),
+            bpm: self.scheduler.bpm(),
             failed: self.failed,
             decks,
         });

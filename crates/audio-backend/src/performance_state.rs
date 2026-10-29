@@ -50,10 +50,12 @@ pub struct PerformanceState {
     pub frame: SampleFrame,
     pub beat: BeatTicks,
     pub sample_rate: u32,
+    /// Current scheduler tempo, never inferred from GUI frame timing.
+    pub bpm: Option<f64>,
     pub failed: bool,
     pub decks: [DeckState; 2],
 }
-const WORDS: usize = 6 + 2 * SLOTS * 10;
+const WORDS: usize = 7 + 2 * SLOTS * 10;
 pub(crate) struct Publication {
     generation: AtomicU64,
     words: [AtomicU64; WORDS],
@@ -67,18 +69,19 @@ impl Publication {
     }
     pub fn publish(&self, s: PerformanceState) {
         let mut w = [0; WORDS];
-        w[..6].copy_from_slice(&[
+        w[..7].copy_from_slice(&[
             s.frame.0 as u64,
             s.beat.0 as u64,
             u64::from(s.sample_rate),
             s.failed as u64,
             s.decks[0].phase.0 as u64,
             s.decks[1].phase.0 as u64,
+            s.bpm.unwrap_or(f64::NAN).to_bits(),
         ]);
         for d in 0..2 {
             for i in 0..SLOTS {
                 let p = s.decks[d].slots[i];
-                let n = 6 + (d * SLOTS + i) * 10;
+                let n = 7 + (d * SLOTS + i) * 10;
                 let state = match p.lifecycle {
                     SlotState::Stopped => 0,
                     SlotState::QueuedStart => 1,
@@ -135,11 +138,14 @@ impl Publication {
             frame: SampleFrame(w[0] as i64),
             beat: BeatTicks(w[1] as i64),
             sample_rate: w[2] as u32,
+            bpm: f64::from_bits(w[6])
+                .is_finite()
+                .then(|| f64::from_bits(w[6])),
             failed: w[3] != 0,
             decks: std::array::from_fn(|d| DeckState {
                 phase: BeatTicks(w[4 + d] as i64),
                 slots: std::array::from_fn(|i| {
-                    let n = 6 + (d * SLOTS + i) * 10;
+                    let n = 7 + (d * SLOTS + i) * 10;
                     PartState {
                         lifecycle: match w[n] & 255 {
                             0 => SlotState::Stopped,

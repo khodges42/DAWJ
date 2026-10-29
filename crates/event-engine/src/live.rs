@@ -74,6 +74,10 @@ impl MusicalScheduler {
     pub fn frame(&self) -> SampleFrame {
         self.frame
     }
+
+    pub fn bpm(&self) -> Option<f64> {
+        self.map.bpm_at(self.frame).ok()
+    }
     fn compile_rule(
         &self,
         deck: usize,

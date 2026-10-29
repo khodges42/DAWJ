@@ -174,6 +174,15 @@ impl TempoMap {
         self.sample_rate
     }
 
+    /// Tempo at the next rendered frame, using the same rounded boundaries as events.
+    pub fn bpm_at(&self, frame: SampleFrame) -> Result<f64, TimeError> {
+        self.beat_at(frame)?;
+        let index = self
+            .segments
+            .partition_point(|s| s.start_frame.round() <= frame.0 as f64);
+        Ok(self.segments[index.saturating_sub(1)].change.bpm)
+    }
+
     /// Round once at the final absolute position, nearest frame, ties away from zero.
     /// Periodic events must use their absolute tick targets, never rounded periods.
     pub fn frame_at(&self, beat: BeatTicks) -> Result<SampleFrame, TimeError> {
