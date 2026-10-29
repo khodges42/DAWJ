@@ -366,4 +366,64 @@ mod tests {
             .is_err()
         );
     }
+
+    #[test]
+    fn applied_actions_distinguish_retrigger_and_replacement_and_eof() {
+        let mut d = deck();
+        d.command(
+            0,
+            Command::Start {
+                part: part(1),
+                at: BeatTicks(0),
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            d.advance(BeatTicks(0)).unwrap()[0],
+            Some(Applied::Start {
+                part: part(1),
+                at: BeatTicks(0),
+                retrigger: false
+            })
+        );
+        d.command(0, Command::Retrigger { at: BeatTicks(240) })
+            .unwrap();
+        assert_eq!(
+            d.advance(BeatTicks(240)).unwrap()[0],
+            Some(Applied::Start {
+                part: part(1),
+                at: BeatTicks(240),
+                retrigger: true
+            })
+        );
+        d.command(
+            0,
+            Command::Replace {
+                part: part(2),
+                at: BeatTicks(480),
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            d.advance(BeatTicks(600)).unwrap()[0],
+            Some(Applied::Start {
+                part: part(2),
+                at: BeatTicks(480),
+                retrigger: false
+            })
+        );
+        assert_eq!(d.advance(BeatTicks(600)).unwrap()[0], None);
+        d.command(
+            0,
+            Command::Replace {
+                part: part(3),
+                at: BeatTicks(720),
+            },
+        )
+        .unwrap();
+        d.complete(0).unwrap();
+        assert!(matches!(d.states()[0], State::QueuedStart(_)));
+        d.command(0, Command::StopNow).unwrap();
+        assert!(d.complete(0).is_err());
+    }
 }

@@ -1,5 +1,9 @@
 # DAWJ
 
+[M2.1 Parts and M2.2 sample playback](docs/M2_1_M2_2.md) define the eight-slot
+state model, transition table, resident WAV loader, one-shot/loop semantics and
+offline/opt-in audio demo. Sample rates must match the selected stream rate.
+
 [M1 integration validation report](docs/M1_VALIDATION.md): reproduce software
 checks with `python scripts/validate_m1.py`. Add `--hardware` for paused probes
 and a 15-minute silent device soak with callback diagnostics and stream restart.

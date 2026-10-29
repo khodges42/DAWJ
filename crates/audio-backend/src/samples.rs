@@ -3,7 +3,8 @@
 use parts::{AssetId, Deck, Part, PlaybackMode, SLOTS, State};
 use std::{fs::File, io::Read, path::Path};
 pub const MAX_WAV_BYTES: usize = 64 * 1024 * 1024;
-pub const MAX_DECK_FRAMES: usize = 8 * 60 * 192000;
+/// 128 MiB of canonical stereo f32 PCM, summed across the eight slots.
+pub const MAX_DECK_FRAMES: usize = 16 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug)]
 pub enum BoundaryPolicy {
@@ -102,6 +103,9 @@ impl LoadedSample {
             || data.len() % align != 0
         {
             return Err(invalid);
+        }
+        if data.len() / align > MAX_DECK_FRAMES {
+            return Err("decoded PCM limit exceeded");
         }
         let mut pcm = Vec::with_capacity(data.len() / align * 2);
         for frame in data.chunks_exact(align) {
@@ -516,6 +520,64 @@ mod tests {
             SampleDeck::prepare(
                 &model,
                 std::array::from_fn(|_| Some(loaded())),
+                48000,
+                BoundaryPolicy::Preserve
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn callback_oneshot_eof_and_rate_validation() {
+        use crate::playback::{PlaybackSource, Renderer, Shared};
+        use std::sync::{Arc, atomic::Ordering};
+        let voice = || {
+            SampleVoice::prepare(
+                part(PlaybackMode::OneShot),
+                loaded(),
+                48000,
+                BoundaryPolicy::Preserve,
+            )
+            .unwrap()
+        };
+        assert!(
+            Renderer::new(
+                PlaybackSource::Sample(voice()),
+                44100,
+                2,
+                Arc::new(Shared::default())
+            )
+            .is_err()
+        );
+        for block in [1, 3, 128] {
+            let shared = Arc::new(Shared::default());
+            shared.enabled.store(true, Ordering::Release);
+            let mut renderer =
+                Renderer::new(PlaybackSource::Sample(voice()), 48000, 2, shared.clone()).unwrap();
+            let mut out = [9.0; 40];
+            for chunk in out.chunks_mut(block * 2) {
+                renderer.render(chunk, |s| s);
+            }
+            assert_eq!(&out[..8], &[0.25, 0.25, 0.5, 0.5, -0.5, -0.5, -0.25, -0.25]);
+            assert!(out[8..].iter().all(|s| *s == 0.0));
+            assert!(shared.finished.load(Ordering::Acquire));
+            assert_eq!(shared.source_frames.load(Ordering::Relaxed), 4);
+            assert_eq!(shared.clock.load(Ordering::Relaxed), 20);
+        }
+        let mut model = Deck::new(BeatTicks(0), BeatTicks(3840)).unwrap();
+        model
+            .command(
+                0,
+                Command::Start {
+                    part: part(PlaybackMode::OneShot),
+                    at: BeatTicks(240),
+                },
+            )
+            .unwrap();
+        assert!(
+            SampleDeck::prepare(
+                &model,
+                std::array::from_fn(|_| None),
                 48000,
                 BoundaryPolicy::Preserve
             )
