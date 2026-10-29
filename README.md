@@ -1,5 +1,9 @@
 # DAWJ
 
+[M2.4/M2.5 part mixing and controls](docs/M2_4_M2_5.md) add per-slot state/meters,
+smoothed gain/mute and a stable low-pass filter to the existing sixteen-part
+live engine. The `part_controls` example provides an offline stdin/WAV interface.
+
 [M2.3 quantized scheduling](docs/M2_3.md) connects the Part lifecycle to M0's
 musical clock with bounded live command delivery and sample-accurate actions.
 Run `cargo test -p audio-backend --test quantized --locked --offline` for its

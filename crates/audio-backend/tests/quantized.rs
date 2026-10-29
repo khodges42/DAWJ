@@ -461,3 +461,164 @@ fn inclusive_boundary_survives_inverse_tick_rounding_at_high_tempo() {
         BeatTicks(6720)
     );
 }
+
+#[test]
+fn sixteen_slots_sum_without_normalization_jumps_and_stop_independently() {
+    use parts::SLOTS;
+    let (mut single, mut one) = engine(8000);
+    one.submit(0, 0, Request::Launch(0), Quantize::Immediate)
+        .unwrap();
+    let (reference, _) = render(&mut single, 1000, 127);
+    let (mut all, mut control) = engine(8000);
+    for deck in 0..2 {
+        for slot in 0..SLOTS {
+            control
+                .submit(deck, slot, Request::Launch(0), Quantize::Immediate)
+                .unwrap();
+        }
+    }
+    let (audio, events) = render(&mut all, 1000, 127);
+    assert_eq!(events.len(), 2 * SLOTS);
+    for (a, b) in audio.chunks_exact(4).zip(reference.chunks_exact(4)) {
+        assert!((a[0] - b[0] * (2 * SLOTS) as f32).abs() < 1e-6);
+        assert_eq!(a[0], a[1]);
+        assert!(a.iter().all(|s| s.abs() <= 0.125));
+    }
+    for deck in 0..2 {
+        for slot in 0..SLOTS {
+            let status = control.slot(deck, slot).unwrap();
+            assert_eq!(status.state, audio_backend::live::SlotState::Playing);
+            assert_eq!(status.position, 1000);
+            assert_eq!(status.processed_frames, 1000);
+            assert!(status.peak[0] > 0.0);
+        }
+    }
+    for slot in 0..SLOTS {
+        control
+            .submit(0, slot, Request::Stop, Quantize::Immediate)
+            .unwrap();
+    }
+    render(&mut all, 100, 128);
+    for slot in 0..SLOTS {
+        assert_eq!(control.slot(0, slot).unwrap().processed_frames, 1000);
+        assert_eq!(control.slot(0, slot).unwrap().peak, [0.0; 2]);
+        assert_eq!(control.slot(1, slot).unwrap().processed_frames, 1100);
+    }
+    for slot in 0..SLOTS {
+        control
+            .submit(1, slot, Request::Stop, Quantize::Immediate)
+            .unwrap();
+    }
+    let (silence, _) = render(&mut all, 1000, 8192);
+    assert!(silence.iter().all(|s| *s == 0.0));
+}
+
+#[test]
+fn part_controls_are_smoothed_independent_and_preserve_cue_phase() {
+    use audio_backend::part_dsp::PartParameters;
+    let (mut e, mut c) = engine(8000);
+    for deck in 0..2 {
+        c.submit(deck, 0, Request::Launch(0), Quantize::Immediate)
+            .unwrap();
+    }
+    render(&mut e, 1000, 128);
+    let mute = c
+        .submit(
+            0,
+            0,
+            Request::Parameters(PartParameters {
+                muted: true,
+                ..PartParameters::default()
+            }),
+            Quantize::Immediate,
+        )
+        .unwrap();
+    render(&mut e, 200, 128);
+    assert_eq!(mute.outcome(), Outcome::Applied);
+    let (output, _) = render(&mut e, 4, 4);
+    // A is muted; B remains in both master and private logical cue and advances normally.
+    assert!(output[0] != 0.0 && output[2] != 0.0);
+    assert_eq!(e.source_position(0, 0), e.source_position(1, 0));
+    assert_eq!(c.slot(0, 0).unwrap().peak, [0.0; 2]);
+    assert!(c.slot(1, 0).unwrap().peak[0] > 0.0);
+    let reject = c
+        .submit(
+            0,
+            0,
+            Request::Parameters(PartParameters {
+                cutoff_hz: Some(20000.0),
+                ..PartParameters::default()
+            }),
+            Quantize::Immediate,
+        )
+        .unwrap();
+    render(&mut e, 1, 1);
+    assert_eq!(reject.outcome(), Outcome::Rejected);
+    assert!(
+        c.submit(
+            0,
+            0,
+            Request::Parameters(PartParameters {
+                gain: f32::NAN,
+                ..PartParameters::default()
+            }),
+            Quantize::Immediate
+        )
+        .is_err()
+    );
+    assert!(
+        c.submit(
+            0,
+            0,
+            Request::Parameters(PartParameters::default()),
+            Quantize::Beat
+        )
+        .is_err()
+    );
+    c.submit(
+        0,
+        1,
+        Request::Parameters(PartParameters {
+            muted: true,
+            ..PartParameters::default()
+        }),
+        Quantize::Immediate,
+    )
+    .unwrap();
+    c.submit(0, 1, Request::Launch(0), Quantize::Immediate)
+        .unwrap();
+    render(&mut e, 1, 1);
+    assert_eq!(c.slot(0, 1).unwrap().peak, [0.0; 2]);
+}
+
+#[test]
+fn dsp_automation_partition_invariance() {
+    use audio_backend::part_dsp::PartParameters;
+    fn run(block: usize) -> Vec<f32> {
+        let (mut e, mut c) = engine(8000);
+        c.submit(0, 0, Request::Launch(0), Quantize::Immediate)
+            .unwrap();
+        let mut audio = Vec::new();
+        for parameters in [
+            PartParameters::default(),
+            PartParameters {
+                gain: 0.5,
+                cutoff_hz: Some(200.0),
+                muted: false,
+            },
+            PartParameters {
+                gain: 1.0,
+                muted: true,
+                cutoff_hz: Some(2000.0),
+            },
+            PartParameters::default(),
+        ] {
+            c.submit(0, 0, Request::Parameters(parameters), Quantize::Immediate)
+                .unwrap();
+            audio.extend(render(&mut e, 1000, block).0);
+        }
+        audio
+    }
+    assert_eq!(run(1), run(127));
+    assert_eq!(run(8192), run(31));
+}

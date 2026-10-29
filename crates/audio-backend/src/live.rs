@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Bounded SPSC command delivery and callback-owned two-deck part scheduling.
+use crate::part_dsp::{PartDsp, PartParameters};
 use crate::{
     mixer::{MixerControl, StereoMixer},
     playback::PlaybackSource,
@@ -23,6 +24,7 @@ pub enum Request {
     Retrigger,
     Cancel(u64),
     Tempo(f64),
+    Parameters(PartParameters),
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
@@ -40,7 +42,34 @@ struct Cell {
     data: [AtomicU64; 2],
     stamp: AtomicU64,
 }
+struct SlotMeter {
+    state: AtomicU64,
+    part: AtomicU64,
+    position: AtomicU64,
+    peak: AtomicU64,
+    processed: AtomicU64,
+    parameters: AtomicU64,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SlotState {
+    Stopped,
+    QueuedStart,
+    Playing,
+    QueuedStop,
+    QueuedReplace,
+}
+#[derive(Clone, Copy, Debug)]
+pub struct SlotStatus {
+    pub state: SlotState,
+    pub part_id: Option<parts::PartId>,
+    pub position: u64,
+    pub peak: [f32; 2],
+    pub processed_frames: u64,
+    pub parameters: PartParameters,
+    pub closed: bool,
+}
 struct Queue {
+    slots: [[SlotMeter; SLOTS]; 2],
     cells: [Cell; CAPACITY],
     read: AtomicUsize,
     write: AtomicUsize,
@@ -91,6 +120,40 @@ fn publish(queue: &Queue, row: usize, id: u64, outcome: Outcome) {
     }
 }
 impl LiveControl {
+    /// Independently observed diagnostic fields. Not a transactional transport acknowledgement.
+    pub fn slot(&self, deck: usize, slot: usize) -> Result<SlotStatus, &'static str> {
+        let meter = self
+            .queue
+            .slots
+            .get(deck)
+            .and_then(|d| d.get(slot))
+            .ok_or("invalid address")?;
+        let state = match meter.state.load(Ordering::Acquire) {
+            1 => SlotState::QueuedStart,
+            2 => SlotState::Playing,
+            3 => SlotState::QueuedStop,
+            4 => SlotState::QueuedReplace,
+            _ => SlotState::Stopped,
+        };
+        let peaks = meter.peak.load(Ordering::Relaxed);
+        Ok(SlotStatus {
+            state,
+            part_id: if state == SlotState::Stopped {
+                None
+            } else {
+                Some(parts::PartId(meter.part.load(Ordering::Relaxed)))
+            },
+            position: meter.position.load(Ordering::Relaxed),
+            peak: [
+                f32::from_bits(peaks as u32),
+                f32::from_bits((peaks >> 32) as u32),
+            ],
+            processed_frames: meter.processed.load(Ordering::Relaxed),
+            parameters: PartParameters::decode(meter.parameters.load(Ordering::Relaxed)),
+            closed: self.queue.closed.load(Ordering::Acquire),
+        })
+    }
+
     /// One producer, nonblocking admission. Full means rejected before publication.
     pub fn submit(
         &mut self,
@@ -112,6 +175,9 @@ impl LiveControl {
         if write.wrapping_sub(self.queue.read.load(Ordering::Acquire)) >= CAPACITY {
             return Err("command queue full");
         }
+        if matches!(request, Request::Parameters(_)) && q != Quantization::Immediate {
+            return Err("part parameters require Immediate");
+        }
         let (kind, arg) = match request {
             Request::Launch(b) => (0, u64::from(b)),
             Request::Stop => (1, 0),
@@ -119,6 +185,7 @@ impl LiveControl {
             Request::Retrigger => (3, 0),
             Request::Cancel(id) => (4, id),
             Request::Tempo(bpm) => (5, bpm.to_bits()),
+            Request::Parameters(parameters) => (6, parameters.encode()?),
         };
         let quant = match q {
             Quantization::Immediate => 0,
@@ -164,6 +231,7 @@ pub struct LiveEngine {
     mixer: StereoMixer,
     queue: Arc<Queue>,
     active: [[Option<Active>; SLOTS]; 2],
+    dsp: [[PartDsp; SLOTS]; 2],
     pending: [[Option<Receipt>; SLOTS]; 2],
     events: [Option<Event>; 2 * SLOTS],
     event_count: usize,
@@ -194,6 +262,16 @@ impl LiveEngine {
         };
         let (mixer, controls) = StereoMixer::new(silence(), silence(), scheduler.rate())?;
         let queue = Arc::new(Queue {
+            slots: std::array::from_fn(|_| {
+                std::array::from_fn(|_| SlotMeter {
+                    state: AtomicU64::new(0),
+                    part: AtomicU64::new(0),
+                    position: AtomicU64::new(0),
+                    peak: AtomicU64::new(0),
+                    processed: AtomicU64::new(0),
+                    parameters: AtomicU64::new(PartParameters::default().encode().unwrap_or(0)),
+                })
+            }),
             cells: std::array::from_fn(|_| Cell {
                 data: std::array::from_fn(|_| AtomicU64::new(0)),
                 stamp: AtomicU64::new(0),
@@ -213,6 +291,7 @@ impl LiveEngine {
                 mixer,
                 queue,
                 active: [[None; SLOTS]; 2],
+                dsp: std::array::from_fn(|_| std::array::from_fn(|_| PartDsp::default())),
                 pending: [[None; SLOTS]; 2],
                 events: [None; 2 * SLOTS],
                 event_count: 0,
@@ -257,7 +336,13 @@ impl LiveEngine {
                 _ => Quantization::Phrase,
             };
             let kind = (word >> 4) & 15;
-            let result = if kind == 5 {
+            let result = if kind == 6 {
+                self.dsp[deck][slot].set(
+                    PartParameters::decode(arg),
+                    self.scheduler.rate(),
+                    self.active[deck][slot].is_some(),
+                )
+            } else if kind == 5 {
                 self.scheduler.tempo(f64::from_bits(arg), q)
             } else if kind == 4 {
                 if self.pending[deck][slot].is_some_and(|p| p.id == arg) {
@@ -284,7 +369,7 @@ impl LiveEngine {
             };
             if result.is_err() {
                 publish(&self.queue, row, id, Outcome::Rejected);
-            } else if kind == 5 {
+            } else if kind == 5 || kind == 6 {
                 // Applied means tempo intent installed in the map, not that its boundary passed.
                 publish(&self.queue, row, id, Outcome::Applied);
             } else {
@@ -333,12 +418,18 @@ impl LiveEngine {
         if self.failed || output.len() < usize::from(routing.channels()) {
             return;
         }
+        for deck in &mut self.dsp {
+            for slot in deck {
+                slot.peak = [0.0; 2];
+            }
+        }
         self.ingress();
         for frame in output.chunks_exact_mut(usize::from(routing.channels())) {
             let Self {
                 scheduler,
                 bank,
                 active,
+                dsp,
                 pending,
                 queue,
                 events,
@@ -347,6 +438,9 @@ impl LiveEngine {
             } = self;
             if scheduler
                 .due(|event| {
+                    if matches!(event.action, Applied::Start { .. }) {
+                        dsp[event.deck][event.slot].start(active[event.deck][event.slot].is_some());
+                    }
                     active[event.deck][event.slot] = match event.action {
                         Applied::Start { part, .. } => bank
                             .iter()
@@ -372,7 +466,7 @@ impl LiveEngine {
                 for slot in 0..SLOTS {
                     if let Some(voice) = &mut self.active[deck][slot] {
                         let asset = &self.bank[voice.bank];
-                        let sample = asset.at_elapsed(voice.elapsed);
+                        let sample = self.dsp[deck][slot].process(asset.at_elapsed(voice.elapsed));
                         for ch in 0..2 {
                             source[ch] += sample[ch] / SLOTS as f32;
                         }
@@ -411,6 +505,36 @@ impl LiveEngine {
             }
         }
         self.mixer.publish_peaks();
+        for deck in 0..2 {
+            for slot in 0..SLOTS {
+                let state = self.scheduler.state(deck, slot).unwrap_or(State::Stopped);
+                let (code, part) = match state {
+                    State::Stopped => (0, None),
+                    State::QueuedStart(p) => (1, Some(p.part)),
+                    State::Playing(p) => (2, Some(p)),
+                    State::QueuedStop { active, .. } => (3, Some(active)),
+                    State::QueuedReplace { active, .. } => (4, Some(active)),
+                };
+                let meter = &self.queue.slots[deck][slot];
+                let dsp = &self.dsp[deck][slot];
+                meter
+                    .part
+                    .store(part.map_or(0, |p| p.id.0), Ordering::Relaxed);
+                meter.position.store(
+                    self.active[deck][slot].map_or(0, |v| v.elapsed),
+                    Ordering::Relaxed,
+                );
+                meter.peak.store(
+                    u64::from(dsp.peak[0].to_bits()) | (u64::from(dsp.peak[1].to_bits()) << 32),
+                    Ordering::Relaxed,
+                );
+                meter.processed.store(dsp.processed, Ordering::Relaxed);
+                meter
+                    .parameters
+                    .store(dsp.parameters.encode().unwrap_or(0), Ordering::Relaxed);
+                meter.state.store(code, Ordering::Release);
+            }
+        }
         if self.failed {
             self.queue.closed.store(true, Ordering::Release);
         }
