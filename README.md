@@ -1,5 +1,9 @@
 # DAWJ
 
+[M2.9 hardening report](docs/M2_9_HARDENING_REPORT.md) and
+[performance state contract](docs/PERFORMANCE_STATE_CONTRACT.md) define the
+coherent read-only API for future UI/controller feedback and bounded audio transitions.
+
 [M2.7 playable demo and walkthrough](docs/M2_7.md) combine two eight-part procedural
 compositions with a temporary performance CLI. Render the reference transition
 without starting audio:

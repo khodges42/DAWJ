@@ -5,6 +5,11 @@ records implementation choices for review; it does not reconstruct that document
 Original application code uses **GPL-3.0-or-later**, including Cargo metadata and
 SPDX headers. The repository carries the complete GPL v3 text in `LICENSE`.
 
+M2.9 restored the previously truncated LICENSE from GNU's canonical
+`https://www.gnu.org/licenses/gpl-3.0.txt`, byte-for-byte (35149 bytes, SHA-256
+`3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986`).
+Git attributes disable newline conversion for this file.
+
 M0 has no third-party Cargo dependencies. `Cargo.lock` records all three workspace
 packages. `scripts/audit_dependencies.py` fails if any external dependency enters
 the graph until its inventory review is deliberately updated. `cargo deny check`
