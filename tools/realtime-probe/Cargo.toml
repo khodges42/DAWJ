@@ -1,0 +1,11 @@
+[package]
+name = "dawj-realtime-probe"
+version = "0.0.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+[workspace]
+[dependencies]
+audio-backend = { path = "../../crates/audio-backend" }
+event-engine = { path = "../../crates/event-engine" }
+parts = { path = "../../crates/parts" }
+timebase = { path = "../../crates/timebase" }
