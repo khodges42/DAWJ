@@ -27,3 +27,7 @@ The bundled unmodified default fonts retain their own OFL, Ubuntu Font Licence,
 MIT and Bitstream Vera notices; they are not relicensed as application source.
 See the exact Windows inventory and M3 review in the policy document for notice
 collection and source distribution obligations before packaging a release.
+
+M3.3–M3.4 adds MIT midir and Apache-2.0-selected serde/serde_json and permissive
+Windows dependencies for generic MIDI. No proprietary MIDI driver or firmware
+is bundled. See the updated 185-package Windows inventory and dependency policy.

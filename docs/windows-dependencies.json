@@ -120,6 +120,18 @@
   },
   {
     "name": "bitflags",
+    "version": "1.3.2",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license": "MIT/Apache-2.0",
+    "selected": "Apache-2.0",
+    "repository": "https://github.com/bitflags/bitflags",
+    "license_files": [
+      "LICENSE-APACHE",
+      "LICENSE-MIT"
+    ]
+  },
+  {
+    "name": "bitflags",
     "version": "2.13.2",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
     "license": "MIT OR Apache-2.0",
@@ -754,6 +766,18 @@
     ]
   },
   {
+    "name": "itoa",
+    "version": "1.0.18",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license": "MIT OR Apache-2.0",
+    "selected": "Apache-2.0",
+    "repository": "https://github.com/dtolnay/itoa",
+    "license_files": [
+      "LICENSE-APACHE",
+      "LICENSE-MIT"
+    ]
+  },
+  {
     "name": "khronos-egl",
     "version": "6.0.0",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
@@ -845,12 +869,35 @@
     ]
   },
   {
+    "name": "memchr",
+    "version": "2.8.3",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license": "Unlicense OR MIT",
+    "selected": "MIT",
+    "repository": "https://github.com/BurntSushi/memchr",
+    "license_files": [
+      "COPYING",
+      "LICENSE-MIT"
+    ]
+  },
+  {
     "name": "memoffset",
     "version": "0.9.1",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
     "license": "MIT",
     "selected": "MIT",
     "repository": "https://github.com/Gilnaa/memoffset",
+    "license_files": [
+      "LICENSE"
+    ]
+  },
+  {
+    "name": "midir",
+    "version": "0.10.3",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license": "MIT",
+    "selected": "MIT",
+    "repository": "https://github.com/Boddlnagg/midir",
     "license_files": [
       "LICENSE"
     ]
@@ -1177,7 +1224,7 @@
   },
   {
     "name": "serde",
-    "version": "1.0.229",
+    "version": "1.0.228",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
     "license": "MIT OR Apache-2.0",
     "selected": "Apache-2.0",
@@ -1189,11 +1236,35 @@
   },
   {
     "name": "serde_core",
-    "version": "1.0.229",
+    "version": "1.0.228",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
     "license": "MIT OR Apache-2.0",
     "selected": "Apache-2.0",
     "repository": "https://github.com/serde-rs/serde",
+    "license_files": [
+      "LICENSE-APACHE",
+      "LICENSE-MIT"
+    ]
+  },
+  {
+    "name": "serde_derive",
+    "version": "1.0.228",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license": "MIT OR Apache-2.0",
+    "selected": "Apache-2.0",
+    "repository": "https://github.com/serde-rs/serde",
+    "license_files": [
+      "LICENSE-APACHE",
+      "LICENSE-MIT"
+    ]
+  },
+  {
+    "name": "serde_json",
+    "version": "1.0.150",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license": "MIT OR Apache-2.0",
+    "selected": "Apache-2.0",
+    "repository": "https://github.com/serde-rs/json",
     "license_files": [
       "LICENSE-APACHE",
       "LICENSE-MIT"
@@ -1665,6 +1736,18 @@
   },
   {
     "name": "windows",
+    "version": "0.56.0",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license": "MIT OR Apache-2.0",
+    "selected": "Apache-2.0",
+    "repository": "https://github.com/microsoft/windows-rs",
+    "license_files": [
+      "license-apache-2.0",
+      "license-mit"
+    ]
+  },
+  {
+    "name": "windows",
     "version": "0.58.0",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
     "license": "MIT OR Apache-2.0",
@@ -1689,6 +1772,18 @@
   },
   {
     "name": "windows-core",
+    "version": "0.56.0",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license": "MIT OR Apache-2.0",
+    "selected": "Apache-2.0",
+    "repository": "https://github.com/microsoft/windows-rs",
+    "license_files": [
+      "license-apache-2.0",
+      "license-mit"
+    ]
+  },
+  {
+    "name": "windows-core",
     "version": "0.58.0",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
     "license": "MIT OR Apache-2.0",
@@ -1701,7 +1796,31 @@
   },
   {
     "name": "windows-implement",
+    "version": "0.56.0",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license": "MIT OR Apache-2.0",
+    "selected": "Apache-2.0",
+    "repository": "https://github.com/microsoft/windows-rs",
+    "license_files": [
+      "license-apache-2.0",
+      "license-mit"
+    ]
+  },
+  {
+    "name": "windows-implement",
     "version": "0.58.0",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license": "MIT OR Apache-2.0",
+    "selected": "Apache-2.0",
+    "repository": "https://github.com/microsoft/windows-rs",
+    "license_files": [
+      "license-apache-2.0",
+      "license-mit"
+    ]
+  },
+  {
+    "name": "windows-interface",
+    "version": "0.56.0",
     "source": "registry+https://github.com/rust-lang/crates.io-index",
     "license": "MIT OR Apache-2.0",
     "selected": "Apache-2.0",
@@ -1976,6 +2095,17 @@
     "repository": "https://github.com/trifectatechfoundation/zlib-rs",
     "license_files": [
       "LICENSE"
+    ]
+  },
+  {
+    "name": "zmij",
+    "version": "1.0.23",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license": "MIT",
+    "selected": "MIT",
+    "repository": "https://github.com/dtolnay/zmij",
+    "license_files": [
+      "LICENSE-MIT"
     ]
   },
   {

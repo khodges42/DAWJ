@@ -100,3 +100,21 @@ created here. Cargo-deny/advisory checking was not available in this environment
 metadata review and the exact inventory gate are not a vulnerability audit.
 Linux native-system dependency licensing/packaging still needs a separate review.
 
+## M3.3–M3.4 MIDI dependency review
+
+The locked application adds **midir 0.10.3 (MIT)** with default features disabled,
+**serde/serde_derive/serde_core 1.0.228** and **serde_json 1.0.150** (Apache-2.0
+selected from MIT OR Apache-2.0). Midir uses WinMM through Microsoft's
+windows/windows-core/windows-interface/windows-implement 0.56.0 on Windows;
+select Apache-2.0 for those packages. Added transitive packages also include
+bitflags 1.3.2 and itoa 1.0.18 (Apache-2.0), memchr 2.8.3 (MIT), and zmij 1.0.23
+(MIT). All have packaged license notices recorded in the inventory. These are
+GPLv3-compatible software license selections; preserve notices and corresponding
+source/build instructions when distributing the application. No driver SDK,
+vendor protocol library, SysEx firmware or proprietary virtual-cable software is
+bundled. The Windows-filtered metadata inventory now contains **185** external
+packages. Existing font terms and optional resolved nodes remain as documented
+above. Linux's ALSA MIDI backend is structurally supported but still needs its
+own native packaging/build/hardware verification. No advisory/release audit is
+claimed by the metadata gate.
+

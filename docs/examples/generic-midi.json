@@ -1,0 +1,1143 @@
+{
+  "version": 1,
+  "mappings": [
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 36
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 0
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 16
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 0
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 37
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 1
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 17
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 1
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 38
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 2
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 18
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 2
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 39
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 3
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 19
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 3
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 40
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 4
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 20
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 4
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 41
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 5
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 21
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 5
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 42
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 6
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 22
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 6
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 43
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 7
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 23
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 0,
+            "slot": 7
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 44
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 0
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 24
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 0
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 45
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 1
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 25
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 1
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 46
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 2
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 26
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 2
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 47
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 3
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 27
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 3
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 48
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 4
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 28
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 4
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 49
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 5
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 29
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 5
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 50
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 6
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 30
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 6
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 51
+      },
+      "action": {
+        "Toggle": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 7
+          }
+        }
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 31
+      },
+      "action": {
+        "Context": {
+          "DeckSlot": {
+            "deck": 1,
+            "slot": 7
+          }
+        }
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 1
+      },
+      "action": "Crossfader",
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 2
+      },
+      "action": {
+        "DeckGain": 0
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "CC",
+        "number": 3
+      },
+      "action": {
+        "DeckGain": 1
+      },
+      "behavior": "Absolute",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 80
+      },
+      "action": {
+        "Mode": "Volume"
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 81
+      },
+      "action": {
+        "Mode": "Filter"
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 82
+      },
+      "action": {
+        "Momentary": "Volume"
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 83
+      },
+      "action": {
+        "Momentary": "Filter"
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 84
+      },
+      "action": {
+        "Cue": 0
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 85
+      },
+      "action": {
+        "Cue": 1
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 86
+      },
+      "action": {
+        "Quantize": "Beat"
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 87
+      },
+      "action": {
+        "Quantize": "Bar"
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 88
+      },
+      "action": {
+        "Quantize": "Phrase"
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 89
+      },
+      "action": {
+        "Quantize": "Immediate"
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 90
+      },
+      "action": {
+        "SelectDeck": 0
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 91
+      },
+      "action": {
+        "SelectDeck": 1
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 92
+      },
+      "action": {
+        "SelectSlot": 0
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 93
+      },
+      "action": {
+        "SelectSlot": 1
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 94
+      },
+      "action": {
+        "SelectSlot": 2
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 95
+      },
+      "action": {
+        "SelectSlot": 3
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 96
+      },
+      "action": {
+        "SelectSlot": 4
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 97
+      },
+      "action": {
+        "SelectSlot": 5
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 98
+      },
+      "action": {
+        "SelectSlot": 6
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    },
+    {
+      "input": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 99
+      },
+      "action": {
+        "SelectSlot": 7
+      },
+      "behavior": "Button",
+      "min": 0,
+      "max": 127,
+      "invert": false,
+      "step": 0.007874016
+    }
+  ],
+  "leds": [
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 36
+      },
+      "deck": 0,
+      "slot": 0
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 37
+      },
+      "deck": 0,
+      "slot": 1
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 38
+      },
+      "deck": 0,
+      "slot": 2
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 39
+      },
+      "deck": 0,
+      "slot": 3
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 40
+      },
+      "deck": 0,
+      "slot": 4
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 41
+      },
+      "deck": 0,
+      "slot": 5
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 42
+      },
+      "deck": 0,
+      "slot": 6
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 43
+      },
+      "deck": 0,
+      "slot": 7
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 44
+      },
+      "deck": 1,
+      "slot": 0
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 45
+      },
+      "deck": 1,
+      "slot": 1
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 46
+      },
+      "deck": 1,
+      "slot": 2
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 47
+      },
+      "deck": 1,
+      "slot": 3
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 48
+      },
+      "deck": 1,
+      "slot": 4
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 49
+      },
+      "deck": 1,
+      "slot": 5
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 50
+      },
+      "deck": 1,
+      "slot": 6
+    },
+    {
+      "output": {
+        "channel": 0,
+        "kind": "Note",
+        "number": 51
+      },
+      "deck": 1,
+      "slot": 7
+    }
+  ],
+  "values": {
+    "stopped": 0,
+    "queued": 16,
+    "playing": 127,
+    "stopping": 64,
+    "replacing": 32
+  },
+  "input": null,
+  "output": null
+}

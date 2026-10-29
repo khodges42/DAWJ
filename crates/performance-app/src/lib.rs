@@ -12,12 +12,15 @@ use std::{
     time::{Duration, Instant},
 };
 use timebase::BeatTicks;
+pub mod controls;
+pub mod midi;
+pub use controls::{InputSource, PartAction};
 
 /// Compensate the fixed demo's sample attenuation and two 1/8 mixing stages.
 /// The backend's existing master/cue limiters still cap final samples at 0.125.
 pub const DEMO_OUTPUT_TRIM_DB: f32 = 36.0;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Mode {
     Volume,
     Filter,
@@ -41,9 +44,19 @@ pub enum Intent {
     OutputTrim(f32),
     Cue(usize),
     Tempo(f64),
+    Part {
+        deck: usize,
+        slot: usize,
+        action: PartAction,
+    },
+    HoldMode {
+        token: u16,
+        mode: Mode,
+        pressed: bool,
+    },
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Focus {
     pub deck: usize,
     pub slots: [usize; 2],
@@ -162,6 +175,7 @@ struct Receipt {
     deck: usize,
     slot: usize,
     parameter: bool,
+    parameters: Option<PartParameters>,
 }
 
 pub struct Coordinator {
@@ -179,6 +193,10 @@ pub struct Coordinator {
     last_publication: Instant,
     terminal: bool,
     latest_receipt: Option<u64>,
+    pub persistent_mode: Mode,
+    temporary_modes: Vec<(InputSource, u16, Mode)>,
+    queued_parameters: [[Option<PartParameters>; SLOTS]; 2],
+    parameter_cursor: usize,
 }
 impl Coordinator {
     pub fn new(control: LiveControl, mixer: MixerControl, cue_available: bool) -> Self {
@@ -200,6 +218,10 @@ impl Coordinator {
             last_publication: Instant::now(),
             terminal: false,
             latest_receipt: None,
+            persistent_mode: Mode::Volume,
+            temporary_modes: Vec::with_capacity(16),
+            queued_parameters: [[None; SLOTS]; 2],
+            parameter_cursor: 0,
         }
     }
     pub fn poll(&mut self) {
@@ -252,6 +274,9 @@ impl Coordinator {
     }
     pub fn close(&mut self) {
         self.terminal = true;
+        self.temporary_modes.clear();
+        self.focus.mode = self.persistent_mode;
+        self.queued_parameters = [[None; SLOTS]; 2];
         self.notice = "Output closed; last musical display is stale".into();
     }
     pub fn act(&mut self, intent: Intent) {
@@ -260,6 +285,9 @@ impl Coordinator {
         }
     }
     pub fn try_act(&mut self, intent: Intent) -> Result<(), &'static str> {
+        self.dispatch(intent, InputSource::Gui)
+    }
+    fn execute_intent(&mut self, intent: Intent) -> Result<(), &'static str> {
         if self.focus.update(intent) {
             return Ok(());
         }
@@ -293,35 +321,50 @@ impl Coordinator {
                 let state = self.snapshot.as_ref().ok_or("no engine snapshot")?;
                 let (request, q) = request_for(intent, &self.focus, state)?;
                 let (deck, slot) = self.focus.address();
-                let parameter = matches!(request, Request::Parameters(_));
-                // At most one unacknowledged knob update per slot. No retry queue;
-                // rejected intent is visible and the next frame uses accepted parameters.
-                if parameter
-                    && self
-                        .receipts
-                        .iter()
-                        .any(|r| r.parameter && r.deck == deck && r.slot == slot)
-                {
-                    return Err("previous parameter update awaiting engine; try again");
-                }
-                if self.receipts.len() == 32 {
-                    return Err("UI receipt window full; wait for audio");
-                }
-                let ticket = self.control.submit(deck, slot, request, q)?;
-                self.feedback[deck][slot] = format!("#{} submitted; awaiting engine", ticket.id());
-                self.notice = self.feedback[deck][slot].clone();
-                self.latest_receipt = Some(ticket.id());
-                self.receipts.push_back(Receipt {
-                    ticket,
-                    deck,
-                    slot,
-                    parameter,
-                });
-                return Ok(());
+                return self.submit_request(deck, slot, request, q);
             }
         }
         self.mixer.set(parameters)?;
         self.parameters = parameters;
+        Ok(())
+    }
+    fn submit_request(
+        &mut self,
+        deck: usize,
+        slot: usize,
+        request: Request,
+        q: Quantize,
+    ) -> Result<(), &'static str> {
+        let parameters = if let Request::Parameters(p) = request {
+            Some(p)
+        } else {
+            None
+        };
+        let parameter = parameters.is_some();
+        // At most one unacknowledged knob update per slot. No retry queue;
+        // rejected intent is visible and the next frame uses accepted parameters.
+        if parameter
+            && self
+                .receipts
+                .iter()
+                .any(|r| r.parameter && r.deck == deck && r.slot == slot)
+        {
+            return Err("previous parameter update awaiting engine; try again");
+        }
+        if self.receipts.len() == 32 {
+            return Err("UI receipt window full; wait for audio");
+        }
+        let ticket = self.control.submit(deck, slot, request, q)?;
+        self.feedback[deck][slot] = format!("#{} submitted; awaiting engine", ticket.id());
+        self.notice = self.feedback[deck][slot].clone();
+        self.latest_receipt = Some(ticket.id());
+        self.receipts.push_back(Receipt {
+            ticket,
+            deck,
+            slot,
+            parameter,
+            parameters,
+        });
         Ok(())
     }
 }
