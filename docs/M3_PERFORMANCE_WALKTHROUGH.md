@@ -8,6 +8,10 @@ cargo run -p dawj --locked
 ```
 
 The first build downloads GUI dependencies. Once cached, `--offline` is supported.
+The corrected demo defaults to +36 dB **Output dB** makeup gain to compensate
+its conservative sample/summing/headroom stages. Lower this control to reduce
+the overall level. It is smoothed in the engine before the existing output
+limiters. Restart a previously running binary to use the correction.
 The application opens with both decks visible and audio off. No external samples
 or manifest are required. **Start demo output** prepares the original Copper Steps
 and Glass Tide assets at 120 BPM / 48 kHz. Slots 1–7 loop; slot 8 is a one-shot fill.

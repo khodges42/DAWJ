@@ -143,3 +143,16 @@ hardware and physical cue acceptance on the intended interface. No scheduler or
 DSP rewrite is required for those mappings.
 
 Changes are recorded as local logical Git commits. Nothing was pushed or merged.
+
+## Follow-up: inaudible demo level
+
+A user confirmed signal in Audacity loopback but only faint sound in headphones.
+The earlier nonzero-peak smoke criterion had failed to catch unusable gain staging.
+The GUI now applies bounded +36 dB makeup gain before both existing output
+limiters, with an Output dB control and engine smoothing. Backend/CLI defaults
+remain unchanged. A new end-to-end bass regression requires sustained RMS energy
+and a useful peak level: measured -24.05 dBFS peak / -32.18 dBFS RMS at default
+GUI controls. All sixteen parts plus cue remain finite and within the 0.125 ceiling.
+A mixer regression covers trim rejection, smooth steps, both limiters, and
+partition-independent trim automation. The full baseline gate passes 99 tests;
+log: `target/m3-level-fix-validation.log`. The user listening retry remains separate.

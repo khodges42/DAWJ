@@ -10,6 +10,8 @@ use std::sync::{
 /// About -18 dBFS. Sample-peak protection, not a true-peak or hearing-safety guarantee.
 pub const MASTER_CEILING: f32 = 0.125;
 pub const MASTER_HEADROOM: f32 = 0.125;
+/// Bounded pre-limiter makeup gain, set outside the realtime callback.
+pub const MAX_OUTPUT_TRIM_DB: f32 = 36.0;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub enum CrossfadeCurve {
@@ -73,6 +75,7 @@ fn pack(p: MixerParameters) -> Result<u64, &'static str> {
 
 struct Controls {
     parameters: AtomicU64,
+    output_trim: AtomicU32,
     peak_l: AtomicU32,
     peak_r: AtomicU32,
     cue_selection: AtomicU32,
@@ -100,6 +103,17 @@ pub struct StereoBuses {
 #[derive(Clone)]
 pub struct MixerControl(Arc<Controls>);
 impl MixerControl {
+    /// Smoothed makeup gain on both logical buses before their existing limiters.
+    /// Independent of deck/crossfader targets; the legacy default remains 0 dB.
+    pub fn set_output_trim_db(&self, db: f32) -> Result<(), &'static str> {
+        if !db.is_finite() || !(-60.0..=MAX_OUTPUT_TRIM_DB).contains(&db) {
+            return Err("output trim outside -60..=36 dB");
+        }
+        self.0
+            .output_trim
+            .store(10.0_f32.powf(db / 20.0).to_bits(), Ordering::Release);
+        Ok(())
+    }
     /// Selection is published independently of the master parameter snapshot.
     pub fn set_cue(&self, selection: CueSelection) {
         self.0
@@ -142,11 +156,10 @@ impl Ramp {
             self.step = (target - self.value) / frames as f32;
         }
         if self.left > 0 {
-            self.value += self.step;
             self.left -= 1;
-            if self.left == 0 {
-                self.value = self.target;
-            }
+            // Reconstruct from the remaining distance rather than accumulating
+            // rounding error into a larger correction at the final sample.
+            self.value = self.target - self.step * self.left as f32;
         }
         self.value
     }
@@ -157,6 +170,7 @@ pub struct StereoMixer {
     controls: MixerControl,
     ramps: [Ramp; 2],
     cue_ramps: [Ramp; 2],
+    output_trim: Ramp,
     ramp_frames: u32,
     release: f32,
     limiter_gain: f32,
@@ -177,6 +191,7 @@ impl StereoMixer {
         ];
         let controls = MixerControl(Arc::new(Controls {
             parameters: AtomicU64::new(pack(MixerParameters::default())?),
+            output_trim: AtomicU32::new(1.0_f32.to_bits()),
             peak_l: AtomicU32::new(0),
             peak_r: AtomicU32::new(0),
             cue_selection: AtomicU32::new(0),
@@ -189,6 +204,11 @@ impl StereoMixer {
                 controls: controls.clone(),
                 ramps: [Ramp::default(), Ramp::default()],
                 cue_ramps: [Ramp::default(), Ramp::default()],
+                output_trim: Ramp {
+                    value: 1.0,
+                    target: 1.0,
+                    ..Ramp::default()
+                },
                 ramp_frames: (rate / 50).max(1),
                 release: (-1.0 / (rate as f32 * 0.1)).exp(),
                 limiter_gain: 1.0,
@@ -307,6 +327,13 @@ impl StereoMixer {
                 buses.cue[ch] += sample * cue_gain * MASTER_HEADROOM;
             }
         }
+        let trim = self.output_trim.next(
+            f32::from_bits(self.controls.0.output_trim.load(Ordering::Acquire)),
+            self.ramp_frames,
+        );
+        for sample in buses.master.iter_mut().chain(buses.cue.iter_mut()) {
+            *sample *= trim;
+        }
         limit_bus(
             &mut buses.master,
             &mut self.limiter_gain,
@@ -376,6 +403,57 @@ mod tests {
             crossfader: x,
             curve,
         }
+    }
+
+    #[test]
+    fn output_trim_is_smoothed_validated_and_precedes_both_limiters() {
+        let (mut mixer, control) =
+            StereoMixer::new(source([0.001; 2], 20000), source([0.0; 2], 20000), 48000).unwrap();
+        control
+            .set(parameters(0.0, CrossfadeCurve::Linear))
+            .unwrap();
+        control.set_cue(CueSelection::A);
+        let mut warmup = [StereoBuses::default(); 2048];
+        mixer.render_buses(&mut warmup);
+        let baseline = 0.001 * MASTER_HEADROOM;
+        assert!((warmup[2047].master[0] - baseline).abs() < 1e-8);
+        control.set_output_trim_db(36.0).unwrap();
+        for db in [f32::NAN, f32::INFINITY, -60.1, 36.1] {
+            assert!(control.set_output_trim_db(db).is_err());
+        }
+        let mut ramp = [StereoBuses::default(); 960];
+        mixer.render_buses(&mut ramp);
+        let target = baseline * 10.0_f32.powf(36.0 / 20.0);
+        let mut previous = baseline;
+        for frame in ramp {
+            assert!(frame.master[0] >= previous);
+            assert!(
+                frame.master[0] - previous <= (target - baseline) / 960.0 + 1e-8,
+                "step={} nominal={}",
+                frame.master[0] - previous,
+                (target - baseline) / 960.0
+            );
+            assert_eq!(frame.master, frame.cue);
+            previous = frame.master[0];
+        }
+        assert!((previous - target).abs() < 1e-7);
+
+        // Hot sources still cannot bypass either bus's existing output ceiling.
+        let (mut hot, control) =
+            StereoMixer::new(source([1.0; 2], 5000), source([1.0; 2], 5000), 48000).unwrap();
+        control
+            .set(parameters(0.5, CrossfadeCurve::EqualPower))
+            .unwrap();
+        control.set_cue(CueSelection::Both);
+        control.set_output_trim_db(36.0).unwrap();
+        hot.render_buses(&mut warmup);
+        for frame in warmup {
+            for s in frame.master.into_iter().chain(frame.cue) {
+                assert!(s.is_finite() && s.abs() <= MASTER_CEILING);
+            }
+        }
+        assert!((control.peaks()[0] - MASTER_CEILING).abs() < 1e-6);
+        assert!((control.cue_peaks()[0] - MASTER_CEILING).abs() < 1e-6);
     }
     #[test]
     fn curves_have_exact_endpoints_and_equal_power_center() {
@@ -504,7 +582,12 @@ mod tests {
                 StereoMixer::new(source([0.4, -0.2], 4000), source([-0.3, 0.5], 3000), 48000)
                     .unwrap();
             let mut samples = vec![0.0; 9000];
-            for (segment, x) in [(0..3000, 0.0), (3000..6000, 0.5), (6000..9000, 1.0)] {
+            for (segment, x, trim) in [
+                (0..3000, 0.0, 0.0),
+                (3000..6000, 0.5, 12.0),
+                (6000..9000, 1.0, 36.0),
+            ] {
+                controls.set_output_trim_db(trim).unwrap();
                 controls
                     .set(parameters(x, CrossfadeCurve::EqualPower))
                     .unwrap();

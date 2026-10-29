@@ -13,6 +13,10 @@ use std::{
 };
 use timebase::BeatTicks;
 
+/// Compensate the fixed demo's sample attenuation and two 1/8 mixing stages.
+/// The backend's existing master/cue limiters still cap final samples at 0.125.
+pub const DEMO_OUTPUT_TRIM_DB: f32 = 36.0;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
     Volume,
@@ -34,6 +38,7 @@ pub enum Intent {
     Cutoff(Option<f32>),
     DeckGain(usize, f32),
     Crossfader(f32),
+    OutputTrim(f32),
     Cue(usize),
     Tempo(f64),
 }
@@ -165,6 +170,7 @@ pub struct Coordinator {
     pub focus: Focus,
     pub snapshot: Option<PerformanceState>,
     pub parameters: MixerParameters,
+    pub output_trim_db: f32,
     pub cues: [bool; 2],
     pub feedback: [[String; SLOTS]; 2],
     pub notice: String,
@@ -176,12 +182,16 @@ pub struct Coordinator {
 }
 impl Coordinator {
     pub fn new(control: LiveControl, mixer: MixerControl, cue_available: bool) -> Self {
+        mixer
+            .set_output_trim_db(DEMO_OUTPUT_TRIM_DB)
+            .expect("demo trim is within engine bounds");
         Self {
             snapshot: control.performance_state(),
             control,
             mixer,
             focus: Focus::default(),
             parameters: MixerParameters::default(),
+            output_trim_db: DEMO_OUTPUT_TRIM_DB,
             cues: [false; 2],
             feedback: std::array::from_fn(|_| std::array::from_fn(|_| String::new())),
             notice: "Ready; start output to advance the musical clock".into(),
@@ -258,6 +268,11 @@ impl Coordinator {
         }
         let mut parameters = self.parameters;
         match intent {
+            Intent::OutputTrim(db) => {
+                self.mixer.set_output_trim_db(db)?;
+                self.output_trim_db = db;
+                return Ok(());
+            }
             Intent::Crossfader(x) => parameters.crossfader = crossfader_position(x)?,
             Intent::DeckGain(0, gain) => parameters.gain_a = gain,
             Intent::DeckGain(1, gain) => parameters.gain_b = gain,

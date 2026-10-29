@@ -35,6 +35,51 @@ fn render(engine: &mut LiveEngine, ui: &mut Coordinator, frames: usize) -> f32 {
 }
 
 #[test]
+fn default_demo_has_audible_level_and_all_parts_remain_within_output_ceiling() {
+    let (mut engine, mut ui) = setup(true);
+    assert_eq!(ui.output_trim_db, 36.0);
+    ui.try_act(Intent::Slot(3)).unwrap();
+    ui.try_act(Intent::Quantize(Quantize::Immediate)).unwrap();
+    ui.try_act(Intent::Launch).unwrap();
+    let mut samples = vec![0.0; 96000 * 2];
+    engine.render(&mut samples, OutputRouting::stereo_master_only());
+    let peak = samples.iter().fold(0.0_f32, |p, s| p.max(s.abs()));
+    let rms = (samples.iter().map(|s| s * s).sum::<f32>() / samples.len() as f32).sqrt();
+    eprintln!(
+        "Default A4 level: peak {:.2} dBFS, RMS {:.2} dBFS",
+        20.0 * peak.log10(),
+        20.0 * rms.log10()
+    );
+    assert!(peak > 0.05 && peak <= audio_backend::mixer::MASTER_CEILING);
+    assert!(
+        rms > 0.02,
+        "bass must have sustained energy, not just nonzero output"
+    );
+    ui.poll();
+    for d in 0..2 {
+        ui.try_act(Intent::Deck(d)).unwrap();
+        ui.try_act(Intent::Cue(d)).unwrap();
+        for s in 0..8 {
+            ui.try_act(Intent::Slot(s)).unwrap();
+            ui.try_act(Intent::Launch).unwrap();
+        }
+    }
+    let route = OutputRouting::new(4, [0, 1], Some([2, 3])).unwrap();
+    engine.render(&mut samples, route);
+    assert!(
+        samples
+            .iter()
+            .all(|s| s.is_finite() && s.abs() <= audio_backend::mixer::MASTER_CEILING)
+    );
+    assert!(!engine.failed());
+    ui.poll();
+    ui.try_act(Intent::OutputTrim(12.0)).unwrap();
+    assert_eq!(ui.output_trim_db, 12.0);
+    assert!(ui.try_act(Intent::OutputTrim(37.0)).is_err());
+    assert_eq!(ui.output_trim_db, 12.0);
+}
+
+#[test]
 fn launch_pending_playing_cancel_retrigger_and_stop_are_engine_truth() {
     let (mut engine, mut ui) = setup(false);
     assert_eq!(ui.snapshot.unwrap().bpm, Some(120.0));

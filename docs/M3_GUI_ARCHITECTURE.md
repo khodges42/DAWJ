@@ -100,6 +100,13 @@ not sample-timed acknowledgments. Engine smoothing handles all parameter DSP.
 Master peaks are explicitly lifetime-held post-limiter peaks, not an animated
 instantaneous meter. Only the existing nonresonant cutoff is exposed.
 
+After a user loopback/listening report exposed near-inaudible output, the GUI
+demo now starts with +36 dB pre-limiter output trim, adjustable through Output dB.
+The engine smooths trim over 20 ms on both logical buses. Both existing 0.125
+output ceilings remain enforced; ordinary backend/CLI defaults remain 0 dB trim.
+The small mixer ramp now reconstructs its remaining distance rather than
+accumulating floating-point error into an oversized final correction.
+
 If no publication advances for one second, the last display is marked stale and
 audio controls disable. This wall-clock timeout only gates availability; it does
 not decide musical boundaries. Closed/Failed also disables submission promptly.

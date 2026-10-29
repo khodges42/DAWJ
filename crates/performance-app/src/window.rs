@@ -351,8 +351,11 @@ impl PerformanceWindow {
                     ui.horizontal(|ui| {
                         ui.strong("A");
                         let mut x = s.parameters.crossfader;
-                        ui.spacing_mut().slider_width = 350.0;
+                        ui.spacing_mut().slider_width = 220.0;
                         if ui.add(egui::Slider::new(&mut x, 0.0..=1.0).text("B  Crossfader")).changed() { s.act(Intent::Crossfader(x)); }
+                        let mut trim = s.output_trim_db;
+                        ui.spacing_mut().slider_width = 120.0;
+                        if ui.add(egui::Slider::new(&mut trim, -24.0..=36.0).text("Output dB")).on_hover_text("Demo makeup gain before the engine's output limiters").changed() { s.act(Intent::OutputTrim(trim)); }
                         let peaks = s.peaks();
                         ui.small(format!("Master held peaks  L {:.4}  R {:.4}", peaks[0], peaks[1]));
                     });
