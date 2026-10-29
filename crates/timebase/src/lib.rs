@@ -87,6 +87,9 @@ impl TempoMap {
 
     /// Replace all tempo intent from `change.at` onward, anchored without frame rounding.
     /// Never allocates: reject edits when the pre-reserved segment storage is full.
+    /// Successful edits retire segments before the one containing `current`.
+    /// Queries before the retained segment return OutOfRange; use a frozen map
+    /// for archival/offline history. Retained absolute fractional anchors do not move.
     pub fn edit_future(
         &mut self,
         current: SampleFrame,
@@ -98,8 +101,13 @@ impl TempoMap {
         if !(0..=MAX_ABS_TICKS).contains(&change.at.0) || self.frame_at(change.at)? < current {
             return Err(TimeError::OutOfRange);
         }
+        let retire = self
+            .segments
+            .partition_point(|s| s.start_frame <= current.0 as f64)
+            .saturating_sub(1);
         let index = self.segments.partition_point(|s| s.change.at < change.at);
-        if index >= 64 || index == self.segments.capacity() {
+        let retained_index = index.saturating_sub(retire);
+        if retained_index >= 64 || retained_index == self.segments.capacity() {
             return Err(TimeError::OutOfRange);
         }
         let old = &self.segments[self
@@ -108,7 +116,10 @@ impl TempoMap {
             .saturating_sub(1)];
         let start_frame =
             old.start_frame + (change.at.0 - old.change.at.0) as f64 * old.frames_per_tick;
-        self.segments.truncate(index);
+        if retire > 0 {
+            self.segments.drain(..retire);
+        }
+        self.segments.truncate(retained_index);
         self.segments.push(Segment {
             change,
             start_frame,
@@ -166,6 +177,9 @@ impl TempoMap {
     /// Round once at the final absolute position, nearest frame, ties away from zero.
     /// Periodic events must use their absolute tick targets, never rounded periods.
     pub fn frame_at(&self, beat: BeatTicks) -> Result<SampleFrame, TimeError> {
+        if self.segments[0].change.at.0 != 0 && beat < self.segments[0].change.at {
+            return Err(TimeError::OutOfRange);
+        }
         if !(-MAX_ABS_TICKS..=MAX_ABS_TICKS).contains(&beat.0) {
             return Err(TimeError::OutOfRange);
         }
@@ -184,6 +198,9 @@ impl TempoMap {
     /// Nearest storage tick at a frame; this inverse intentionally loses subtick detail.
     pub fn beat_at(&self, frame: SampleFrame) -> Result<BeatTicks, TimeError> {
         let value = frame.0 as f64;
+        if self.segments[0].change.at.0 != 0 && value < self.segments[0].start_frame {
+            return Err(TimeError::OutOfRange);
+        }
         if value.abs() >= MAX_ABS_FRAME {
             return Err(TimeError::OutOfRange);
         }
@@ -299,5 +316,37 @@ mod tests {
         let map = TempoMap::new(48_000, &[change]).unwrap();
         assert!(map.frame_at(BeatTicks(i64::MIN)).is_err());
         assert!(map.beat_at(SampleFrame(i64::MAX)).is_err());
+    }
+}
+
+#[cfg(test)]
+mod hardening_tests {
+    use super::*;
+    #[test]
+    fn hardening_many_historical_tempo_edits_preserve_absolute_anchor() {
+        let mut map = TempoMap::new(
+            48000,
+            &[TempoChange {
+                at: BeatTicks(0),
+                bpm: 120.0,
+            }],
+        )
+        .unwrap();
+        map.reserve_changes(64);
+        for beat in 1..1000 {
+            let current = map.frame_at(BeatTicks((beat - 1) * 960)).unwrap();
+            let boundary = map.frame_at(BeatTicks(beat * 960)).unwrap();
+            map.edit_future(
+                current,
+                TempoChange {
+                    at: BeatTicks(beat * 960),
+                    bpm: if beat % 2 == 0 { 137.0 } else { 113.0 },
+                },
+            )
+            .unwrap();
+            assert_eq!(map.frame_at(BeatTicks(beat * 960)).unwrap(), boundary);
+            assert!(map.change_count() <= 3);
+        }
+        assert!(map.beat_at(SampleFrame(0)).is_err());
     }
 }
