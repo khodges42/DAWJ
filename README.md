@@ -1,5 +1,17 @@
 # DAWJ
 
+The [native M3 performance application](docs/M3_GUI_ARCHITECTURE.md) controls the
+existing audio engine with two visible eight-part decks. Run it on Windows:
+
+```sh
+cargo run -p dawj --locked
+```
+
+Choose an output and press **Start demo output** to load Copper Steps and Glass
+Tide. [Performance walkthrough and keyboard map](docs/M3_PERFORMANCE_WALKTHROUGH.md).
+Stereo output is master-only; independent cue requires four-channel routing and
+separate physical verification. [Implementation and verification report](docs/M3_IMPLEMENTATION_REPORT.md).
+
 [M2.9 hardening report](docs/M2_9_HARDENING_REPORT.md) and
 [performance state contract](docs/PERFORMANCE_STATE_CONTRACT.md) define the
 coherent read-only API for future UI/controller feedback and bounded audio transitions.
@@ -37,7 +49,8 @@ and a 15-minute silent device soak with callback diagnostics and stream restart.
 A GPL-3.0-or-later prototype for a two-deck live composition instrument. The
 current foundation implements deterministic musical timing, an offline impulse
 renderer, output discovery, realtime playback, a stereo two-deck mixer and
-independent master/cue channel routing. Advanced effects and GUI remain future work.
+independent master/cue channel routing. M3 adds the native performance window;
+advanced effects remain future work.
 
 Install Rust with rustup; the repository pins Rust 1.85.1 with rustfmt/clippy.
 The timing and offline renderer have no external crate dependencies. On Windows 11 x64, install
