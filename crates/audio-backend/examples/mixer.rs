@@ -37,6 +37,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
     let (mut stream, controls) =
         CpalPlayback::open_mixer(ordinal, config, tone(220.0), tone(330.0))?;
+    if let Some(routing) = stream.routing() {
+        println!(
+            "Cue output: {:?}; {:?}",
+            routing.cue_availability(),
+            routing
+        );
+    }
     println!(
         "Device: {}; {:?}. Very quiet demo starts in 3 seconds.",
         stream.device_name(),

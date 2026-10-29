@@ -2,6 +2,7 @@
 //! CPAL adapter. On Windows the default host is WASAPI; ASIO is not enabled.
 use crate::mixer::{MixerControl, StereoMixer};
 use crate::playback::{PlaybackMonitor, PlaybackSource, Renderer, Shared};
+use crate::routing::OutputRouting;
 use cpal::traits::StreamTrait;
 use cpal::traits::{DeviceTrait, HostTrait};
 use std::sync::{Arc, atomic::Ordering};
@@ -47,6 +48,7 @@ pub struct CpalPlayback {
     stopped: bool,
     device_name: String,
     config: PlaybackConfig,
+    routing: Option<OutputRouting>,
 }
 
 impl CpalPlayback {
@@ -56,15 +58,27 @@ impl CpalPlayback {
         a: PlaybackSource,
         b: PlaybackSource,
     ) -> Result<(Self, MixerControl), InspectionError> {
-        if config.channels != 2 {
+        Self::open_routed_mixer(ordinal, config, OutputRouting::stereo_master_only(), a, b)
+    }
+
+    /// Logical channels only: separate pairs do not prove physical headphone isolation.
+    /// A stereo-only endpoint must explicitly use master-only routing, never a cue fold-down.
+    pub fn open_routed_mixer(
+        ordinal: Option<usize>,
+        config: PlaybackConfig,
+        routing: OutputRouting,
+        a: PlaybackSource,
+        b: PlaybackSource,
+    ) -> Result<(Self, MixerControl), InspectionError> {
+        if config.channels != routing.channels() {
             return Err(error(
-                "configure mixer",
-                "stereo master requires two output channels",
+                "configure routing",
+                "mapping channel count must match stream configuration",
             ));
         }
         let (mixer, control) =
             StereoMixer::new(a, b, config.sample_rate_hz).map_err(|e| error("prepare mixer", e))?;
-        let playback = Self::open_inner(ordinal, config, Input::Mixer(mixer))?;
+        let playback = Self::open_inner(ordinal, config, Input::Mixer(Box::new(mixer), routing))?;
         Ok((playback, control))
     }
     /// None selects the OS default output; Some selects a fresh enumeration ordinal.
@@ -118,6 +132,10 @@ impl CpalPlayback {
             ));
         }
         let shared = Arc::new(Shared::default());
+        let routing = match &input {
+            Input::Single(_) => None,
+            Input::Mixer(_, routing) => Some(*routing),
+        };
         let renderer = match input {
             Input::Single(source) => Engine::Single(
                 Renderer::new(
@@ -128,7 +146,7 @@ impl CpalPlayback {
                 )
                 .map_err(|e| error("prepare renderer", e))?,
             ),
-            Input::Mixer(mixer) => Engine::Mixer(mixer, shared.clone()),
+            Input::Mixer(mixer, routing) => Engine::Mixer(*mixer, routing, shared.clone()),
         };
         let stream_config = cpal::StreamConfig {
             channels: config.channels,
@@ -152,6 +170,7 @@ impl CpalPlayback {
             stopped: false,
             device_name,
             config,
+            routing,
         })
     }
 
@@ -165,6 +184,10 @@ impl CpalPlayback {
 
     pub fn config(&self) -> PlaybackConfig {
         self.config
+    }
+
+    pub fn routing(&self) -> Option<OutputRouting> {
+        self.routing
     }
 
     pub fn start(&mut self) -> Result<(), InspectionError> {
@@ -204,11 +227,11 @@ impl Drop for CpalPlayback {
 
 enum Input {
     Single(PlaybackSource),
-    Mixer(StereoMixer),
+    Mixer(Box<StereoMixer>, OutputRouting),
 }
 enum Engine {
     Single(Renderer),
-    Mixer(StereoMixer, Arc<Shared>),
+    Mixer(StereoMixer, OutputRouting, Arc<Shared>),
 }
 
 impl Engine {
@@ -218,11 +241,11 @@ impl Engine {
             Self::Single(renderer) => renderer.render(output, |s| {
                 convert(s.clamp(-crate::mixer::MASTER_CEILING, crate::mixer::MASTER_CEILING))
             }),
-            Self::Mixer(mixer, shared) => {
-                let count = (output.len() / 2) as u64;
+            Self::Mixer(mixer, routing, shared) => {
+                let count = (output.len() / usize::from(routing.channels())) as u64;
                 if shared.enabled.load(Ordering::Acquire) && !shared.failed.load(Ordering::Acquire)
                 {
-                    mixer.render_converted(output, convert);
+                    mixer.render_routed_converted(output, *routing, convert);
                 } else {
                     output.fill(convert(0.0));
                 }
@@ -337,13 +360,62 @@ mod tests {
     use super::*;
 
     #[test]
+    fn multichannel_adapter_counts_frames_and_silences_unused_outputs_on_failure() {
+        use crate::{mixer::CueSelection, playback::PreparedBuffer};
+        let source =
+            || PlaybackSource::Buffer(PreparedBuffer::new(vec![0.2; 10000], 48000, 2).unwrap());
+        let (mixer, control) = StereoMixer::new(source(), source(), 48000).unwrap();
+        control.set_cue(CueSelection::B);
+        let routing = OutputRouting::new(6, [5, 2], Some([3, 0])).unwrap();
+        let shared = Arc::new(Shared::default());
+        shared.enabled.store(true, Ordering::Release);
+        let mut engine = Engine::Mixer(mixer, routing, shared.clone());
+        let mut output = [0_u8; 7201];
+        engine.render(&mut output, <u8 as cpal::FromSample<f32>>::from_sample_);
+        assert_eq!(shared.clock.load(Ordering::Relaxed), 1200);
+        assert_eq!(shared.source_frames.load(Ordering::Relaxed), 1200);
+        assert_eq!(shared.max_callback_frames.load(Ordering::Relaxed), 1200);
+        assert_eq!(output[7200], 128);
+        for frame in output[..7200].chunks_exact(6) {
+            assert_eq!(frame[1], 128);
+            assert_eq!(frame[4], 128);
+        }
+        assert!(output[..7200].iter().any(|s| *s != 128));
+        shared.failed.store(true, Ordering::Release);
+        engine.render(&mut output, <u8 as cpal::FromSample<f32>>::from_sample_);
+        assert_eq!(output, [128; 7201]);
+        assert_eq!(shared.clock.load(Ordering::Relaxed), 2400);
+        assert_eq!(shared.source_frames.load(Ordering::Relaxed), 1200);
+    }
+
+    #[test]
+    fn mismatched_routing_is_rejected_before_hardware_access() {
+        let source = || PlaybackSource::Tone {
+            frequency_hz: 220.0,
+            amplitude: 0.0,
+            frames: 48000,
+        };
+        let config = PlaybackConfig {
+            sample_rate_hz: 48000,
+            channels: 2,
+            encoding: SampleEncoding::F32,
+            buffer: RequestedBuffer::Default,
+        };
+        let route = OutputRouting::new(4, [0, 1], Some([2, 3])).unwrap();
+        match CpalPlayback::open_routed_mixer(None, config, route, source(), source()) {
+            Err(error) => assert_eq!(error.operation, "configure routing"),
+            Ok(_) => panic!("mismatched stream and routing accepted"),
+        }
+    }
+
+    #[test]
     fn adapter_gates_mixer_and_caps_legacy_output() {
         use crate::playback::PreparedBuffer;
         let source =
             || PlaybackSource::Buffer(PreparedBuffer::new(vec![1.0; 4000], 48000, 2).unwrap());
         let shared = Arc::new(Shared::default());
         let (mixer, _) = StereoMixer::new(source(), source(), 48000).unwrap();
-        let mut engine = Engine::Mixer(mixer, shared.clone());
+        let mut engine = Engine::Mixer(mixer, OutputRouting::stereo_master_only(), shared.clone());
         let mut samples = [0_u8; 64];
         engine.render(&mut samples, <u8 as cpal::FromSample<f32>>::from_sample_);
         assert_eq!(samples, [128; 64]);

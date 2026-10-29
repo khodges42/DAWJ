@@ -7,6 +7,7 @@ use std::fmt;
 pub mod cpal_backend;
 pub mod mixer;
 pub mod playback;
+pub mod routing;
 
 /// Buffer lengths in frames, not samples or bytes. Unknown is not a fixed size.
 #[derive(Clone, Debug, PartialEq, Eq)]

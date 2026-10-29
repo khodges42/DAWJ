@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Backend-independent stereo two-deck mixer. All ownership is prepared before rendering.
 use crate::playback::{PlaybackSource, Renderer, Shared};
+use crate::routing::OutputRouting;
 use std::sync::{
     Arc,
     atomic::{AtomicU32, AtomicU64, Ordering},
@@ -74,12 +75,43 @@ struct Controls {
     parameters: AtomicU64,
     peak_l: AtomicU32,
     peak_r: AtomicU32,
+    cue_selection: AtomicU32,
+    cue_peak_l: AtomicU32,
+    cue_peak_r: AtomicU32,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+#[repr(u32)]
+pub enum CueSelection {
+    #[default]
+    Off = 0,
+    A = 1,
+    B = 2,
+    Both = 3,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct StereoBuses {
+    pub master: [f32; 2],
+    pub cue: [f32; 2],
 }
 
 /// One atomic publication updates all parameters together. Last writer wins.
 #[derive(Clone)]
 pub struct MixerControl(Arc<Controls>);
 impl MixerControl {
+    /// Selection is published independently of the master parameter snapshot.
+    pub fn set_cue(&self, selection: CueSelection) {
+        self.0
+            .cue_selection
+            .store(selection as u32, Ordering::Release);
+    }
+    pub fn cue_peaks(&self) -> [f32; 2] {
+        [
+            f32::from_bits(self.0.cue_peak_l.load(Ordering::Relaxed)),
+            f32::from_bits(self.0.cue_peak_r.load(Ordering::Relaxed)),
+        ]
+    }
     pub fn set(&self, parameters: MixerParameters) -> Result<(), &'static str> {
         self.0
             .parameters
@@ -124,10 +156,13 @@ pub struct StereoMixer {
     decks: [Renderer; 2],
     controls: MixerControl,
     ramps: [Ramp; 2],
+    cue_ramps: [Ramp; 2],
     ramp_frames: u32,
     release: f32,
     limiter_gain: f32,
     peak: [f32; 2],
+    cue_limiter_gain: f32,
+    cue_peak: [f32; 2],
 }
 
 impl StereoMixer {
@@ -144,16 +179,22 @@ impl StereoMixer {
             parameters: AtomicU64::new(pack(MixerParameters::default())?),
             peak_l: AtomicU32::new(0),
             peak_r: AtomicU32::new(0),
+            cue_selection: AtomicU32::new(0),
+            cue_peak_l: AtomicU32::new(0),
+            cue_peak_r: AtomicU32::new(0),
         }));
         Ok((
             Self {
                 decks,
                 controls: controls.clone(),
                 ramps: [Ramp::default(), Ramp::default()],
+                cue_ramps: [Ramp::default(), Ramp::default()],
                 ramp_frames: (rate / 50).max(1),
                 release: (-1.0 / (rate as f32 * 0.1)).exp(),
                 limiter_gain: 1.0,
                 peak: [0.0; 2],
+                cue_limiter_gain: 1.0,
+                cue_peak: [0.0; 2],
             },
             controls,
         ))
@@ -177,53 +218,96 @@ impl StereoMixer {
         output: &mut [T],
         convert: impl Fn(f32) -> T,
     ) {
+        self.render_routed_converted(output, OutputRouting::stereo_master_only(), convert);
+    }
+
+    /// Render both logical buses, consuming each source exactly once per frame.
+    pub fn render_buses(&mut self, output: &mut [StereoBuses]) {
+        for frame in output {
+            *frame = self.next_buses();
+        }
+        self.publish_peaks();
+    }
+
+    /// Unmapped channels and malformed trailing partial frames are always silent.
+    pub fn render_routed(&mut self, output: &mut [f32], routing: OutputRouting) {
+        self.render_routed_converted(output, routing, |s| s);
+    }
+
+    pub(crate) fn render_routed_converted<T: Copy>(
+        &mut self,
+        output: &mut [T],
+        routing: OutputRouting,
+        convert: impl Fn(f32) -> T,
+    ) {
         output.fill(convert(0.0));
-        for frame in output.chunks_exact_mut(2) {
-            let bits = self.controls.0.parameters.load(Ordering::Acquire);
-            let x = ((bits >> 32) & 65535) as f32 / 65535.0;
-            let curve = if bits & (1 << 48) == 0 {
-                CrossfadeCurve::Linear
-            } else {
-                CrossfadeCurve::EqualPower
-            };
-            let weights = crossfade_weights(x, curve).unwrap_or([0.0; 2]);
-            let gains = [
-                (bits & 65535) as f32 / 65535.0,
-                ((bits >> 16) & 65535) as f32 / 65535.0,
-            ];
-            let mut mixed = [0.0_f32; 2];
-            for deck in 0..2 {
-                let position = self.decks[deck].position();
-                let remaining = self.decks[deck].length() - position;
-                // Fade source boundaries as well as control changes, including prepared PCM.
-                let envelope = (position as f32 / self.ramp_frames as f32)
-                    .min(remaining.saturating_sub(1) as f32 / self.ramp_frames as f32)
-                    .min(1.0);
-                let gain =
-                    self.ramps[deck].next(gains[deck] * weights[deck], self.ramp_frames) * envelope;
-                let mut source = [0.0; 2];
-                self.decks[deck].next_frame(&mut source);
-                for ch in 0..2 {
-                    mixed[ch] += source[ch] * gain * MASTER_HEADROOM;
+        for frame in output.chunks_exact_mut(usize::from(routing.channels())) {
+            let buses = self.next_buses();
+            for (ch, sample) in routing.master().into_iter().zip(buses.master) {
+                frame[usize::from(ch)] = convert(sample);
+            }
+            if let Some(pair) = routing.cue() {
+                for (ch, sample) in pair.into_iter().zip(buses.cue) {
+                    frame[usize::from(ch)] = convert(sample);
                 }
             }
-            let peak = mixed[0].abs().max(mixed[1].abs());
-            let required = if peak > MASTER_CEILING {
-                MASTER_CEILING / peak
+        }
+        self.publish_peaks();
+    }
+
+    fn next_buses(&mut self) -> StereoBuses {
+        let bits = self.controls.0.parameters.load(Ordering::Acquire);
+        let cue = self.controls.0.cue_selection.load(Ordering::Acquire);
+        let x = ((bits >> 32) & 65535) as f32 / 65535.0;
+        let curve = if bits & (1 << 48) == 0 {
+            CrossfadeCurve::Linear
+        } else {
+            CrossfadeCurve::EqualPower
+        };
+        let weights = crossfade_weights(x, curve).unwrap_or([0.0; 2]);
+        let gains = [
+            (bits & 65535) as f32 / 65535.0,
+            ((bits >> 16) & 65535) as f32 / 65535.0,
+        ];
+        let mut buses = StereoBuses::default();
+        for deck in 0..2 {
+            let position = self.decks[deck].position();
+            let remaining = self.decks[deck].length() - position;
+            let envelope = (position as f32 / self.ramp_frames as f32)
+                .min(remaining.saturating_sub(1) as f32 / self.ramp_frames as f32)
+                .min(1.0);
+            let master_gain =
+                self.ramps[deck].next(gains[deck] * weights[deck], self.ramp_frames) * envelope;
+            // Post deck gain, pre crossfader: crossfade weights never affect cue.
+            let selected = if cue & (1 << deck) != 0 {
+                gains[deck]
             } else {
-                1.0
+                0.0
             };
-            self.limiter_gain = if required < self.limiter_gain {
-                required
-            } else {
-                required + self.release * (self.limiter_gain - required)
-            };
-            for ch in 0..2 {
-                let sample = (mixed[ch] * self.limiter_gain).clamp(-MASTER_CEILING, MASTER_CEILING);
-                frame[ch] = convert(sample);
-                self.peak[ch] = self.peak[ch].max(sample.abs());
+            let cue_gain = self.cue_ramps[deck].next(selected, self.ramp_frames) * envelope;
+            let mut source = [0.0; 2];
+            self.decks[deck].next_frame(&mut source);
+            for (ch, sample) in source.into_iter().enumerate() {
+                buses.master[ch] += sample * master_gain * MASTER_HEADROOM;
+                buses.cue[ch] += sample * cue_gain * MASTER_HEADROOM;
             }
         }
+        limit_bus(
+            &mut buses.master,
+            &mut self.limiter_gain,
+            self.release,
+            &mut self.peak,
+        );
+        limit_bus(
+            &mut buses.cue,
+            &mut self.cue_limiter_gain,
+            self.release,
+            &mut self.cue_peak,
+        );
+        buses
+    }
+
+    fn publish_peaks(&self) {
         self.controls
             .0
             .peak_l
@@ -232,6 +316,32 @@ impl StereoMixer {
             .0
             .peak_r
             .store(self.peak[1].to_bits(), Ordering::Relaxed);
+        self.controls
+            .0
+            .cue_peak_l
+            .store(self.cue_peak[0].to_bits(), Ordering::Relaxed);
+        self.controls
+            .0
+            .cue_peak_r
+            .store(self.cue_peak[1].to_bits(), Ordering::Relaxed);
+    }
+}
+
+fn limit_bus(bus: &mut [f32; 2], gain: &mut f32, release: f32, held_peak: &mut [f32; 2]) {
+    let peak = bus[0].abs().max(bus[1].abs());
+    let required = if peak > MASTER_CEILING {
+        MASTER_CEILING / peak
+    } else {
+        1.0
+    };
+    *gain = if required < *gain {
+        required
+    } else {
+        required + release * (*gain - required)
+    };
+    for ch in 0..2 {
+        bus[ch] = (bus[ch] * *gain).clamp(-MASTER_CEILING, MASTER_CEILING);
+        held_peak[ch] = held_peak[ch].max(bus[ch].abs());
     }
 }
 
