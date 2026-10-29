@@ -4,6 +4,7 @@
 
 use std::fmt;
 use timebase::{BeatTicks, SampleFrame, TempoMap, TimeError};
+pub mod live;
 
 pub const MAX_EVENTS: usize = 4096;
 pub const MAX_BLOCK_FRAMES: usize = 8192;

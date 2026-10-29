@@ -110,6 +110,41 @@ impl Deck {
             now: epoch,
         })
     }
+    pub fn current_time(&self) -> BeatTicks {
+        self.now
+    }
+    /// Callback scheduler applies one eligible slot, without advancing unrelated pending actions.
+    pub fn apply_due_slot(
+        &mut self,
+        slot: usize,
+        at: BeatTicks,
+    ) -> Result<Option<Applied>, &'static str> {
+        let state = self.slots.get_mut(slot).ok_or("slot out of range")?;
+        let effect = match *state {
+            State::QueuedStart(p) if p.at <= at => Some(Applied::Start {
+                part: p.part,
+                at: p.at,
+                retrigger: false,
+            }),
+            State::QueuedReplace { active, pending } if pending.at <= at => Some(Applied::Start {
+                part: pending.part,
+                at: pending.at,
+                retrigger: active.id == pending.part.id,
+            }),
+            State::QueuedStop { at: deadline, .. } if deadline <= at => {
+                Some(Applied::Stop { at: deadline })
+            }
+            _ => None,
+        };
+        if let Some(effect) = effect {
+            *state = match effect {
+                Applied::Start { part, .. } => State::Playing(part),
+                Applied::Stop { .. } => State::Stopped,
+            };
+            self.now = self.now.max(at);
+        }
+        Ok(effect)
+    }
     pub fn states(&self) -> &[State; SLOTS] {
         &self.slots
     }

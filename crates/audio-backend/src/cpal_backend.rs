@@ -52,6 +52,18 @@ pub struct CpalPlayback {
 }
 
 impl CpalPlayback {
+    /// The engine, resident bank and command channel are all prepared on the control thread.
+    pub fn open_live(
+        ordinal: Option<usize>,
+        config: PlaybackConfig,
+        routing: OutputRouting,
+        engine: crate::live::LiveEngine,
+    ) -> Result<Self, InspectionError> {
+        if config.channels != routing.channels() || config.sample_rate_hz != engine.rate() {
+            return Err(error("configure live engine", "rate or channel mismatch"));
+        }
+        Self::open_inner(ordinal, config, Input::Live(Box::new(engine), routing))
+    }
     pub fn open_mixer(
         ordinal: Option<usize>,
         config: PlaybackConfig,
@@ -134,7 +146,7 @@ impl CpalPlayback {
         let shared = Arc::new(Shared::default());
         let routing = match &input {
             Input::Single(_) => None,
-            Input::Mixer(_, routing) => Some(*routing),
+            Input::Mixer(_, routing) | Input::Live(_, routing) => Some(*routing),
         };
         let renderer = match input {
             Input::Single(source) => Engine::Single(
@@ -147,6 +159,7 @@ impl CpalPlayback {
                 .map_err(|e| error("prepare renderer", e))?,
             ),
             Input::Mixer(mixer, routing) => Engine::Mixer(mixer, routing, shared.clone()),
+            Input::Live(engine, routing) => Engine::Live(engine, routing, shared.clone()),
         };
         let stream_config = cpal::StreamConfig {
             channels: config.channels,
@@ -228,15 +241,43 @@ impl Drop for CpalPlayback {
 enum Input {
     Single(PlaybackSource),
     Mixer(Box<StereoMixer>, OutputRouting),
+    Live(Box<crate::live::LiveEngine>, OutputRouting),
 }
 enum Engine {
     Single(Renderer),
     Mixer(Box<StereoMixer>, OutputRouting, Arc<Shared>),
+    Live(Box<crate::live::LiveEngine>, OutputRouting, Arc<Shared>),
 }
 
 impl Engine {
     fn render<T: Copy>(&mut self, output: &mut [T], convert: impl Fn(f32) -> T) {
         match self {
+            Self::Live(engine, routing, shared) => {
+                let count = (output.len() / usize::from(routing.channels())) as u64;
+                if shared.enabled.load(Ordering::Acquire) && !shared.failed.load(Ordering::Acquire)
+                {
+                    engine.render_converted(output, *routing, convert);
+                    if engine.failed() {
+                        shared.failed.store(true, Ordering::Release);
+                    }
+                } else {
+                    output.fill(convert(0.0));
+                }
+                shared.clock.store(
+                    shared.clock.load(Ordering::Relaxed).saturating_add(count),
+                    Ordering::Relaxed,
+                );
+                shared
+                    .source_frames
+                    .store(engine.frame().0 as u64, Ordering::Relaxed);
+                shared.max_callback_frames.store(
+                    shared
+                        .max_callback_frames
+                        .load(Ordering::Relaxed)
+                        .max(count),
+                    Ordering::Relaxed,
+                );
+            }
             // The legacy single-source path also receives the conservative sample ceiling.
             Self::Single(renderer) => renderer.render(output, |s| {
                 convert(s.clamp(-crate::mixer::MASTER_CEILING, crate::mixer::MASTER_CEILING))

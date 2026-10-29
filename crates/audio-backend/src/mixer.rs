@@ -256,6 +256,26 @@ impl StereoMixer {
     }
 
     fn next_buses(&mut self) -> StereoBuses {
+        let mut sources = [[0.0; 2]; 2];
+        let mut envelopes = [1.0; 2];
+        for deck in 0..2 {
+            if !self.decks[deck].prepared_boundaries() {
+                let position = self.decks[deck].position();
+                let remaining = self.decks[deck].length() - position;
+                envelopes[deck] = (position as f32 / self.ramp_frames as f32)
+                    .min(remaining.saturating_sub(1) as f32 / self.ramp_frames as f32)
+                    .min(1.0);
+            }
+            self.decks[deck].next_frame(&mut sources[deck]);
+        }
+        self.mix_external(sources, envelopes)
+    }
+
+    pub(crate) fn mix_external(
+        &mut self,
+        sources: [[f32; 2]; 2],
+        envelopes: [f32; 2],
+    ) -> StereoBuses {
         let bits = self.controls.0.parameters.load(Ordering::Acquire);
         let cue = self.controls.0.cue_selection.load(Ordering::Acquire);
         let x = ((bits >> 32) & 65535) as f32 / 65535.0;
@@ -271,16 +291,7 @@ impl StereoMixer {
         ];
         let mut buses = StereoBuses::default();
         for deck in 0..2 {
-            let position = self.decks[deck].position();
-            let remaining = self.decks[deck].length() - position;
-            let envelope = (position as f32 / self.ramp_frames as f32)
-                .min(remaining.saturating_sub(1) as f32 / self.ramp_frames as f32)
-                .min(1.0);
-            let envelope = if self.decks[deck].prepared_boundaries() {
-                1.0
-            } else {
-                envelope
-            };
+            let envelope = envelopes[deck];
             let master_gain =
                 self.ramps[deck].next(gains[deck] * weights[deck], self.ramp_frames) * envelope;
             // Post deck gain, pre crossfader: crossfade weights never affect cue.
@@ -290,8 +301,7 @@ impl StereoMixer {
                 0.0
             };
             let cue_gain = self.cue_ramps[deck].next(selected, self.ramp_frames) * envelope;
-            let mut source = [0.0; 2];
-            self.decks[deck].next_frame(&mut source);
+            let source = sources[deck];
             for (ch, sample) in source.into_iter().enumerate() {
                 buses.master[ch] += sample * master_gain * MASTER_HEADROOM;
                 buses.cue[ch] += sample * cue_gain * MASTER_HEADROOM;
@@ -312,7 +322,7 @@ impl StereoMixer {
         buses
     }
 
-    fn publish_peaks(&self) {
+    pub(crate) fn publish_peaks(&self) {
         self.controls
             .0
             .peak_l

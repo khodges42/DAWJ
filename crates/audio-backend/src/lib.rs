@@ -5,6 +5,7 @@
 use std::fmt;
 
 pub mod cpal_backend;
+pub mod live;
 pub mod mixer;
 pub mod playback;
 pub mod routing;

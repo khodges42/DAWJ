@@ -1,5 +1,10 @@
 # DAWJ
 
+[M2.3 quantized scheduling](docs/M2_3.md) connects the Part lifecycle to M0's
+musical clock with bounded live command delivery and sample-accurate actions.
+Run `cargo test -p audio-backend --test quantized --locked --offline` for its
+offline scheduling and concurrent-command checks.
+
 [M2.1 Parts and M2.2 sample playback](docs/M2_1_M2_2.md) define the eight-slot
 state model, transition table, resident WAV loader, one-shot/loop semantics and
 offline/opt-in audio demo. Sample rates must match the selected stream rate.

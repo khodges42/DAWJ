@@ -75,6 +75,48 @@ pub struct TempoMap {
 }
 
 impl TempoMap {
+    pub fn change_count(&self) -> usize {
+        self.segments.len()
+    }
+    /// Control-side reservation for bounded future tempo edits.
+    pub fn reserve_changes(&mut self, maximum: usize) {
+        if maximum > self.segments.capacity() {
+            self.segments.reserve_exact(maximum - self.segments.len());
+        }
+    }
+
+    /// Replace all tempo intent from `change.at` onward, anchored without frame rounding.
+    /// Never allocates: reject edits when the pre-reserved segment storage is full.
+    pub fn edit_future(
+        &mut self,
+        current: SampleFrame,
+        change: TempoChange,
+    ) -> Result<(), TimeError> {
+        if !change.bpm.is_finite() || !(1.0..=1000.0).contains(&change.bpm) {
+            return Err(TimeError::InvalidTempo);
+        }
+        if !(0..=MAX_ABS_TICKS).contains(&change.at.0) || self.frame_at(change.at)? < current {
+            return Err(TimeError::OutOfRange);
+        }
+        let index = self.segments.partition_point(|s| s.change.at < change.at);
+        if index >= 64 || index == self.segments.capacity() {
+            return Err(TimeError::OutOfRange);
+        }
+        let old = &self.segments[self
+            .segments
+            .partition_point(|s| s.change.at <= change.at)
+            .saturating_sub(1)];
+        let start_frame =
+            old.start_frame + (change.at.0 - old.change.at.0) as f64 * old.frames_per_tick;
+        self.segments.truncate(index);
+        self.segments.push(Segment {
+            change,
+            start_frame,
+            frames_per_tick: f64::from(self.sample_rate) * 60.0
+                / (change.bpm * TICKS_PER_QUARTER as f64),
+        });
+        Ok(())
+    }
     /// First change must be at zero, subsequent changes strictly increasing.
     /// The first tempo extends backwards into negative preroll.
     pub fn new(sample_rate: u32, changes: &[TempoChange]) -> Result<Self, TimeError> {

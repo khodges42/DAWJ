@@ -150,6 +150,9 @@ pub struct SampleVoice {
     elapsed: u64,
 }
 impl SampleVoice {
+    pub(crate) fn resident_frames(&self) -> usize {
+        self.pcm.len() / 2
+    }
     pub fn prepare(
         part: Part,
         sample: LoadedSample,
@@ -197,6 +200,17 @@ impl SampleVoice {
     }
     pub(crate) fn rate(&self) -> u32 {
         self.rate
+    }
+    /// Independent resident-bank cursor access. No ownership or cursor mutation.
+    pub(crate) fn at_elapsed(&self, elapsed: u64) -> [f32; 2] {
+        let length = (self.end - self.start) as u64;
+        let offset = match self.part.playback.mode {
+            PlaybackMode::OneShot if elapsed >= length => return [0.0; 2],
+            PlaybackMode::OneShot => elapsed,
+            PlaybackMode::Loop { .. } => elapsed % length,
+        };
+        let at = (self.start + offset as usize) * 2;
+        [self.pcm[at], self.pcm[at + 1]]
     }
     pub fn part(&self) -> Part {
         self.part
