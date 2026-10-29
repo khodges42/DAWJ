@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! Control-side output discovery only. No streams are constructed or started.
+//! Output discovery and minimal realtime playback.
 //! Public snapshots contain no CPAL handles or hardware-specific assumptions.
 
 use std::fmt;
 
 pub mod cpal_backend;
+pub mod playback;
 
 /// Buffer lengths in frames, not samples or bytes. Unknown is not a fixed size.
 #[derive(Clone, Debug, PartialEq, Eq)]

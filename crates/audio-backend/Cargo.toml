@@ -8,5 +8,9 @@ license.workspace = true
 [dependencies]
 cpal = { version = "=0.15.3", default-features = false }
 
+[dev-dependencies]
+event-engine.workspace = true
+timebase.workspace = true
+
 [lints]
 workspace = true

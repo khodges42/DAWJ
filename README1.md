@@ -1,20 +1,31 @@
 # DAWJ
 
 A GPL-3.0-or-later prototype for a two-deck live composition instrument. The
-current **M0 foundation** implements deterministic musical timing and an offline
-impulse renderer. Live audio, cue routing, playback and GUI are future milestones.
+current foundation implements deterministic musical timing, an offline impulse
+renderer, output discovery and minimal M1.2 realtime playback. Cue routing,
+mixing, effects and GUI remain future work.
 
 Install Rust with rustup; the repository pins Rust 1.85.1 with rustfmt/clippy.
-The core and demo have no external crate dependencies. On Windows 11 x64, install
+The timing and offline renderer have no external crate dependencies. On Windows 11 x64, install
 the Rust MSVC toolchain and Visual Studio C++ Build Tools / Windows SDK.
 
 ```sh
 cargo test --workspace --locked --offline
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked --offline -- -D warnings
-python scripts/audit_dependencies.py
+python scripts/audio_dependencies.py
 cargo run --locked --offline -p offline-render -- impulses.wav 48000 128
 ```
+
+Realtime demos (two seconds, amplitude 0.1 tone or prepared M0 impulses):
+
+```sh
+cargo run -p audio-backend --example playback --locked --offline -- tone
+cargo run -p audio-backend --example playback --locked --offline -- buffer
+cargo run -p audio-backend --example playback --locked --offline -- --help
+```
+
+See [M1.2 verification and constraints](docs/M1_2.md) for settings and clock semantics.
 
 The last command writes about 7.43 seconds of mono PCM16 impulses and prints the
 intended tick and actual frame of every event. Optional arguments are output
