@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! CPAL adapter. On Windows the default host is WASAPI; ASIO is not enabled.
+use crate::mixer::{MixerControl, StereoMixer};
 use crate::playback::{PlaybackMonitor, PlaybackSource, Renderer, Shared};
 use cpal::traits::StreamTrait;
 use cpal::traits::{DeviceTrait, HostTrait};
@@ -49,12 +50,37 @@ pub struct CpalPlayback {
 }
 
 impl CpalPlayback {
+    pub fn open_mixer(
+        ordinal: Option<usize>,
+        config: PlaybackConfig,
+        a: PlaybackSource,
+        b: PlaybackSource,
+    ) -> Result<(Self, MixerControl), InspectionError> {
+        if config.channels != 2 {
+            return Err(error(
+                "configure mixer",
+                "stereo master requires two output channels",
+            ));
+        }
+        let (mixer, control) =
+            StereoMixer::new(a, b, config.sample_rate_hz).map_err(|e| error("prepare mixer", e))?;
+        let playback = Self::open_inner(ordinal, config, Input::Mixer(mixer))?;
+        Ok((playback, control))
+    }
     /// None selects the OS default output; Some selects a fresh enumeration ordinal.
     /// Configuration is explicit and checked without fallback or resampling.
     pub fn open(
         ordinal: Option<usize>,
         config: PlaybackConfig,
         source: PlaybackSource,
+    ) -> Result<Self, InspectionError> {
+        Self::open_inner(ordinal, config, Input::Single(source))
+    }
+
+    fn open_inner(
+        ordinal: Option<usize>,
+        config: PlaybackConfig,
+        input: Input,
     ) -> Result<Self, InspectionError> {
         let host = cpal::default_host();
         let device = match ordinal {
@@ -92,13 +118,18 @@ impl CpalPlayback {
             ));
         }
         let shared = Arc::new(Shared::default());
-        let renderer = Renderer::new(
-            source,
-            config.sample_rate_hz,
-            config.channels,
-            shared.clone(),
-        )
-        .map_err(|e| error("prepare renderer", e))?;
+        let renderer = match input {
+            Input::Single(source) => Engine::Single(
+                Renderer::new(
+                    source,
+                    config.sample_rate_hz,
+                    config.channels,
+                    shared.clone(),
+                )
+                .map_err(|e| error("prepare renderer", e))?,
+            ),
+            Input::Mixer(mixer) => Engine::Mixer(mixer, shared.clone()),
+        };
         let stream_config = cpal::StreamConfig {
             channels: config.channels,
             sample_rate: cpal::SampleRate(config.sample_rate_hz),
@@ -171,10 +202,55 @@ impl Drop for CpalPlayback {
     }
 }
 
+enum Input {
+    Single(PlaybackSource),
+    Mixer(StereoMixer),
+}
+enum Engine {
+    Single(Renderer),
+    Mixer(StereoMixer, Arc<Shared>),
+}
+
+impl Engine {
+    fn render<T: Copy>(&mut self, output: &mut [T], convert: impl Fn(f32) -> T) {
+        match self {
+            // The legacy single-source path also receives the conservative sample ceiling.
+            Self::Single(renderer) => renderer.render(output, |s| {
+                convert(s.clamp(-crate::mixer::MASTER_CEILING, crate::mixer::MASTER_CEILING))
+            }),
+            Self::Mixer(mixer, shared) => {
+                let count = (output.len() / 2) as u64;
+                if shared.enabled.load(Ordering::Acquire) && !shared.failed.load(Ordering::Acquire)
+                {
+                    mixer.render_converted(output, convert);
+                } else {
+                    output.fill(convert(0.0));
+                }
+                shared.clock.store(
+                    shared.clock.load(Ordering::Relaxed).saturating_add(count),
+                    Ordering::Relaxed,
+                );
+                shared.source_frames.store(
+                    mixer.positions().into_iter().max().unwrap_or(0),
+                    Ordering::Relaxed,
+                );
+                shared.finished.store(mixer.finished(), Ordering::Release);
+                shared.max_callback_frames.store(
+                    shared
+                        .max_callback_frames
+                        .load(Ordering::Relaxed)
+                        .max(count),
+                    Ordering::Relaxed,
+                );
+            }
+        }
+    }
+}
+
 fn build<T: cpal::SizedSample + cpal::FromSample<f32> + Copy>(
     device: &cpal::Device,
     config: &cpal::StreamConfig,
-    mut renderer: Renderer,
+    mut renderer: Engine,
     shared: Arc<Shared>,
 ) -> Result<cpal::Stream, cpal::BuildStreamError> {
     device.build_output_stream(
@@ -259,6 +335,33 @@ impl OutputDiscovery for CpalDiscovery {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn adapter_gates_mixer_and_caps_legacy_output() {
+        use crate::playback::PreparedBuffer;
+        let source =
+            || PlaybackSource::Buffer(PreparedBuffer::new(vec![1.0; 4000], 48000, 2).unwrap());
+        let shared = Arc::new(Shared::default());
+        let (mixer, _) = StereoMixer::new(source(), source(), 48000).unwrap();
+        let mut engine = Engine::Mixer(mixer, shared.clone());
+        let mut samples = [0_u8; 64];
+        engine.render(&mut samples, <u8 as cpal::FromSample<f32>>::from_sample_);
+        assert_eq!(samples, [128; 64]);
+        assert_eq!(shared.source_frames.load(Ordering::Relaxed), 0);
+        shared.enabled.store(true, Ordering::Release);
+        engine.render(&mut samples, <u8 as cpal::FromSample<f32>>::from_sample_);
+        assert_eq!(shared.source_frames.load(Ordering::Relaxed), 32);
+        shared.failed.store(true, Ordering::Release);
+        engine.render(&mut samples, <u8 as cpal::FromSample<f32>>::from_sample_);
+        assert_eq!(samples, [128; 64]);
+        assert_eq!(shared.source_frames.load(Ordering::Relaxed), 32);
+        let renderer = Renderer::new(source(), 48000, 2, shared.clone()).unwrap();
+        shared.failed.store(false, Ordering::Release);
+        let mut engine = Engine::Single(renderer);
+        let mut samples = [0.0; 64];
+        engine.render(&mut samples, |s| s);
+        assert_eq!(samples, [crate::mixer::MASTER_CEILING; 64]);
+    }
 
     #[test]
     fn preserves_correlated_ranges_and_frame_units() {

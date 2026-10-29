@@ -86,6 +86,38 @@ pub(crate) struct Renderer {
 }
 
 impl Renderer {
+    pub(crate) fn position(&self) -> u64 {
+        self.position
+    }
+    pub(crate) fn length(&self) -> u64 {
+        match &self.source {
+            PlaybackSource::Tone { frames, .. } => *frames,
+            PlaybackSource::Buffer(b) => (b.samples.len() / self.channels) as u64,
+        }
+    }
+    pub(crate) fn next_frame(&mut self, frame: &mut [f32]) {
+        frame.fill(0.0);
+        if self.position >= self.length() {
+            return;
+        }
+        match &self.source {
+            PlaybackSource::Tone {
+                frequency_hz,
+                amplitude,
+                ..
+            } => {
+                frame.fill(self.phase.sin() as f32 * amplitude);
+                self.phase = (self.phase
+                    + std::f64::consts::TAU * frequency_hz / f64::from(self.rate))
+                    % std::f64::consts::TAU;
+            }
+            PlaybackSource::Buffer(buffer) => {
+                let start = self.position as usize * self.channels;
+                frame.copy_from_slice(&buffer.samples[start..start + self.channels]);
+            }
+        }
+        self.position += 1;
+    }
     pub fn new(
         source: PlaybackSource,
         rate: u32,

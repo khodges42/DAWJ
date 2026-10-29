@@ -2,8 +2,8 @@
 
 A GPL-3.0-or-later prototype for a two-deck live composition instrument. The
 current foundation implements deterministic musical timing, an offline impulse
-renderer, output discovery and minimal M1.2 realtime playback. Cue routing,
-mixing, effects and GUI remain future work.
+renderer, output discovery, realtime playback and an M1.3 stereo two-deck mixer.
+Cue routing, advanced effects and GUI remain future work.
 
 Install Rust with rustup; the repository pins Rust 1.85.1 with rustfmt/clippy.
 The timing and offline renderer have no external crate dependencies. On Windows 11 x64, install
@@ -26,6 +26,14 @@ cargo run -p audio-backend --example playback --locked --offline -- --help
 ```
 
 See [M1.2 verification and constraints](docs/M1_2.md) for settings and clock semantics.
+
+The [M1.3 mixer demo](docs/M1_3.md) adds smoothed deck gains, configurable
+crossfading, conservative master limiting and stereo peak meters. It produces
+no sound without explicit playback opt-in:
+
+```sh
+cargo run -p audio-backend --example mixer --locked --offline -- --play
+```
 
 The last command writes about 7.43 seconds of mono PCM16 impulses and prints the
 intended tick and actual frame of every event. Optional arguments are output
