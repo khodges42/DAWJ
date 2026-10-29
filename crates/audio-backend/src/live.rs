@@ -86,7 +86,8 @@ struct Queue {
     cells: [Cell; CAPACITY],
     read: AtomicUsize,
     write: AtomicUsize,
-    closed: AtomicBool,
+    closed: Arc<AtomicBool>,
+    snapshot: crate::performance_state::Publication,
 }
 pub struct LiveControl {
     queue: Arc<Queue>,
@@ -134,6 +135,17 @@ fn publish(queue: &Queue, row: usize, id: u64, outcome: Outcome) {
 }
 impl LiveControl {
     /// Independently observed diagnostic fields. Not a transactional transport acknowledgement.
+    pub fn performance_state(&self) -> Option<crate::performance_state::PerformanceState> {
+        let mut state = self.queue.snapshot.read()?;
+        if self.is_closed() {
+            state.transport = crate::performance_state::TransportState::Closed;
+        }
+        Some(state)
+    }
+    /// Terminal lifecycle flag. This may become true after the last audio snapshot.
+    pub fn is_closed(&self) -> bool {
+        self.queue.closed.load(Ordering::Acquire)
+    }
     pub fn slot(&self, deck: usize, slot: usize) -> Result<SlotStatus, &'static str> {
         let meter = self
             .queue
@@ -266,12 +278,23 @@ pub struct LiveEngine {
     dropped_events: u64,
     event_count: usize,
     failed: bool,
+    transitions: [[Transition; SLOTS]; 2],
 }
 impl LiveEngine {
     pub fn new(
         scheduler: MusicalScheduler,
         bank: Vec<SampleVoice>,
     ) -> Result<(Self, LiveControl, MixerControl), &'static str> {
+        if scheduler.frame().0 != 0
+            || (0..2).any(|d| {
+                (0..SLOTS).any(|s| {
+                    scheduler.state(d, s) != Some(State::Stopped)
+                        || scheduler.rule_status(d, s).is_some()
+                })
+            })
+        {
+            return Err("live engine requires a pristine scheduler");
+        }
         if bank.is_empty() || bank.len() > 64 || bank.iter().any(|v| v.rate() != scheduler.rate()) {
             return Err("invalid resident bank or rate");
         }
@@ -311,13 +334,14 @@ impl LiveEngine {
             }),
             read: AtomicUsize::new(0),
             write: AtomicUsize::new(0),
-            closed: AtomicBool::new(false),
+            closed: Arc::new(AtomicBool::new(false)),
+            snapshot: crate::performance_state::Publication::new(),
         });
         let control = LiveControl {
             queue: queue.clone(),
             next: 1,
         };
-        Ok((
+        let result = (
             Self {
                 scheduler,
                 bank: bank.into_boxed_slice(),
@@ -330,10 +354,16 @@ impl LiveEngine {
                 dropped_events: 0,
                 event_count: 0,
                 failed: false,
+                transitions: [[Transition::default(); SLOTS]; 2],
             },
             control,
             controls,
-        ))
+        );
+        result.0.publish_state();
+        Ok(result)
+    }
+    pub(crate) fn close_handle(&self) -> Arc<AtomicBool> {
+        self.queue.closed.clone()
     }
     pub fn scheduler(&self) -> &MusicalScheduler {
         &self.scheduler
@@ -483,10 +513,13 @@ impl LiveEngine {
                 events,
                 event_count,
                 dropped_events,
+                transitions,
                 ..
             } = self;
+            let scheduler_rate = scheduler.rate();
             if scheduler
                 .due(|event| {
+                    transitions[event.deck][event.slot].begin((scheduler_rate / 500).max(1));
                     if matches!(event.action, Applied::Start { .. }) {
                         dsp[event.deck][event.slot].start(active[event.deck][event.slot].is_some());
                     }
@@ -518,12 +551,15 @@ impl LiveEngine {
                     if let Some(voice) = &mut self.active[deck][slot] {
                         let asset = &self.bank[voice.bank];
                         let sample = self.dsp[deck][slot].process(asset.at_elapsed(voice.elapsed));
+                        let sample = self.transitions[deck][slot].process(sample);
                         for ch in 0..2 {
                             source[ch] += sample[ch] / SLOTS as f32;
                         }
                         voice.elapsed = voice.elapsed.saturating_add(1);
                         if voice.elapsed >= asset.length() {
                             self.active[deck][slot] = None;
+                            self.transitions[deck][slot]
+                                .begin((self.scheduler.rate() / 500).max(1));
                             if self.scheduler.complete(deck, slot).is_err() {
                                 self.failed = true;
                             }
@@ -537,6 +573,14 @@ impl LiveEngine {
                                     );
                                 }
                             }
+                        }
+                    } else if self.transitions[deck][slot].remaining > 0 {
+                        let sample = self.transitions[deck][slot].process([0.0; 2]);
+                        if self.transitions[deck][slot].remaining == 0 {
+                            self.transitions[deck][slot].last = [0.0; 2];
+                        }
+                        for ch in 0..2 {
+                            source[ch] += sample[ch] / SLOTS as f32;
                         }
                     }
                 }
@@ -555,6 +599,7 @@ impl LiveEngine {
                 break;
             }
         }
+        self.publish_state();
         self.mixer.publish_peaks();
         for deck in 0..2 {
             for slot in 0..SLOTS {
@@ -603,10 +648,116 @@ impl LiveEngine {
             self.queue.closed.store(true, Ordering::Release);
         }
     }
+    fn publish_state(&self) {
+        use crate::performance_state::*;
+        let decks = std::array::from_fn(|d| DeckState {
+            phase: self.scheduler.phase(d).unwrap_or(timebase::BeatTicks(0)),
+            slots: std::array::from_fn(|s| {
+                let state = self.scheduler.state(d, s).unwrap_or(State::Stopped);
+                let pending = match state {
+                    State::QueuedStart(p) => Some((PendingKind::Launch, p.part.id, p.at)),
+                    State::QueuedStop { active, at } => Some((PendingKind::Stop, active.id, at)),
+                    State::QueuedReplace { active, pending } => Some((
+                        if active == pending.part {
+                            PendingKind::Retrigger
+                        } else {
+                            PendingKind::Replace
+                        },
+                        pending.part.id,
+                        pending.at,
+                    )),
+                    _ => None,
+                }
+                .map(|(kind, part, target)| PendingAction {
+                    kind,
+                    part,
+                    target,
+                    command_id: self.pending[d][s].map(|r| r.id),
+                });
+                PartState {
+                    lifecycle: match state {
+                        State::Stopped => SlotState::Stopped,
+                        State::Playing(_) => SlotState::Playing,
+                        State::QueuedStart(_) => SlotState::QueuedStart,
+                        State::QueuedStop { .. } => SlotState::QueuedStop,
+                        State::QueuedReplace { .. } => SlotState::QueuedReplace,
+                    },
+                    active: state.active().map(|p| p.id),
+                    pending,
+                    position: self.active[d][s].map(|a| a.elapsed),
+                    phase: self.scheduler.part_phase(d, s),
+                    parameters: self.dsp[d][s].parameters,
+                    release_frames: self.transitions[d][s].remaining,
+                }
+            }),
+        });
+        self.queue.snapshot.publish(PerformanceState {
+            transport: if self.failed {
+                TransportState::Failed
+            } else if self.frame().0 == 0 {
+                TransportState::Ready
+            } else {
+                TransportState::Rendering
+            },
+            generation: 0,
+            frame: self.frame(),
+            beat: self.scheduler.beat().unwrap_or(timebase::BeatTicks(0)),
+            sample_rate: self.rate(),
+            failed: self.failed,
+            decks,
+        });
+    }
 }
 impl Drop for LiveEngine {
     fn drop(&mut self) {
         self.queue.closed.store(true, Ordering::Release);
+    }
+}
+
+#[cfg(test)]
+mod lifecycle_tests {
+    use super::*;
+    #[test]
+    fn terminal_admission_flag_closes_unconsumed_tickets() {
+        // Exercise the same monotonic flag shared with the CPAL owner/error callback.
+        let queue = Arc::new(Queue {
+            slots: std::array::from_fn(|_| {
+                std::array::from_fn(|_| SlotMeter {
+                    state: AtomicU64::new(0),
+                    part: AtomicU64::new(0),
+                    position: AtomicU64::new(0),
+                    peak: AtomicU64::new(0),
+                    processed: AtomicU64::new(0),
+                    parameters: AtomicU64::new(0),
+                    rule: AtomicU64::new(0),
+                    rule_fired: AtomicU64::new(0),
+                    rule_skipped: AtomicU64::new(0),
+                })
+            }),
+            cells: std::array::from_fn(|_| Cell {
+                data: std::array::from_fn(|_| AtomicU64::new(0)),
+                stamp: AtomicU64::new(0),
+            }),
+            read: AtomicUsize::new(0),
+            write: AtomicUsize::new(0),
+            closed: Arc::new(AtomicBool::new(false)),
+            snapshot: crate::performance_state::Publication::new(),
+        });
+        let mut control = LiveControl {
+            queue: queue.clone(),
+            next: 1,
+        };
+        let ticket = control
+            .submit(0, 0, Request::Stop, Quantize::Immediate)
+            .unwrap();
+        crate::cpal_backend::fail_stream(&crate::playback::Shared::default(), Some(&queue.closed));
+        assert!(control.is_closed());
+        assert_eq!(ticket.outcome(), Outcome::Closed);
+        assert!(
+            control
+                .submit(0, 0, Request::Stop, Quantize::Immediate)
+                .is_err()
+        );
     }
 }
 
@@ -672,4 +823,34 @@ fn decode_rule(bits: u64) -> (u8, TriggerRule) {
         },
     };
     (bits as u8, rule)
+}
+
+#[derive(Clone, Copy, Default)]
+struct Transition {
+    last: [f32; 2],
+    held: [f32; 2],
+    remaining: u32,
+    total: u32,
+}
+impl Transition {
+    fn begin(&mut self, frames: u32) {
+        self.remaining = 0;
+        if self.last != [0.0; 2] {
+            self.held = self.last;
+            self.total = frames;
+            self.remaining = frames;
+        }
+    }
+    fn process(&mut self, input: [f32; 2]) -> [f32; 2] {
+        let mut output = input;
+        if self.remaining > 0 {
+            let old = self.remaining as f32 / self.total as f32;
+            for ch in 0..2 {
+                output[ch] = self.held[ch] * old + input[ch] * (1.0 - old);
+            }
+            self.remaining -= 1;
+        }
+        self.last = output;
+        output
+    }
 }

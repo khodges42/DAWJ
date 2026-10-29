@@ -49,6 +49,7 @@ pub struct CpalPlayback {
     device_name: String,
     config: PlaybackConfig,
     routing: Option<OutputRouting>,
+    closed: Option<Arc<std::sync::atomic::AtomicBool>>,
 }
 
 impl CpalPlayback {
@@ -148,6 +149,10 @@ impl CpalPlayback {
             Input::Single(_) => None,
             Input::Mixer(_, routing) | Input::Live(_, routing) => Some(*routing),
         };
+        let closed = match &input {
+            Input::Live(e, _) => Some(e.close_handle()),
+            _ => None,
+        };
         let renderer = match input {
             Input::Single(source) => Engine::Single(
                 Renderer::new(
@@ -184,6 +189,7 @@ impl CpalPlayback {
             device_name,
             config,
             routing,
+            closed,
         })
     }
 
@@ -214,6 +220,9 @@ impl CpalPlayback {
         if let Err(e) = self.stream.play() {
             self.monitor.0.enabled.store(false, Ordering::Release);
             self.monitor.0.failed.store(true, Ordering::Release);
+            if let Some(closed) = &self.closed {
+                closed.store(true, Ordering::Release);
+            }
             return Err(error("start output stream", e));
         }
         self.started = true;
@@ -221,6 +230,9 @@ impl CpalPlayback {
     }
 
     pub fn stop(&mut self) -> Result<(), InspectionError> {
+        if let Some(closed) = &self.closed {
+            closed.store(true, Ordering::Release);
+        }
         self.monitor.0.enabled.store(false, Ordering::Release);
         if self.stopped {
             return Ok(());
@@ -234,6 +246,9 @@ impl CpalPlayback {
 
 impl Drop for CpalPlayback {
     fn drop(&mut self) {
+        if let Some(closed) = &self.closed {
+            closed.store(true, Ordering::Release);
+        }
         self.monitor.0.enabled.store(false, Ordering::Release);
     }
 }
@@ -318,6 +333,10 @@ fn build<T: cpal::SizedSample + cpal::FromSample<f32> + Copy>(
     shared: Arc<Shared>,
 ) -> Result<cpal::Stream, cpal::BuildStreamError> {
     let timing = shared.clone();
+    let closed = match &renderer {
+        Engine::Live(e, _, _) => Some(e.close_handle()),
+        _ => None,
+    };
     let channels = usize::from(config.channels);
     let rate = config.sample_rate.0;
     device.build_output_stream(
@@ -332,12 +351,17 @@ fn build<T: cpal::SizedSample + cpal::FromSample<f32> + Copy>(
                 rate,
             );
         },
-        move |_| {
-            shared.failed.store(true, Ordering::Release);
-            shared.enabled.store(false, Ordering::Release);
-        },
+        move |_| fail_stream(&shared, closed.as_deref()),
         None,
     )
+}
+
+pub(crate) fn fail_stream(shared: &Shared, closed: Option<&std::sync::atomic::AtomicBool>) {
+    if let Some(closed) = closed {
+        closed.store(true, Ordering::Release);
+    }
+    shared.failed.store(true, Ordering::Release);
+    shared.enabled.store(false, Ordering::Release);
 }
 
 // Single callback writer; diagnostic publication never uses a retry loop.

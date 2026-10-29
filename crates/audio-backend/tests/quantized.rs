@@ -57,9 +57,265 @@ fn voice(id: u64, rate: u32, oneshot: bool) -> SampleVoice {
     )
     .unwrap()
 }
+
+fn hardening_dc_voice(id: u64, looping: bool, amplitude: f32) -> SampleVoice {
+    let mut wav = Vec::new();
+    let size = 4096u32 * 4;
+    wav.extend(b"RIFF");
+    wav.extend((36 + size).to_le_bytes());
+    wav.extend(b"WAVEfmt ");
+    wav.extend(16u32.to_le_bytes());
+    wav.extend(3u16.to_le_bytes());
+    wav.extend(1u16.to_le_bytes());
+    wav.extend(48000u32.to_le_bytes());
+    wav.extend(192000u32.to_le_bytes());
+    wav.extend(4u16.to_le_bytes());
+    wav.extend(32u16.to_le_bytes());
+    wav.extend(b"data");
+    wav.extend(size.to_le_bytes());
+    for _ in 0..4096 {
+        wav.extend(amplitude.to_le_bytes());
+    }
+    let part = Part {
+        id: PartId(id),
+        playback: PlaybackConfiguration {
+            asset: AssetId(id),
+            mode: if looping {
+                PlaybackMode::Loop {
+                    start: 0,
+                    end: 4096,
+                }
+            } else {
+                PlaybackMode::OneShot
+            },
+        },
+        timing: TimingPolicy {
+            nominal_length: BeatTicks(3840),
+            quantum: BeatTicks(960),
+        },
+    };
+    SampleVoice::prepare(
+        part,
+        LoadedSample::decode(AssetId(id), &wav, 48000).unwrap(),
+        48000,
+        BoundaryPolicy::Fade { frames: 64 },
+    )
+    .unwrap()
+}
+
+#[test]
+fn hardening_filtered_eof_and_interruptions_are_bounded_and_sample_timed() {
+    use audio_backend::part_dsp::PartParameters;
+    for looping in [false, true] {
+        let run = |block| {
+            let map = TempoMap::new(
+                48000,
+                &[TempoChange {
+                    at: BeatTicks(0),
+                    bpm: 120.0,
+                }],
+            )
+            .unwrap();
+            let scheduler =
+                MusicalScheduler::new(map, [BeatTicks(0); 2], [BeatTicks(30720); 2]).unwrap();
+            let (mut e, mut c, m) = LiveEngine::new(
+                scheduler,
+                vec![
+                    hardening_dc_voice(1, looping, 1.0),
+                    hardening_dc_voice(2, true, -1.0),
+                ],
+            )
+            .unwrap();
+            m.set_cue(CueSelection::A);
+            c.submit(
+                0,
+                0,
+                Request::Parameters(PartParameters {
+                    cutoff_hz: Some(20.0),
+                    ..Default::default()
+                }),
+                Quantize::Immediate,
+            )
+            .unwrap();
+            c.submit(0, 0, Request::Launch(0), Quantize::Immediate)
+                .unwrap();
+            let (mut audio, _) = render(&mut e, if looping { 2000 } else { 4096 }, block);
+            if looping {
+                for command in [Request::Retrigger, Request::Replace(1), Request::Stop] {
+                    let frame = e.frame();
+                    c.submit(0, 0, command, Quantize::Immediate).unwrap();
+                    let (next, events) = render(&mut e, 200, block);
+                    assert_eq!(events[0].frame, frame);
+                    audio.extend(next);
+                }
+            } else {
+                assert!(e.source_position(0, 0).is_none());
+            }
+            let processed = c.slot(0, 0).unwrap().processed_frames;
+            let (tail, _) = render(&mut e, 200, block);
+            audio.extend(tail);
+            assert_eq!(c.slot(0, 0).unwrap().processed_frames, processed); // no stopped-source/filter work
+            assert!(audio[audio.len() - 100 * 4..].iter().all(|v| *v == 0.0));
+            for pair in audio.chunks_exact(4).collect::<Vec<_>>().windows(2) {
+                for ch in [0, 2] {
+                    assert!((pair[1][ch] - pair[0][ch]).abs() < 0.001);
+                }
+            }
+            audio
+        };
+        assert_eq!(run(1), run(127));
+    }
+}
 fn engine(rate: u32) -> (LiveEngine, LiveControl) {
     engine_phrase(rate, [BeatTicks(7680), BeatTicks(3840)])
 }
+
+#[test]
+fn hardening_rejects_preconfigured_active_pending_and_rule_schedulers() {
+    use audio_backend::live::TriggerRule;
+    use event_engine::live::Action;
+    for mode in 0..3 {
+        let bank = voice(1, 48000, false);
+        let mut scheduler = MusicalScheduler::new(
+            TempoMap::new(
+                48000,
+                &[TempoChange {
+                    at: BeatTicks(0),
+                    bpm: 120.0,
+                }],
+            )
+            .unwrap(),
+            [BeatTicks(0); 2],
+            [BeatTicks(30720); 2],
+        )
+        .unwrap();
+        if mode == 2 {
+            scheduler
+                .install_rule(
+                    0,
+                    0,
+                    bank.part(),
+                    TriggerRule::Once {
+                        boundary: Quantize::Beat,
+                    },
+                )
+                .unwrap();
+        } else {
+            scheduler
+                .command(0, 0, Action::Launch(bank.part()), Quantize::Immediate)
+                .unwrap();
+            if mode == 1 {
+                scheduler.due(|_| {}).unwrap();
+            }
+        }
+        assert!(LiveEngine::new(scheduler, vec![bank]).is_err());
+    }
+}
+
+#[test]
+fn hardening_snapshot_pending_identity_cancel_retrigger_and_muted_playback() {
+    use audio_backend::{part_dsp::PartParameters, performance_state::PendingKind};
+    let (mut e, mut c) = engine(48000);
+    let initial = c.performance_state().unwrap();
+    assert_eq!(initial.frame.0, 0);
+    assert!(
+        initial
+            .decks
+            .iter()
+            .all(|d| d.slots.iter().all(|s| s.active.is_none()))
+    );
+    c.submit(
+        0,
+        0,
+        Request::Parameters(PartParameters {
+            muted: true,
+            ..Default::default()
+        }),
+        Quantize::Immediate,
+    )
+    .unwrap();
+    c.submit(0, 0, Request::Launch(0), Quantize::Immediate)
+        .unwrap();
+    let (audio, _) = render(&mut e, 100, 31);
+    assert!(audio.iter().all(|s| *s == 0.0));
+    let s = c.performance_state().unwrap();
+    assert_eq!(s.decks[0].slots[0].active, Some(PartId(1)));
+    assert_eq!(s.decks[0].slots[0].position, Some(100));
+    let replace = c.submit(0, 0, Request::Replace(1), Quantize::Bar).unwrap();
+    render(&mut e, 1, 1);
+    let s = c.performance_state().unwrap();
+    let p = s.decks[0].slots[0].pending.unwrap();
+    assert_eq!(p.kind, PendingKind::Replace);
+    assert_eq!(p.part, PartId(2));
+    assert_eq!(p.target, BeatTicks(3840));
+    assert_eq!(p.command_id, Some(replace.id()));
+    assert_eq!(s.decks[0].slots[0].active, Some(PartId(1)));
+    c.submit(0, 0, Request::Cancel(replace.id()), Quantize::Immediate)
+        .unwrap();
+    render(&mut e, 1, 1);
+    assert!(
+        c.performance_state().unwrap().decks[0].slots[0]
+            .pending
+            .is_none()
+    );
+    c.submit(0, 0, Request::Retrigger, Quantize::Beat).unwrap();
+    render(&mut e, 1, 1);
+    assert_eq!(
+        c.performance_state().unwrap().decks[0].slots[0]
+            .pending
+            .unwrap()
+            .kind,
+        PendingKind::Retrigger
+    );
+    render(&mut e, 24000 - 103, 127);
+    render(&mut e, 1, 1);
+    assert_eq!(
+        c.performance_state().unwrap().decks[0].slots[0].position,
+        Some(1)
+    );
+    c.submit(0, 0, Request::Stop, Quantize::Immediate).unwrap();
+    render(&mut e, 1, 1);
+    let s = c.performance_state().unwrap().decks[0].slots[0];
+    assert!(s.active.is_none() && s.position.is_none());
+}
+
+#[test]
+fn hardening_concurrent_snapshots_have_one_clock_and_sixteen_matching_cursors() {
+    let (mut e, mut c) = engine(48000);
+    for d in 0..2 {
+        for s in 0..8 {
+            c.submit(d, s, Request::Launch(0), Quantize::Immediate)
+                .unwrap();
+        }
+    }
+    let done = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let flag = done.clone();
+    let t = std::thread::spawn(move || {
+        let mut output = [0.0; 128];
+        for _ in 0..5000 {
+            e.render(&mut output, OutputRouting::stereo_master_only());
+        }
+        flag.store(true, std::sync::atomic::Ordering::Release);
+        e
+    });
+    let mut observed = 0;
+    while !done.load(std::sync::atomic::Ordering::Acquire) {
+        if let Some(s) = c.performance_state() {
+            if s.frame.0 > 0 {
+                for deck in s.decks {
+                    for slot in deck.slots {
+                        assert_eq!(slot.position, Some(s.frame.0 as u64));
+                        assert_eq!(slot.active, Some(PartId(1)));
+                    }
+                }
+                observed += 1;
+            }
+        }
+    }
+    t.join().unwrap();
+    assert!(observed > 0);
+}
+
 fn engine_phrase(rate: u32, phrases: [BeatTicks; 2]) -> (LiveEngine, LiveControl) {
     let map = TempoMap::new(
         rate,
@@ -404,7 +660,10 @@ fn half_open_callback_boundary_and_sample_output() {
     c.submit(0, 0, Request::Stop, Quantize::Immediate).unwrap();
     let (audio, events) = render(&mut e, 1, 1);
     assert_eq!(events[0].frame.0, 4001);
-    assert!(audio.iter().all(|s| *s == 0.0));
+    assert!(audio[0] > 0.0); // bounded held-output release, not continued source playback
+    assert_eq!(e.source_position(0, 0), None);
+    let (audio, _) = render(&mut e, 32, 1);
+    assert!(audio[16 * 4..].iter().all(|s| *s == 0.0));
 }
 
 #[test]
@@ -508,7 +767,8 @@ fn sixteen_slots_sum_without_normalization_jumps_and_stop_independently() {
             .unwrap();
     }
     let (silence, _) = render(&mut all, 1000, 8192);
-    assert!(silence.iter().all(|s| *s == 0.0));
+    assert!(silence[96 * 4..].iter().all(|s| *s == 0.0));
+    assert!((0..SLOTS).all(|slot| all.source_position(1, slot).is_none()));
 }
 
 #[test]

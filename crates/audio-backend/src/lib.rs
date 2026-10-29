@@ -59,3 +59,4 @@ pub trait OutputDiscovery {
     /// Empty success means no outputs. Enumeration failure is a separate result.
     fn output_devices(&self) -> Result<Vec<OutputDevice>, InspectionError>;
 }
+pub mod performance_state;
