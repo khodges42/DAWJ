@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Continuous A-to-B performance; 36 beats plus the harness's 100 ms fade-out.
+deck a
+quant immediate
+cross 0
+launch 1
+launch 3
+wait 4
+quant bar
+launch 2
+launch 4
+launch 5
+wait 4
+gain 4 0.7
+cutoff 5 900
+fill bar
+wait 4
+status
+deck b
+quant beat
+launch 1
+launch 3
+launch 4
+launch 6
+cue b
+every 2 bars
+wait 4
+status
+cross 0.25
+wait 4
+cross 0.5
+wait 4
+cross 0.75
+wait 4
+status
+cross 1
+wait 4
+cue off
+deck a
+quant immediate
+stop 1
+stop 2
+stop 3
+stop 4
+stop 5
+deck b
+phrasefill 8
+wait 4
+rule cancel
+status
+quit

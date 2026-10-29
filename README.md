@@ -1,5 +1,15 @@
 # DAWJ
 
+[M2.7 playable demo and walkthrough](docs/M2_7.md) combine two eight-part procedural
+compositions with a temporary performance CLI. Render the reference transition
+without starting audio:
+
+```sh
+cargo run -p audio-backend --example performance --locked --offline -- --render target/performance.wav --script docs/examples/m2-performance.txt
+```
+
+Use `--play` explicitly for live input or scripted playback; `--help` lists controls.
+
 [M2.6 periodic triggers and fills](docs/M2_6.md) add bounded declarative once,
 every-N and phrase-bar rules with explicit manual-command precedence and phase.
 
