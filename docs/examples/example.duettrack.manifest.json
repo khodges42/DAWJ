@@ -1,0 +1,128 @@
+{
+    "schema_version": "0.1.0",
+    "engine_min_version": "0.1.0",
+    "feature_flags": [
+      "sample",
+      "built_in_synth",
+      "midi_pattern"
+    ],
+    "track_id": "4cbfb3c4-ec41-5a5c-9136-d090fc23c2d9",
+    "title": "Iron Rain (Illustrative Fixture)",
+    "artist": "Example Author",
+    "nominal_bpm": 140,
+    "recommended_bpm_range": {
+      "min": 132,
+      "max": 148
+    },
+    "time_signature": "4/4",
+    "phrase_bars": 8,
+    "harmonic": {
+      "camelot": "8A",
+      "written_key": "A minor",
+      "notes": "Example only. Verify actual chord progression and stems."
+    },
+    "assets": [
+      {
+        "id": "kick-asset",
+        "path": "assets/audio/kick.wav",
+        "sha256": "4cb11485ff1f4a6ae6b24771f344844f2cd5d078fe911ce1f0b6f16849bb7b04",
+        "format": "wav",
+        "kind": "audio",
+        "license": {
+          "redistribution": "permitted",
+          "attribution": "Generated illustrative fixture, no source files included"
+        }
+      },
+      {
+        "id": "snare-asset",
+        "path": "assets/audio/snare.wav",
+        "sha256": "9363514d2813942436176dfd3a5c1bc3b3227881718ebabcfefc5d94a13d918c",
+        "format": "wav",
+        "kind": "audio",
+        "license": {
+          "redistribution": "permitted",
+          "attribution": "Generated illustrative fixture, no source files included"
+        }
+      },
+      {
+        "id": "hats-asset",
+        "path": "assets/audio/hats.wav",
+        "sha256": "04fec7938ac3e4b71f55feea517f49d5431e790008dcaff5346e9c38418818a4",
+        "format": "wav",
+        "kind": "audio",
+        "license": {
+          "redistribution": "permitted",
+          "attribution": "Generated illustrative fixture, no source files included"
+        }
+      },
+      {
+        "id": "bass-asset",
+        "path": "assets/midi/bass.mid",
+        "sha256": "d7f2fb3d5f5e2406cccdb8fab335a21e7415885718d09dd5140581d752c57a92",
+        "format": "mid",
+        "kind": "midi",
+        "license": {
+          "redistribution": "permitted",
+          "attribution": "Generated illustrative fixture, no source files included"
+        }
+      },
+      {
+        "id": "chords-asset",
+        "path": "assets/audio/chords.wav",
+        "sha256": "25929a7da2e675cf502648751dcaf156a03ab3a0308d012d1f71eb56060280c2",
+        "format": "wav",
+        "kind": "audio",
+        "license": {
+          "redistribution": "permitted",
+          "attribution": "Generated illustrative fixture, no source files included"
+        }
+      },
+      {
+        "id": "lead-asset",
+        "path": "assets/audio/lead.wav",
+        "sha256": "710621b262eeb751e4081e8b090faa71b23f423438831b55827029e3d8894b1d",
+        "format": "wav",
+        "kind": "audio",
+        "license": {
+          "redistribution": "permitted",
+          "attribution": "Generated illustrative fixture, no source files included"
+        }
+      },
+      {
+        "id": "texture-asset",
+        "path": "assets/audio/texture.wav",
+        "sha256": "3e5906e0feff5ece1e857c292e2eae234d1450e928000111a5cf4177bfa980b3",
+        "format": "wav",
+        "kind": "audio",
+        "license": {
+          "redistribution": "permitted",
+          "attribution": "Generated illustrative fixture, no source files included"
+        }
+      },
+      {
+        "id": "fill-asset",
+        "path": "assets/audio/fill.wav",
+        "sha256": "66d144c00c2873ba78889f89b648cf86c0d625fa3b1301bbdfad580263cc46ac",
+        "format": "wav",
+        "kind": "audio",
+        "license": {
+          "redistribution": "permitted",
+          "attribution": "Generated illustrative fixture, no source files included"
+        }
+      }
+    ],
+    "patches": [
+      {
+        "id": "subbass-v1",
+        "engine": "subtractive_mono_v1",
+        "schema_version": "1.0.0",
+        "parameters": {
+          "osc1_wave": "saw",
+          "osc2_wave": "square",
+          "detune_cents": -4,
+          "filter_cutoff_hz": 300,
+          "filter_resonance": 0.3,
+          "attack_ms": 2,
+          "decay_ms": 150,
+          "sustain": 0.65,
+          "release_ms": 100

@@ -1,0 +1,18 @@
+DAWJ prototype
+Original implementation: Copyright (C) 2026 DAWJ contributors
+SPDX-License-Identifier: GPL-3.0-or-later
+
+Original application source is licensed under the GNU General Public License,
+version 3 or (at your option) any later version. See LICENSE for full terms.
+This software comes WITHOUT ANY WARRANTY, including MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU GPL for details.
+
+No third-party crates, samples, fonts, or DSP libraries are bundled in M0.
+Rust's standard library/toolchain has its own upstream licenses; it is not
+relicensed by this notice. Release distributors must preserve applicable notices.
+
+The user-supplied design documents, schema and illustrative manifest are preserved
+as design inputs. No separate redistribution license accompanied that bundle;
+this notice does not assert ownership of, or relicense, those supplied artifacts.
+The manifest references missing media and placeholder checksums; it is not a pack.
+

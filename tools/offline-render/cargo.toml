@@ -1,0 +1,13 @@
+[package]
+name = "offline-render"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+timebase.workspace = true
+event-engine.workspace = true
+
+[lints]
+workspace = true

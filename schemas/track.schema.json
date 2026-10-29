@@ -1,0 +1,128 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.invalid/schemas/duettrack-0.1.json",
+    "title": "DUETTrack Package Manifest Prototype 0.1",
+    "description": "Exploratory MVP manifest. Additional semantic validation required for cross-references and safe DSP.",
+    "type": "object",
+    "properties": {
+      "schema_version": {
+        "type": "string",
+        "const": "0.1.0"
+      },
+      "engine_min_version": {
+        "type": "string",
+        "pattern": "^\\d+\\.\\d+\\.\\d+$"
+      },
+      "feature_flags": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "uniqueItems": true,
+        "maxItems": 32
+      },
+      "track_id": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "artist": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "nominal_bpm": {
+        "type": "number",
+        "minimum": 20,
+        "maximum": 300
+      },
+      "recommended_bpm_range": {
+        "$ref": "#/$defs/tempo_range"
+      },
+      "time_signature": {
+        "type": "string",
+        "enum": [
+          "4/4"
+        ]
+      },
+      "phrase_bars": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 32
+      },
+      "harmonic": {
+        "$ref": "#/$defs/harmonic"
+      },
+      "assets": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/asset"
+        },
+        "maxItems": 256
+      },
+      "patches": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/patch"
+        },
+        "maxItems": 16
+      },
+      "parts": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/part"
+        },
+        "minItems": 1,
+        "maxItems": 8
+      },
+      "macros": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/macro"
+        },
+        "maxItems": 16
+      },
+      "redistribution_notes": {
+        "type": "string",
+        "maxLength": 2000
+      },
+      "extensions": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "schema_version",
+      "engine_min_version",
+      "track_id",
+      "title",
+      "artist",
+      "nominal_bpm",
+      "recommended_bpm_range",
+      "time_signature",
+      "phrase_bars",
+      "harmonic",
+      "assets",
+      "parts"
+    ],
+    "additionalProperties": false,
+    "$defs": {
+      "license": {
+        "type": "object",
+        "properties": {
+          "redistribution": {
+            "type": "string",
+            "enum": [
+              "permitted",
+              "restricted",
+              "unknown"
+            ]
+          },
+          "attribution": {
+            "type": "string",
+            "maxLength": 512
+          },
