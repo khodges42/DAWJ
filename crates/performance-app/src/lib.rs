@@ -14,7 +14,8 @@ use std::{
 use timebase::BeatTicks;
 pub mod controls;
 pub mod midi;
-pub use controls::{InputSource, PartAction};
+pub mod timeline;
+pub use controls::{InputSource, PartAction, RuleAction};
 
 /// Compensate the fixed demo's sample attenuation and two 1/8 mixing stages.
 /// The backend's existing master/cue limiters still cap final samples at 0.125.
@@ -53,6 +54,11 @@ pub enum Intent {
         token: u16,
         mode: Mode,
         pressed: bool,
+    },
+    Rule {
+        deck: usize,
+        slot: usize,
+        action: RuleAction,
     },
 }
 

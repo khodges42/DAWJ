@@ -18,10 +18,33 @@ pub enum PartAction {
     Gain(f32),
     Cutoff(Option<f32>),
 }
+#[derive(Clone, Copy, Debug)]
+pub enum RuleAction {
+    Install(audio_backend::live::TriggerRule),
+    Enable(bool),
+    Cancel,
+}
 
 impl Coordinator {
     pub fn dispatch(&mut self, intent: Intent, source: InputSource) -> Result<(), &'static str> {
         match intent {
+            Intent::Rule { deck, slot, action } => {
+                if deck >= 2 || slot >= SLOTS {
+                    return Err("invalid rule address");
+                }
+                if !self.available() {
+                    return Err("engine unavailable, closed or snapshot stale");
+                }
+                let request = match action {
+                    RuleAction::Install(rule) => Request::Rule {
+                        bank: (deck * SLOTS + slot) as u8,
+                        rule,
+                    },
+                    RuleAction::Enable(on) => Request::EnableRule(on),
+                    RuleAction::Cancel => Request::CancelRule,
+                };
+                return self.submit_request(deck, slot, request, Quantize::Immediate);
+            }
             Intent::Mode(mode) => {
                 self.persistent_mode = mode;
                 self.refresh_mode();
