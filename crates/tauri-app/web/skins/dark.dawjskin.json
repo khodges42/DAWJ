@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "surfaceVersion": 1,
+  "metadata": {
+    "id": "dark",
+    "name": "Dark",
+    "version": "1.0.0",
+    "author": "DAWJ contributors",
+    "license": "GPL-3.0-or-later",
+    "description": "Bundled DAWJ palette."
+  },
+  "mode": "dark",
+  "variables": {
+    "background": "#171A20",
+    "surface": "#242A34",
+    "raised": "#313B49",
+    "primary": "#73C5DF",
+    "secondary": "#E2B67E",
+    "tertiary": "#B7A7ED",
+    "text": "#EDF2F9",
+    "muted": "#B8C2D1",
+    "deckA": "#73C5DF",
+    "deckB": "#E2B67E",
+    "onPrimary": "#141414",
+    "border": "#B8C2D1",
+    "focus": "#EDF2F9",
+    "meterActive": "#73C5DF",
+    "meterWarn": "#E2B67E",
+    "meterClip": "#B7A7ED",
+    "grid": "#B8C2D1"
+  },
+  "css": "",
+  "assets": []
+}

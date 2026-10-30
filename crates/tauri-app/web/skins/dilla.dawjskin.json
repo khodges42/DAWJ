@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "surfaceVersion": 1,
+  "metadata": {
+    "id": "dilla",
+    "name": "Dilla",
+    "version": "1.0.0",
+    "author": "DAWJ contributors",
+    "license": "GPL-3.0-or-later",
+    "description": "Bundled DAWJ palette."
+  },
+  "mode": "light",
+  "variables": {
+    "background": "#B9B6AD",
+    "surface": "#D8D7CC",
+    "raised": "#EEEBE2",
+    "primary": "#315E8F",
+    "secondary": "#B44A4F",
+    "tertiary": "#E1A13E",
+    "text": "#262A2D",
+    "muted": "#62686B",
+    "deckA": "#315E8F",
+    "deckB": "#B44A4F",
+    "onPrimary": "#FFFFFF",
+    "border": "#62686B",
+    "focus": "#262A2D",
+    "meterActive": "#315E8F",
+    "meterWarn": "#B44A4F",
+    "meterClip": "#E1A13E",
+    "grid": "#62686B"
+  },
+  "css": "",
+  "assets": []
+}

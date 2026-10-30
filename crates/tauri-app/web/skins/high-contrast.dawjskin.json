@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "surfaceVersion": 1,
+  "metadata": {
+    "id": "high-contrast",
+    "name": "High contrast",
+    "version": "1.0.0",
+    "author": "DAWJ contributors",
+    "license": "GPL-3.0-or-later",
+    "description": "Bundled DAWJ palette."
+  },
+  "mode": "high-contrast",
+  "variables": {
+    "background": "#000000",
+    "surface": "#141414",
+    "raised": "#242424",
+    "primary": "#00FFFF",
+    "secondary": "#FFFF00",
+    "tertiary": "#FF66FF",
+    "text": "#FFFFFF",
+    "muted": "#FFFFFF",
+    "deckA": "#00FFFF",
+    "deckB": "#FFFF00",
+    "onPrimary": "#000000",
+    "border": "#FFFFFF",
+    "focus": "#FFFFFF",
+    "meterActive": "#00FFFF",
+    "meterWarn": "#FFFF00",
+    "meterClip": "#FF66FF",
+    "grid": "#FFFFFF"
+  },
+  "css": "",
+  "assets": []
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "surfaceVersion": 1,
+  "metadata": {
+    "id": "georgio",
+    "name": "Georgio",
+    "version": "1.0.0",
+    "author": "DAWJ contributors",
+    "license": "GPL-3.0-or-later",
+    "description": "Bundled DAWJ palette."
+  },
+  "mode": "dark",
+  "variables": {
+    "background": "#211C1B",
+    "surface": "#3F3431",
+    "raised": "#584742",
+    "primary": "#6AC8B5",
+    "secondary": "#D98F81",
+    "tertiary": "#A5B7DF",
+    "text": "#F5F0E6",
+    "muted": "#C9BDB5",
+    "deckA": "#6AC8B5",
+    "deckB": "#D98F81",
+    "onPrimary": "#141414",
+    "border": "#C9BDB5",
+    "focus": "#F5F0E6",
+    "meterActive": "#6AC8B5",
+    "meterWarn": "#D98F81",
+    "meterClip": "#A5B7DF",
+    "grid": "#C9BDB5"
+  },
+  "css": "",
+  "assets": []
+}

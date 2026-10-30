@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "surfaceVersion": 1,
+  "metadata": {
+    "id": "light",
+    "name": "Light",
+    "version": "1.0.0",
+    "author": "DAWJ contributors",
+    "license": "GPL-3.0-or-later",
+    "description": "Bundled DAWJ palette."
+  },
+  "mode": "light",
+  "variables": {
+    "background": "#F3F5F8",
+    "surface": "#FFFFFF",
+    "raised": "#E5E9F0",
+    "primary": "#256485",
+    "secondary": "#966225",
+    "tertiary": "#7E428F",
+    "text": "#17212B",
+    "muted": "#465565",
+    "deckA": "#256485",
+    "deckB": "#966225",
+    "onPrimary": "#FFFFFF",
+    "border": "#465565",
+    "focus": "#17212B",
+    "meterActive": "#256485",
+    "meterWarn": "#966225",
+    "meterClip": "#7E428F",
+    "grid": "#465565"
+  },
+  "css": "",
+  "assets": []
+}

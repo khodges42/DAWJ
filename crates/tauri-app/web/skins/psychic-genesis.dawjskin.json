@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "surfaceVersion": 1,
+  "metadata": {
+    "id": "psychic-genesis",
+    "name": "Psychic Genesis",
+    "version": "1.0.0",
+    "author": "DAWJ contributors",
+    "license": "GPL-3.0-or-later",
+    "description": "Bundled DAWJ palette."
+  },
+  "mode": "dark",
+  "variables": {
+    "background": "#17150D",
+    "surface": "#2C281B",
+    "raised": "#433A21",
+    "primary": "#FBE439",
+    "secondary": "#FF883A",
+    "tertiary": "#FF6CB2",
+    "text": "#FFF7DC",
+    "muted": "#C6BEA4",
+    "deckA": "#FBE439",
+    "deckB": "#FF883A",
+    "onPrimary": "#141414",
+    "border": "#C6BEA4",
+    "focus": "#FFF7DC",
+    "meterActive": "#FBE439",
+    "meterWarn": "#FF883A",
+    "meterClip": "#FF6CB2",
+    "grid": "#C6BEA4"
+  },
+  "css": "",
+  "assets": []
+}

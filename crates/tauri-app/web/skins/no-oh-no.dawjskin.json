@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "surfaceVersion": 1,
+  "metadata": {
+    "id": "no-oh-no",
+    "name": "No-oh-no",
+    "version": "1.0.0",
+    "author": "DAWJ contributors",
+    "license": "GPL-3.0-or-later",
+    "description": "Bundled DAWJ palette."
+  },
+  "mode": "light",
+  "variables": {
+    "background": "#C6C9C5",
+    "surface": "#E1E3DD",
+    "raised": "#F0F0E9",
+    "primary": "#D96237",
+    "secondary": "#66757D",
+    "tertiary": "#A9443D",
+    "text": "#252B2D",
+    "muted": "#667071",
+    "deckA": "#D96237",
+    "deckB": "#66757D",
+    "onPrimary": "#141414",
+    "border": "#667071",
+    "focus": "#252B2D",
+    "meterActive": "#D96237",
+    "meterWarn": "#66757D",
+    "meterClip": "#A9443D",
+    "grid": "#667071"
+  },
+  "css": "",
+  "assets": []
+}

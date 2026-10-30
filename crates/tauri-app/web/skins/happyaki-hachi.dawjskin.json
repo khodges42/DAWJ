@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "surfaceVersion": 1,
+  "metadata": {
+    "id": "happyaki-hachi",
+    "name": "Happyaki-Hachi",
+    "version": "1.0.0",
+    "author": "DAWJ contributors",
+    "license": "GPL-3.0-or-later",
+    "description": "Bundled DAWJ palette."
+  },
+  "mode": "dark",
+  "variables": {
+    "background": "#111113",
+    "surface": "#222225",
+    "raised": "#333236",
+    "primary": "#F15E38",
+    "secondary": "#F6A43B",
+    "tertiary": "#F3D04D",
+    "text": "#F7F2E7",
+    "muted": "#AEA9A2",
+    "deckA": "#F15E38",
+    "deckB": "#F3D04D",
+    "onPrimary": "#141414",
+    "border": "#AEA9A2",
+    "focus": "#F7F2E7",
+    "meterActive": "#F15E38",
+    "meterWarn": "#F6A43B",
+    "meterClip": "#F3D04D",
+    "grid": "#AEA9A2"
+  },
+  "css": "",
+  "assets": []
+}
