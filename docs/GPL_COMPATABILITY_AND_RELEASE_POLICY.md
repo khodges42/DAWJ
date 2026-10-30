@@ -134,7 +134,8 @@ covered source, and all other applicable notices/source obligations. No third-pa
 source was modified. Existing separately licensed font obligations remain intact.
 Empty inventory license-file lists require gathering upstream texts before release.
 The experiment's small icon is original generated artwork, retained with the code.
-No new samples, proprietary SDK, web assets or runtime installer were added.
+No third-party samples, proprietary SDK, downloaded web assets or runtime
+installer were added.
 
 WebView2 remains a Windows runtime prerequisite and is not redistributed here.
 Linux WebKitGTK/ALSA/native packaging requires separate validation and licensing

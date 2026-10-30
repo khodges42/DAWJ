@@ -1,5 +1,18 @@
 # DAWJ
 
+[M3.Web1 shared frontend architecture](docs/M3_WEB1_IMPLEMENTATION.md) keeps egui
+as the default and adds a parallel Tauri frontend using the same Rust control layer:
+
+```sh
+cargo run -p dawj --locked
+cargo run -p dawj-tauri --locked
+```
+
+The repository now pins Rust **1.93.0** for both frontends. Tauri on Windows also
+requires Microsoft WebView2. Its current controls cover the two decks, live part
+states, launch/stop and crossfader; egui retains the complete MIDI/settings and
+phrase interface. Both applications use the existing audio engine.
+
 The [native M3 performance application](docs/M3_GUI_ARCHITECTURE.md) controls the
 existing audio engine with two visible eight-part decks. Run it on Windows:
 
@@ -64,7 +77,7 @@ renderer, output discovery, realtime playback, a stereo two-deck mixer and
 independent master/cue channel routing. M3 adds the native performance window;
 advanced effects remain future work.
 
-Install Rust with rustup; the repository pins Rust 1.85.1 with rustfmt/clippy.
+Install Rust with rustup; the repository pins Rust 1.93.0 with rustfmt/clippy.
 The timing and offline renderer have no external crate dependencies. On Windows 11 x64, install
 the Rust MSVC toolchain and Visual Studio C++ Build Tools / Windows SDK.
 
