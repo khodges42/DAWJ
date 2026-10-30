@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Explicit opt-in native delivery check. Calls the same coordinator as UI input.
 use super::*;
+use audio_backend::live::{RulePhase, RuleUnit, TriggerRule};
+use dawj::{PartAction, RuleAction};
 use std::{
     sync::{
         Arc,
@@ -58,7 +60,7 @@ impl PerformanceWindow {
                     .as_ref()
                     .and_then(|s| s.snapshot)
                     .is_some_and(|state| state.decks[1].slots[3].active.is_some());
-            if smoke.step < 7 && ready && smoke.last_step.elapsed() >= Duration::from_millis(350) {
+            if smoke.step < 8 && ready && smoke.last_step.elapsed() >= Duration::from_millis(350) {
                 match smoke.step {
                     0 => self.start(),
                     step => {
@@ -79,11 +81,42 @@ impl PerformanceWindow {
                                 ],
                                 4 => &[Intent::Quantize(Quantize::Phrase), Intent::Stop],
                                 5 => &[Intent::Cancel],
-                                _ => &[
+                                6 => &[
                                     Intent::Crossfader(0.7),
                                     Intent::Deck(0),
                                     Intent::Slot(0),
                                     Intent::Mode(Mode::Filter),
+                                ],
+                                _ => &[
+                                    Intent::Rule {
+                                        deck: 0,
+                                        slot: 7,
+                                        action: RuleAction::Install(TriggerRule::Every {
+                                            n: 1,
+                                            unit: RuleUnit::Bars,
+                                            phase: RulePhase::Deck,
+                                        }),
+                                    },
+                                    Intent::Part {
+                                        deck: 1,
+                                        slot: 7,
+                                        action: PartAction::Launch,
+                                    },
+                                    Intent::Part {
+                                        deck: 1,
+                                        slot: 0,
+                                        action: PartAction::Launch,
+                                    },
+                                    Intent::Part {
+                                        deck: 0,
+                                        slot: 0,
+                                        action: PartAction::Retrigger,
+                                    },
+                                    Intent::Part {
+                                        deck: 1,
+                                        slot: 3,
+                                        action: PartAction::Stop,
+                                    },
                                 ],
                             };
                             for &intent in intents {
@@ -99,7 +132,7 @@ impl PerformanceWindow {
                 smoke.last_step = Instant::now();
             }
         }
-        let complete = !smoke.audio || smoke.step == 7;
+        let complete = !smoke.audio || smoke.step == 8;
         let settled = complete && smoke.last_step.elapsed() >= Duration::from_millis(800);
         if settled && !smoke.capture_requested {
             ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::default()));
@@ -136,8 +169,16 @@ impl PerformanceWindow {
                         let b = state.decks[1].slots[3];
                         a.active == Some(parts::PartId(1))
                             && b.active == Some(parts::PartId(12))
-                            && a.pending.is_none()
-                            && b.pending.is_none()
+                            && a.pending.is_some_and(|p| {
+                                p.kind == audio_backend::performance_state::PendingKind::Retrigger
+                            })
+                            && b.pending.is_some_and(|p| {
+                                p.kind == audio_backend::performance_state::PendingKind::Stop
+                            })
+                            && state.decks[1].slots[7].pending_one_shot
+                            && state.decks[0].slots[7]
+                                .rule
+                                .is_some_and(|r| r.one_shot && r.next.is_some())
                             && (a.parameters.gain - 0.6).abs() < 0.001
                             && a.parameters.cutoff_hz == Some(500.0)
                     });

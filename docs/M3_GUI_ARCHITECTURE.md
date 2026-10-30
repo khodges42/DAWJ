@@ -167,3 +167,15 @@ records, and parameter coalescing has sixteen slots, four admissions per GUI
 update and round-robin fairness. This supersedes the earlier M3.3 coordinator
 work item above. Detailed bounds, lifecycle, configuration and hardware limits
 are in [M3_HANDS_ON_CONTROLS.md](M3_HANDS_ON_CONTROLS.md).
+
+## M3.5 phrase feedback
+
+The main central panel now starts with a repeating phrase ruler, A/B overview
+lanes, a selected-part lane and a rule inspector. Compact cards retain all sixteen
+slot controls below it, with both decks visible at the supported viewport sizes.
+The selected-part VOLUME/FILTER controls and MIDI architecture are unchanged.
+`timeline.rs` is pure tick/snapshot projection; `window/phrase.rs` renders it and
+dispatches existing part/rule commands. The coherent snapshot explicitly gains
+phrase/source/rule metadata and totals 299 atomic words. No dependencies, DSP or
+scheduler timing policy were added. See the [M3.5 interaction guide](M3_5_PHRASE_VISUALIZATION.md)
+and [verification report](M3_5_IMPLEMENTATION_REPORT.md).

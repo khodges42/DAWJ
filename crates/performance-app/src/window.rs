@@ -10,6 +10,7 @@ use dawj::{Coordinator, InputSource, Intent, Mode, lifecycle_label, musical_posi
 use eframe::egui::{self, Color32, RichText};
 use std::time::Duration;
 mod midi_settings;
+mod phrase;
 mod smoke;
 pub use smoke::Smoke;
 
@@ -86,10 +87,16 @@ pub struct PerformanceWindow {
     smoke: Option<Smoke>,
     midi: Option<midi_settings::MidiPanel>,
     window_focused: bool,
+    phrase_bars: u8,
+    phrase_view: dawj::timeline::View,
+    rule_kind: u8,
+    rule_number: u16,
     #[cfg(test)]
     cards: Vec<egui::Rect>,
     #[cfg(test)]
     contextual_rect: Option<egui::Rect>,
+    #[cfg(test)]
+    timeline_hits: Vec<(usize, usize, egui::Rect)>,
 }
 impl PerformanceWindow {
     pub fn new(cc: &eframe::CreationContext<'_>, smoke: Option<Smoke>) -> Self {
@@ -127,10 +134,16 @@ impl PerformanceWindow {
             smoke: None,
             midi: None,
             window_focused: true,
+            phrase_bars: 8,
+            phrase_view: Default::default(),
+            rule_kind: 0,
+            rule_number: 1,
             #[cfg(test)]
             cards: Vec::new(),
             #[cfg(test)]
             contextual_rect: None,
+            #[cfg(test)]
+            timeline_hits: Vec::new(),
         }
     }
     fn scan(&mut self) {
@@ -176,8 +189,8 @@ impl PerformanceWindow {
             return Err("Output enumeration changed. Rescan and select the output again.".into());
         }
         let routing = OutputRouting::new(channels, [0, 1], self.four_channels.then_some([2, 3]))?;
-        let (engine, control, mixer) =
-            demo::prepare().map_err(|e| format!("Demo asset / engine preparation failed: {e}"))?;
+        let (engine, control, mixer) = demo::prepare_with_phrase_bars(self.phrase_bars)
+            .map_err(|e| format!("Demo asset / engine preparation failed: {e}"))?;
         let mut session = Coordinator::new(control, mixer, self.four_channels);
         let mut stream = CpalPlayback::open_live(
             Some(device.ordinal),
@@ -201,6 +214,7 @@ impl PerformanceWindow {
         session.notice = "Output started. Parts are stopped; select a slot and Launch.".into();
         self.stream = Some(stream);
         self.session = Some(session);
+        self.phrase_view = dawj::timeline::View::default();
         if let Some(midi) = &mut self.midi {
             midi.reset(self.session.as_mut());
         }
@@ -461,80 +475,99 @@ impl PerformanceWindow {
     }
     fn decks(&mut self, ctx: &egui::Context) {
         #[cfg(test)]
-        self.cards.clear();
+        {
+            self.cards.clear();
+            self.timeline_hits.clear();
+        }
         egui::CentralPanel::default().show(ctx, |ui| {
-            let card_height = ((ui.available_height() - 180.0) / 4.0).clamp(78.0, 130.0);
+            ui.spacing_mut().item_spacing.y = 3.0;
+            self.phrase_timeline(ui);
+            ui.separator();
+            let card_height = ((ui.available_height() - 150.0) / 4.0).clamp(48.0, 94.0);
             ui.columns(2, |columns| {
-                for (d, ui) in columns.iter_mut().enumerate() {
-                    let color = if d == 0 {
+                for (deck, ui) in columns.iter_mut().enumerate() {
+                    let color = if deck == 0 {
                         Color32::from_rgb(114, 192, 220)
                     } else {
                         Color32::from_rgb(224, 170, 108)
                     };
                     ui.horizontal(|ui| {
-                        let focused = self.session.as_ref().is_some_and(|s| s.focus.deck == d);
+                        let focused = self.session.as_ref().is_some_and(|s| s.focus.deck == deck);
                         if ui
                             .selectable_label(
                                 focused,
-                                RichText::new(format!("DECK {}", ['A', 'B'][d]))
-                                    .size(22.0)
+                                RichText::new(format!("DECK {}", ['A', 'B'][deck]))
+                                    .size(20.0)
                                     .color(color),
                             )
                             .clicked()
                         {
                             if let Some(s) = &mut self.session {
-                                s.act(Intent::Deck(d));
+                                s.act(Intent::Deck(deck));
                             }
                         }
-                        ui.heading(TITLES[d]);
+                        ui.heading(TITLES[deck]);
                         if let Some(state) = self.session.as_ref().and_then(|s| s.snapshot) {
+                            let d = state.decks[deck];
                             ui.small(format!(
-                                "Phrase {}/8",
-                                state.decks[d].phase.0.div_euclid(3840) + 1
+                                "Phrase {}/{}",
+                                d.phase.0.div_euclid(3840) + 1,
+                                d.phrase_length.0 / 3840
                             ));
                         }
                     });
                     ui.horizontal(|ui| {
-                        let available = self.session.as_ref().is_some_and(Coordinator::available);
-                        ui.add_enabled_ui(available, |ui| {
-                            if let Some(s) = &mut self.session {
-                                ui.spacing_mut().slider_width = 160.0;
-                                let mut gain = if d == 0 {
-                                    s.parameters.gain_a
-                                } else {
-                                    s.parameters.gain_b
-                                };
-                                if ui
-                                    .add(egui::Slider::new(&mut gain, 0.0..=1.0).text("Deck gain"))
-                                    .changed()
-                                {
-                                    s.act(Intent::DeckGain(d, gain));
-                                }
-                                ui.add_enabled_ui(self.four_channels, |ui| {
-                                    if ui.selectable_label(s.cues[d], "Headphone cue").clicked() {
-                                        s.act(Intent::Cue(d));
+                        ui.add_enabled_ui(
+                            self.session.as_ref().is_some_and(Coordinator::available),
+                            |ui| {
+                                if let Some(s) = &mut self.session {
+                                    ui.spacing_mut().slider_width = 150.0;
+                                    let mut gain = if deck == 0 {
+                                        s.parameters.gain_a
+                                    } else {
+                                        s.parameters.gain_b
+                                    };
+                                    if ui
+                                        .add(
+                                            egui::Slider::new(&mut gain, 0.0..=1.0)
+                                                .text("Deck gain"),
+                                        )
+                                        .changed()
+                                    {
+                                        s.act(Intent::DeckGain(deck, gain));
                                     }
-                                });
-                            } else {
-                                ui.label("Deck gain | cue unavailable");
-                            }
-                        });
+                                    ui.add_enabled_ui(self.four_channels, |ui| {
+                                        if ui
+                                            .selectable_label(s.cues[deck], "Headphone cue")
+                                            .clicked()
+                                        {
+                                            s.act(Intent::Cue(deck));
+                                        }
+                                    });
+                                } else {
+                                    ui.label("Deck gain | cue unavailable");
+                                }
+                            },
+                        );
                     });
                     for row in 0..4 {
-                        ui.columns(2, |cards| {
-                            for (col, ui) in cards.iter_mut().enumerate() {
-                                ui.spacing_mut().item_spacing.y = 2.0;
+                        ui.columns(2, |columns| {
+                            for (col, ui) in columns.iter_mut().enumerate() {
+                                ui.spacing_mut().item_spacing = egui::vec2(3.0, 2.0);
                                 ui.spacing_mut().interact_size.y = 26.0;
+                                ui.spacing_mut().button_padding.x = 5.0;
                                 let slot = row * 2 + col;
                                 let part = self
                                     .session
                                     .as_ref()
                                     .and_then(|s| s.snapshot)
-                                    .map(|s| s.decks[d].slots[slot]);
+                                    .map(|s| s.decks[deck].slots[slot]);
+                                let available =
+                                    self.session.as_ref().is_some_and(Coordinator::available);
                                 let selected = self
                                     .session
                                     .as_ref()
-                                    .is_some_and(|s| s.focus.address() == (d, slot));
+                                    .is_some_and(|s| s.focus.address() == (deck, slot));
                                 let mut action = None;
                                 let _card = egui::Frame::new()
                                     .fill(if selected {
@@ -553,61 +586,93 @@ impl PerformanceWindow {
                                     .inner_margin(4.0)
                                     .show(ui, |ui| {
                                         ui.set_min_height(card_height);
-                                        ui.set_width(ui.available_width());
-                                        let feedback = self
-                                            .session
-                                            .as_ref()
-                                            .map_or("", |s| s.feedback[d][slot].as_str());
-                                        if ui
-                                            .selectable_label(
-                                                selected,
-                                                RichText::new(format!(
-                                                    "{}{}  {}{}",
-                                                    ['A', 'B'][d],
-                                                    slot + 1,
-                                                    NAMES[slot],
-                                                    if slot == 7 { " / one-shot" } else { "" }
-                                                ))
-                                                .strong(),
-                                            )
-                                            .on_hover_text(feedback)
-                                            .clicked()
-                                        {
-                                            action = Some(Intent::Slot(slot));
-                                        }
+                                        ui.horizontal(|ui| {
+                                            let feedback = self
+                                                .session
+                                                .as_ref()
+                                                .map_or("", |s| s.feedback[deck][slot].as_str());
+                                            if ui
+                                                .selectable_label(
+                                                    selected,
+                                                    RichText::new(format!(
+                                                        "{}{} {}",
+                                                        ['A', 'B'][deck],
+                                                        slot + 1,
+                                                        NAMES[slot]
+                                                    ))
+                                                    .size(14.0)
+                                                    .strong(),
+                                                )
+                                                .on_hover_text(feedback)
+                                                .clicked()
+                                            {
+                                                action = Some(Intent::Slot(slot));
+                                            }
+                                            ui.add_enabled_ui(available, |ui| {
+                                                if ui.button("Launch").clicked() {
+                                                    action = Some(Intent::Launch);
+                                                }
+                                                if ui.button("Stop").clicked() {
+                                                    action = Some(Intent::Stop);
+                                                }
+                                                if ui
+                                                    .add_enabled(
+                                                        part.is_some_and(|p| p.pending.is_some()),
+                                                        egui::Button::new("Cancel"),
+                                                    )
+                                                    .clicked()
+                                                {
+                                                    action = Some(Intent::Cancel);
+                                                }
+                                            });
+                                        });
                                         if let Some(p) = part {
-                                            let state_color = if p.pending.is_some() {
+                                            let ink = if p.pending.is_some() {
                                                 Color32::LIGHT_YELLOW
                                             } else if p.active.is_some() {
                                                 Color32::LIGHT_GREEN
                                             } else {
                                                 Color32::GRAY
                                             };
-                                            ui.label(
-                                                RichText::new(lifecycle_label(&p))
-                                                    .size(13.0)
-                                                    .color(state_color),
+                                            let fill = p.active_one_shot || p.pending_one_shot;
+                                            ui.add(
+                                                egui::Label::new(
+                                                    RichText::new(format!(
+                                                        "{}{}",
+                                                        if fill { "FILL | " } else { "" },
+                                                        lifecycle_label(&p)
+                                                    ))
+                                                    .size(12.0)
+                                                    .color(ink),
+                                                )
+                                                .truncate(),
                                             );
                                             let detail = p.pending.map_or_else(
                                                 || {
-                                                    p.active.map_or(
-                                                        "Resident / ready".into(),
-                                                        |id| {
+                                                    p.rule.and_then(|r| r.next).map_or_else(
+                                                        || {
+                                                            p.active.map_or("Ready".into(), |id| {
+                                                                format!(
+                                                                    "Active #{} | cycle {}",
+                                                                    id.0,
+                                                                    p.phase.map_or(
+                                                                        "-".into(),
+                                                                        musical_position
+                                                                    )
+                                                                )
+                                                            })
+                                                        },
+                                                        |t| {
                                                             format!(
-                                                                "Active #{} | frame {}",
-                                                                id.0,
-                                                                p.position.unwrap_or(0)
+                                                                "Rule @ {}",
+                                                                musical_position(t)
                                                             )
                                                         },
                                                     )
                                                 },
                                                 |a| {
                                                     format!(
-                                                        "{} > {:?} #{} @ {}",
-                                                        p.active.map_or("-".into(), |id| format!(
-                                                            "#{}",
-                                                            id.0
-                                                        )),
+                                                        "{:?} #{} @ {}",
                                                         a.kind,
                                                         a.part.0,
                                                         musical_position(a.target)
@@ -615,45 +680,22 @@ impl PerformanceWindow {
                                                 },
                                             );
                                             ui.add(
-                                                egui::Label::new(RichText::new(&detail).size(12.0))
+                                                egui::Label::new(RichText::new(&detail).size(11.0))
                                                     .truncate(),
                                             )
-                                            .on_hover_text(detail);
+                                            .on_hover_text(format!(
+                                                "{detail}\n{}",
+                                                dawj::timeline::inspector(p)
+                                            ));
                                         } else {
                                             ui.small("UNAVAILABLE / OUTPUT OFFLINE");
                                             ui.small("Resident demo loads at Start");
                                         }
-                                        ui.add_enabled_ui(
-                                            self.session
-                                                .as_ref()
-                                                .is_some_and(Coordinator::available),
-                                            |ui| {
-                                                ui.horizontal(|ui| {
-                                                    if ui.button("Launch").clicked() {
-                                                        action = Some(Intent::Launch);
-                                                    }
-                                                    if ui.button("Stop").clicked() {
-                                                        action = Some(Intent::Stop);
-                                                    }
-                                                    if ui
-                                                        .add_enabled(
-                                                            part.is_some_and(|p| {
-                                                                p.pending.is_some()
-                                                            }),
-                                                            egui::Button::new("Cancel"),
-                                                        )
-                                                        .clicked()
-                                                    {
-                                                        action = Some(Intent::Cancel);
-                                                    }
-                                                });
-                                            },
-                                        );
                                     });
                                 #[cfg(test)]
                                 self.cards.push(_card.response.rect);
                                 if let (Some(s), Some(action)) = (&mut self.session, action) {
-                                    s.act(Intent::Deck(d));
+                                    s.act(Intent::Deck(deck));
                                     s.act(Intent::Slot(slot));
                                     if !matches!(action, Intent::Slot(_)) {
                                         s.act(action);
@@ -661,7 +703,7 @@ impl PerformanceWindow {
                                 }
                             }
                         });
-                        ui.add_space(6.0);
+                        ui.add_space(2.0);
                     }
                 }
             });
@@ -906,5 +948,63 @@ mod tests {
                 });
             }
         }
+    }
+
+    #[test]
+    fn clicking_phrase_marker_selects_its_part_without_moving_time_or_changing_mode() {
+        let (mut e, control, mixer) = demo::prepare().unwrap();
+        let mut app = PerformanceWindow::empty();
+        let mut co = Coordinator::new(control, mixer, false);
+        e.render(&mut [0.0; 2], OutputRouting::stereo_master_only());
+        co.poll();
+        co.try_act(Intent::Mode(Mode::Filter)).unwrap();
+        co.try_act(Intent::Quantize(Quantize::Phrase)).unwrap();
+        co.try_act(Intent::Part {
+            deck: 1,
+            slot: 7,
+            action: dawj::PartAction::Launch,
+        })
+        .unwrap();
+        e.render(&mut [0.0; 2], OutputRouting::stereo_master_only());
+        co.poll();
+        let frame = co.snapshot.unwrap().frame;
+        app.session = Some(co);
+        let ctx = egui::Context::default();
+        PerformanceWindow::configure(&ctx);
+        for _ in 0..3 {
+            let _ = ctx.run(input([1280.0, 820.0]), |ctx| {
+                app.transport(ctx);
+                app.bottom(ctx);
+                app.decks(ctx);
+            });
+        }
+        let pos = app
+            .timeline_hits
+            .iter()
+            .find(|(d, s, _)| (*d, *s) == (1, 7))
+            .unwrap()
+            .2
+            .center();
+        for pressed in [true, false] {
+            let mut raw = input([1280.0, 820.0]);
+            raw.events.push(egui::Event::PointerMoved(pos));
+            raw.events.push(egui::Event::PointerButton {
+                pos,
+                button: egui::PointerButton::Primary,
+                pressed,
+                modifiers: egui::Modifiers::NONE,
+            });
+            let _ = ctx.run(raw, |ctx| {
+                app.transport(ctx);
+                app.bottom(ctx);
+                app.decks(ctx);
+            });
+        }
+        let co = app.session.as_ref().unwrap();
+        assert_eq!(co.focus.address(), (1, 7));
+        assert_eq!(co.focus.mode, Mode::Filter);
+        assert_eq!(co.snapshot.unwrap().frame, frame);
+        assert!(co.snapshot.unwrap().decks[1].slots[7].pending.is_some());
+        assert_eq!(app.cards.len(), 16);
     }
 }

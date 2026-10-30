@@ -18,6 +18,12 @@ VOLUME/FILTER modes. Open **MIDI: off/on** for settings. No controller is needed
 `cargo run -p dawj --example synthetic_midi --locked --offline` exercises the
 real engine through synthetic MIDI. [MIDI implementation report](docs/M3_3_4_IMPLEMENTATION_REPORT.md).
 
+[M3.5 phrase visualization](docs/M3_5_PHRASE_VISUALIZATION.md) adds a repeating
+eight-bar timeline, zoom/follow, pending-action and fill markers, selected-part
+inspection and direct periodic-rule controls while keeping both decks visible.
+Choose a four- or eight-bar engine before starting output.
+[M3.5 verification report](docs/M3_5_IMPLEMENTATION_REPORT.md).
+
 [M2.9 hardening report](docs/M2_9_HARDENING_REPORT.md) and
 [performance state contract](docs/PERFORMANCE_STATE_CONTRACT.md) define the
 coherent read-only API for future UI/controller feedback and bounded audio transitions.
