@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Declarative, bounded periodic intent. All periods are stored in musical ticks.
 use crate::live::Quantization;
-use parts::Part;
+use parts::{Part, PartId};
 use timebase::BeatTicks;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RulePhase {
@@ -32,6 +32,10 @@ pub enum TriggerRule {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RuleStatus {
+    pub part: PartId,
+    pub one_shot: bool,
+    pub period: Option<BeatTicks>,
+    pub last_fired: Option<BeatTicks>,
     pub rule: TriggerRule,
     pub next: Option<BeatTicks>,
     pub consumed: bool,

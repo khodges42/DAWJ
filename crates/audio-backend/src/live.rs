@@ -134,7 +134,7 @@ fn publish(queue: &Queue, row: usize, id: u64, outcome: Outcome) {
     }
 }
 impl LiveControl {
-    /// Independently observed diagnostic fields. Not a transactional transport acknowledgement.
+    /// One bounded coherent read; retain the previous snapshot if publication overlaps.
     pub fn performance_state(&self) -> Option<crate::performance_state::PerformanceState> {
         let mut state = self.queue.snapshot.read()?;
         if self.is_closed() {
@@ -652,6 +652,11 @@ impl LiveEngine {
         use crate::performance_state::*;
         let decks = std::array::from_fn(|d| DeckState {
             phase: self.scheduler.phase(d).unwrap_or(timebase::BeatTicks(0)),
+            epoch: self.scheduler.epoch(d).unwrap_or(timebase::BeatTicks(0)),
+            phrase_length: self
+                .scheduler
+                .phrase_length(d)
+                .unwrap_or(timebase::BeatTicks(0)),
             slots: std::array::from_fn(|s| {
                 let state = self.scheduler.state(d, s).unwrap_or(State::Stopped);
                 let pending = match state {
@@ -688,6 +693,20 @@ impl LiveEngine {
                     phase: self.scheduler.part_phase(d, s),
                     parameters: self.dsp[d][s].parameters,
                     release_frames: self.transitions[d][s].remaining,
+                    active_one_shot: state
+                        .active()
+                        .is_some_and(|p| matches!(p.playback.mode, parts::PlaybackMode::OneShot)),
+                    pending_one_shot: match state {
+                        State::QueuedStart(p) | State::QueuedReplace { pending: p, .. } => {
+                            matches!(p.part.playback.mode, parts::PlaybackMode::OneShot)
+                        }
+                        State::QueuedStop { active, .. } => {
+                            matches!(active.playback.mode, parts::PlaybackMode::OneShot)
+                        }
+                        _ => false,
+                    },
+                    nominal_length: state.active().map(|p| p.timing.nominal_length),
+                    rule: self.scheduler.rule_status(d, s),
                 }
             }),
         });

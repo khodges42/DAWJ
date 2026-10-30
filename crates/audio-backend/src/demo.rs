@@ -16,6 +16,15 @@ pub const NAMES: [&str; SLOTS] = [
 pub const TITLES: [&str; 2] = ["Copper Steps", "Glass Tide"];
 
 pub fn prepare() -> Result<(LiveEngine, LiveControl, MixerControl), &'static str> {
+    prepare_with_phrase_bars(8)
+}
+/// The current scheduler fixes phrase length at construction. No live retiming.
+pub fn prepare_with_phrase_bars(
+    bars: u8,
+) -> Result<(LiveEngine, LiveControl, MixerControl), &'static str> {
+    if !matches!(bars, 4 | 8) {
+        return Err("demo phrase must be four or eight bars");
+    }
     let mut bank = Vec::with_capacity(2 * SLOTS);
     for deck in 0..2 {
         for slot in 0..SLOTS {
@@ -133,7 +142,11 @@ pub fn prepare() -> Result<(LiveEngine, LiveControl, MixerControl), &'static str
         }],
     )
     .map_err(|_| "tempo setup failed")?;
-    let scheduler = MusicalScheduler::new(map, [BeatTicks(0); 2], [BeatTicks(32 * 960); 2])?;
+    let scheduler = MusicalScheduler::new(
+        map,
+        [BeatTicks(0); 2],
+        [BeatTicks(i64::from(bars) * 4 * 960); 2],
+    )?;
     let (engine, control, mixer) = LiveEngine::new(scheduler, bank)?;
     Ok((engine, control, mixer))
 }

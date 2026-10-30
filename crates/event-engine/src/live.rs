@@ -78,6 +78,12 @@ impl MusicalScheduler {
     pub fn bpm(&self) -> Option<f64> {
         self.map.bpm_at(self.frame).ok()
     }
+    pub fn phrase_length(&self, deck: usize) -> Option<BeatTicks> {
+        self.phrases.get(deck).copied()
+    }
+    pub fn epoch(&self, deck: usize) -> Option<BeatTicks> {
+        self.epochs.get(deck).copied()
+    }
     fn compile_rule(
         &self,
         deck: usize,
@@ -131,6 +137,10 @@ impl MusicalScheduler {
         Ok(CompiledRule {
             part,
             status: RuleStatus {
+                part: part.id,
+                one_shot: matches!(part.playback.mode, parts::PlaybackMode::OneShot),
+                period,
+                last_fired: None,
                 rule: definition,
                 next: Some(next),
                 consumed: false,
@@ -248,6 +258,7 @@ impl MusicalScheduler {
                     let action = self.decks[deck].apply_trigger(slot, rule.part, at)?;
                     self.started[deck][slot] = Some(at);
                     rule.status.fired = rule.status.fired.saturating_add(1);
+                    rule.status.last_fired = Some(at);
                     apply(Event {
                         deck,
                         slot,

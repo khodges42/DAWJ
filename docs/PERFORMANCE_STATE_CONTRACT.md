@@ -42,7 +42,8 @@ further audio publication. Generations are engine-local, wrapping u64 counters
 (wrap is not a practical session horizon). Do not compare generations between
 newly created engines. Snapshot copies do not retain PCM ownership.
 
-The fixed publication has 167 atomic words and one atomic generation. All are
+The M3.5 publication has 299 atomic words and one atomic generation (M2.9 used
+166 words; the M3 current-tempo extension used 167). All are
 sequentially consistent: the writer marks odd, stores the words, then marks even;
 the reader accepts only an unchanged even generation. There are no non-atomic
 concurrent payload accesses, locks, allocation, retry loops or reader-dependent
@@ -120,3 +121,34 @@ During terminal shutdown disable controls when Closed, preserve the last musical
 display as stale, and obtain device errors from PlaybackMonitor. Physical cue
 availability still comes from validated OutputRouting/device configuration;
 no state value establishes private physical monitoring.
+
+## M3.5 phrase and rule observation
+
+Each coherent `DeckState` now includes its scheduler `epoch` and `phrase_length`,
+alongside its phase. These are constructor-defined musical ticks, not GUI
+settings. The demo can construct four- or eight-bar engines; phrase length cannot
+be changed on a running engine. Zoom/page/follow are entirely view state.
+
+Each PartState includes `active_one_shot`, `pending_one_shot`, and the active
+Part's optional `nominal_length`. These identify actual source/timing definitions;
+the nominal length/phase does not predict sample EOF or imply time stretching.
+A pending stop's one-shot flag describes its active source. Releases remain
+independent of source lifecycle as before.
+
+`PartState.rule: Option<RuleStatus>` publishes the installed rule atomically with
+the clock and slot. It contains the exact rule definition, PartId, one-shot flag,
+optional musical period, next deadline, consumed flag, fired/skipped counters and
+optional `last_fired` musical target. None means no installed rule. A rule with
+next=None is paused/disabled or consumed; `consumed` distinguishes spent Once
+rules. `last_fired` records a successful rule dispatch, not command installation
+or a skipped trigger. It is one retained event, not durable history. Cancelling
+the installed rule removes its observation; it does not stop an active source.
+
+The timeline uses the published next deadline and period to project conditional
+later recurrences. Manual conflicts can skip them. Projected repetitions are
+not additional queued scheduler actions and must be marked as projections. A
+queued action at the next phrase boundary remains queued until its sample is
+rendered, even if the tick-rounded clock/playhead has reached that boundary.
+No event scheduling, extrapolated musical clock or historical performance trace
+is reconstructed by GUI frame time. Existing diagnostic `slot()` fields remain
+separate and are not combined into timeline state.
