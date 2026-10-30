@@ -8,10 +8,11 @@ cargo run -p dawj --locked
 cargo run -p dawj-tauri --locked
 ```
 
-The repository now pins Rust **1.93.0** for both frontends. Tauri on Windows also
-requires Microsoft WebView2. Its current controls cover the two decks, live part
-states, launch/stop and crossfader; egui retains the complete MIDI/settings and
-phrase interface. Both applications use the existing audio engine.
+The repository pins Rust **1.93.0** for both frontends. Tauri on Windows also
+requires Microsoft WebView2. [M3.Web2](docs/M3_WEB2_REPORT.md) exposes the complete
+basic performance surface, keyboard modes, MIDI settings and shared musical
+timeline. Both applications use the existing audio engine; egui remains the
+default fallback. Follow the [five-minute Tauri walkthrough](docs/M3_WEB2_WALKTHROUGH.md).
 
 The [native M3 performance application](docs/M3_GUI_ARCHITECTURE.md) controls the
 existing audio engine with two visible eight-part decks. Run it on Windows:

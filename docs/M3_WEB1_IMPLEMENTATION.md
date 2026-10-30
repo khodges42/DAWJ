@@ -137,21 +137,23 @@ a version bump and matching bundled frontend. No new skin system was introduced.
 
 ## Feature parity checklist
 
+Updated after Web2. See [M3_WEB2_REPORT.md](M3_WEB2_REPORT.md) for current verification
+and limits; the Web1 implementation/verification sections remain historical.
+
 | Capability | Shared core | Egui | Tauri surface |
 | --- | --- | --- | --- |
 | Two decks, sixteen live states, launch/stop | Complete | Exposed | Exposed |
 | Mixer smoothing and crossfader | Existing engine | Exposed | Crossfader exposed |
-| Output formats and validated 4-channel cue | Shared setup | Exposed | IPC supports cue; selector remains stereo |
-| Selection, cancel/retrigger, quantization | Intent + typed IPC | Exposed | UI pending |
-| VOLUME/FILTER, held modes, release | Shared dispatch | Exposed | UI/keyboard pending |
-| Part/deck gain, cutoff, trim, tempo | Shared dispatch | Exposed | UI pending |
-| MIDI mapping, pickup, learn, profiles, LEDs | Shared runtime + IPC | Complete settings | Saved-profile runtime; settings UI pending |
-| M3.5 timeline and rule actions | Shared state/projection + IPC | Exposed | Timeline UI pending |
+| Output formats and validated 4-channel cue | Shared setup | Exposed | Routing/cue exposed; physical isolation unverified |
+| Selection, cancel/retrigger, quantization | Intent + typed IPC | Exposed | Exposed |
+| VOLUME/FILTER, held modes, release | Shared dispatch | Exposed | Exposed with complete keyboard map |
+| Part/deck gain, cutoff, trim, tempo | Shared dispatch | Exposed | Exposed |
+| MIDI mapping, pickup, learn, profiles, LEDs | Shared runtime + IPC | Complete settings | Structured settings and named profiles exposed |
+| M3.5 timeline and rule actions | Shared state/projection + IPC | Exposed | Canvas, event selection and inspector exposed |
 | CSS presets/accent/local overrides | Existing experiment retained | Native styling | Exposed |
 
-Future WebView keyboard/momentary controls must declare input source, release on
-focus loss and preserve text-entry handling. Those UI controls are not complete
-here. Egui remains the default until parity and performance checks pass.
+Web2 implements source-tagged keyboard/momentary controls, release on focus loss
+and text-entry handling. Egui remains the default; no frontend cutover has occurred.
 
 ## Verification
 
