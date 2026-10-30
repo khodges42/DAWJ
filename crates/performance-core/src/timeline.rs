@@ -5,7 +5,7 @@ use timebase::BeatTicks;
 pub const BAR: i64 = 4 * 960;
 pub const MAX_OCCURRENCES: usize = 32;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum MarkerKind {
     Launch,
     Stop,

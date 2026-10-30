@@ -67,6 +67,8 @@ pub fn unique_port(names: &[String], name: &str) -> Result<Option<usize>, &'stat
 }
 #[derive(Clone, Default, Debug, serde::Serialize, serde::Deserialize)]
 pub struct DeviceStatus {
+    pub feedback_sent: u64,
+    pub feedback_error: Option<String>,
     pub inputs: Vec<String>,
     pub outputs: Vec<String>,
     pub input: Option<String>,
@@ -176,12 +178,14 @@ fn run(
                 if let Some(out) = &mut output {
                     for m in messages {
                         if let Err(e) = out.send(&m) {
+                            state.feedback_error = Some(e.to_string());
                             state.message = format!("MIDI output failed: {e}");
                             output = None;
                             state.output = None;
                             state.output_epoch = state.output_epoch.wrapping_add(1);
                             break;
                         }
+                        state.feedback_sent = state.feedback_sent.saturating_add(1);
                     }
                 }
             }
@@ -266,6 +270,7 @@ fn run(
                         match mo.connect(&op[index], "DAWJ state") {
                             Ok(c) => {
                                 output = Some(c);
+                                state.feedback_error = None;
                                 state.output = Some(name.clone());
                                 state.output_epoch = state.output_epoch.wrapping_add(1);
                             }

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Frontend-neutral, bounded control worker. CPAL is constructed and dropped here.
 use crate::{
-    Coordinator,
+    Coordinator, InputSource,
     ipc::*,
     midi::{
-        self, Learn, Mapper,
+        self, Mapper,
         device::{DeviceStatus, Devices},
         profile::{Profile, default_path},
+        profiles,
     },
     output::{self, OutputSession},
 };
@@ -14,7 +15,7 @@ use std::{
     path::PathBuf,
     sync::{
         Arc,
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
         mpsc::{self, Receiver, SyncSender, TrySendError},
     },
     thread::{self, JoinHandle},
@@ -26,7 +27,15 @@ impl Drop for Permit {
         self.0.fetch_sub(1, Ordering::AcqRel);
     }
 }
+fn source_index(source: InputSource) -> usize {
+    match source {
+        InputSource::Gui => 0,
+        InputSource::Keyboard => 1,
+        InputSource::Midi => 2,
+    }
+}
 struct Envelope {
+    hold_epoch: Option<(InputSource, u64)>,
     request: Request,
     reply: SyncSender<Reply>,
     _permit: Permit,
@@ -36,6 +45,7 @@ pub struct Client {
     tx: SyncSender<Envelope>,
     admitted: Arc<AtomicUsize>,
     closed: Arc<AtomicBool>,
+    releases: Arc<[AtomicU64; 3]>,
 }
 pub struct Pending {
     id: u32,
@@ -66,6 +76,21 @@ impl Client {
                 "Application is shutting down",
             ));
         }
+        if let Command::ReleaseModes { source } = &request.command {
+            self.releases[source_index(*source)].fetch_add(1, Ordering::AcqRel);
+        }
+        let hold_epoch = if let Command::Perform {
+            action: Action::HoldMode { pressed: true, .. },
+            source,
+        } = &request.command
+        {
+            Some((
+                *source,
+                self.releases[source_index(*source)].load(Ordering::Acquire),
+            ))
+        } else {
+            None
+        };
         self.admitted
             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| {
                 (n < CAPACITY).then_some(n + 1)
@@ -75,6 +100,7 @@ impl Client {
         let (tx, rx) = mpsc::sync_channel(1);
         let id = request.id;
         match self.tx.try_send(Envelope {
+            hold_epoch,
             request,
             reply: tx,
             _permit: permit,
@@ -95,9 +121,19 @@ impl Service {
     pub fn spawn() -> std::io::Result<Self> {
         Self::spawn_inner(|| {
             let path = default_path();
-            let (profile, notice) = midi::runtime::load_profile(&path);
+            let name = profiles::selected(&path);
+            let selected = profiles::path(&path, &name).unwrap_or_else(|_| path.clone());
+            let (profile, notice) = midi::runtime::load_profile(&selected);
+            let missing = name != "default" && !selected.exists();
             let mut worker = Worker::new(profile, Some(path));
             worker.notice = notice;
+            if missing {
+                worker.notice = format!(
+                    "Selected profile '{name}' is missing; factory mapping loaded in memory"
+                );
+                worker.mapper.dirty = true;
+            }
+            worker.profile_name = name;
             worker
         })
     }
@@ -105,18 +141,32 @@ impl Service {
         let (tx, rx) = mpsc::sync_channel::<Envelope>(CAPACITY);
         let closed = Arc::new(AtomicBool::new(false));
         let stop = closed.clone();
+        let releases = Arc::new(std::array::from_fn(|_| AtomicU64::new(0)));
+        let release_worker = releases.clone();
         let worker = thread::Builder::new()
             .name("dawj-control".into())
             .spawn(move || {
                 let mut worker = initialize();
                 while !stop.load(Ordering::Acquire) {
+                    worker.apply_releases(&release_worker);
                     match rx.recv_timeout(Duration::from_millis(8)) {
                         Ok(envelope) => {
                             if stop.load(Ordering::Acquire) {
                                 break;
                             }
                             worker.poll();
-                            let result = worker.handle(envelope.request.command);
+                            worker.apply_releases(&release_worker);
+                            let stale = envelope.hold_epoch.is_some_and(|(s, e)| {
+                                release_worker[source_index(s)].load(Ordering::Acquire) != e
+                            });
+                            let result = if stale {
+                                Err(Fault::new(
+                                    ErrorCode::Invalid,
+                                    "Stale momentary press discarded after focus/release",
+                                ))
+                            } else {
+                                worker.handle(envelope.request.command)
+                            };
                             // At most one reply fits. Receiver cancellation cannot block this worker.
                             let _ = envelope
                                 .reply
@@ -135,6 +185,7 @@ impl Service {
                 tx,
                 closed,
                 admitted: Arc::new(AtomicUsize::new(0)),
+                releases,
             },
             worker: Some(worker),
         })
@@ -155,6 +206,10 @@ impl Drop for Service {
     }
 }
 struct Worker {
+    control_revision: u64,
+    seen_releases: [u64; 3],
+    view: crate::timeline::View,
+    profile_name: String,
     output: Option<OutputSession>,
     devices: Vec<audio_backend::OutputDevice>,
     mapper: Mapper,
@@ -169,6 +224,10 @@ impl Worker {
     fn new(profile: Profile, path: Option<PathBuf>) -> Self {
         let midi = Devices::new(profile.input.clone(), profile.output.clone());
         Self {
+            control_revision: 0,
+            seen_releases: [0; 3],
+            view: crate::timeline::View::default(),
+            profile_name: "default".into(),
             output: None,
             devices: Vec::new(),
             mapper: Mapper::new(profile).expect("validated profile"),
@@ -178,6 +237,18 @@ impl Worker {
             feedback_tick: Instant::now(),
             path,
             notice: String::new(),
+        }
+    }
+    fn apply_releases(&mut self, epochs: &[AtomicU64; 3]) {
+        for source in [InputSource::Gui, InputSource::Keyboard, InputSource::Midi] {
+            let i = source_index(source);
+            let now = epochs[i].load(Ordering::Acquire);
+            if self.seen_releases[i] != now {
+                if let Some(co) = self.co() {
+                    co.release_modes(source);
+                }
+                self.seen_releases[i] = now;
+            }
         }
     }
     fn co(&mut self) -> Option<&mut Coordinator> {
@@ -200,11 +271,26 @@ impl Worker {
         let mut s = self.output.as_ref().map_or_else(Snapshot::default, |o| {
             Snapshot::project(&o.coordinator, o.stream.monitor().status().failed)
         });
+        s.timeline = self.output.as_ref().and_then(|o| {
+            crate::web_timeline::Projection::from_coordinator(&o.coordinator, &self.view)
+        });
+        s.midi_revision = self.mapper.revision;
+        s.midi_dirty = self.mapper.dirty;
+        s.midi_learning = self.mapper.learn.is_some();
+        s.midi_dropped = self.dropped;
+        s.profile_name = self.profile_name.clone();
+        s.profile_path = self
+            .path
+            .as_ref()
+            .and_then(|p| profiles::path(p, &self.profile_name).ok())
+            .map_or(String::new(), |p| p.display().to_string());
         s.midi = Some(self.midi_state.clone());
+        s.control_revision = self.control_revision;
         s.midi_notice = format!("{} {}", self.notice, self.mapper.status);
         s
     }
     fn handle(&mut self, command: Command) -> Result<Response, Fault> {
+        self.control_revision = self.control_revision.wrapping_add(1);
         use ErrorCode::*;
         let revision = self.mapper.revision;
         match command {
@@ -247,6 +333,68 @@ impl Worker {
                 }
             }
             Command::Snapshot {} => {}
+            Command::TimelineView {
+                zoom_bars,
+                follow,
+                page_delta,
+            } => {
+                if ![2, 4, 8].contains(&zoom_bars) || !(-1..=1).contains(&page_delta) {
+                    return Err(Fault::new(Invalid, "Invalid timeline view"));
+                }
+                let s = self
+                    .co()
+                    .and_then(|c| c.snapshot)
+                    .ok_or_else(|| Fault::new(Unavailable, "No musical snapshot"))?;
+                self.view.zoom_bars = zoom_bars;
+                self.view.set_follow(follow, &s);
+                if page_delta != 0 {
+                    self.view.page_by(&s, i32::from(page_delta));
+                }
+            }
+            Command::MidiProfiles {} => {
+                return Ok(Response::MidiProfiles(
+                    profiles::list(
+                        self.path
+                            .as_ref()
+                            .ok_or_else(|| Fault::new(Unavailable, "No profile directory"))?,
+                    )
+                    .map_err(|e| Fault::new(Failed, e))?,
+                ));
+            }
+            Command::MidiSelectProfile { name } => {
+                let default = self
+                    .path
+                    .as_ref()
+                    .ok_or_else(|| Fault::new(Unavailable, "No profile directory"))?;
+                let path = profiles::path(default, &name).map_err(|e| Fault::new(Invalid, e))?;
+                let profile = Profile::load(&path).map_err(|e| Fault::new(Failed, e))?;
+                profiles::remember(default, &name).map_err(|e| Fault::new(Failed, e))?;
+                self.mapper
+                    .replace_profile(profile, self.output.as_mut().map(|o| &mut o.coordinator))
+                    .map_err(|e| Fault::new(Invalid, e))?;
+                self.profile_name = name;
+            }
+            Command::MidiSaveAs { name } => {
+                profiles::save(
+                    self.path
+                        .as_ref()
+                        .ok_or_else(|| Fault::new(Unavailable, "No profile directory"))?,
+                    &name,
+                    &self.mapper.profile,
+                )
+                .map_err(|e| Fault::new(Invalid, e))?;
+                self.profile_name = name;
+                self.mapper.dirty = false;
+            }
+            Command::MidiFactory {} => {
+                self.mapper
+                    .replace_profile(
+                        Profile::default(),
+                        self.output.as_mut().map(|o| &mut o.coordinator),
+                    )
+                    .map_err(|e| Fault::new(Invalid, e))?;
+                self.mapper.dirty = true;
+            }
             Command::Perform { action, source } => {
                 if self
                     .output
@@ -271,7 +419,16 @@ impl Worker {
             Command::MidiProfile {} => {
                 return Ok(Response::MidiProfile(self.mapper.profile.clone()));
             }
-            Command::MidiReplace { profile } => {
+            Command::MidiReplace {
+                profile,
+                expected_revision,
+            } => {
+                if expected_revision.is_some_and(|r| r != self.mapper.revision) {
+                    return Err(Fault::new(
+                        Invalid,
+                        "MIDI profile changed; reload before editing",
+                    ));
+                }
                 self.mapper
                     .replace_profile(profile, self.output.as_mut().map(|o| &mut o.coordinator))
                     .map_err(|e| Fault::new(Invalid, e))?;
@@ -294,23 +451,33 @@ impl Worker {
                     .map_err(|e| Fault::new(Busy, e))?;
                 self.mapper.profile.input = input;
                 self.mapper.profile.output = output;
+                self.mapper.dirty = true;
+                self.mapper.revision = self.mapper.revision.wrapping_add(1);
             }
             Command::MidiSave {} => {
                 self.mapper
                     .profile
                     .save(
-                        self.path
-                            .as_ref()
-                            .ok_or_else(|| Fault::new(Unavailable, "No profile path"))?,
+                        &profiles::path(
+                            self.path
+                                .as_ref()
+                                .ok_or_else(|| Fault::new(Unavailable, "No profile path"))?,
+                            &self.profile_name,
+                        )
+                        .map_err(|e| Fault::new(Invalid, e))?,
                     )
                     .map_err(|e| Fault::new(Failed, e))?;
                 self.mapper.dirty = false;
             }
             Command::MidiLoad {} => {
                 let p = Profile::load(
-                    self.path
-                        .as_ref()
-                        .ok_or_else(|| Fault::new(Unavailable, "No profile path"))?,
+                    &profiles::path(
+                        self.path
+                            .as_ref()
+                            .ok_or_else(|| Fault::new(Unavailable, "No profile path"))?,
+                        &self.profile_name,
+                    )
+                    .map_err(|e| Fault::new(Invalid, e))?,
                 )
                 .map_err(|e| Fault::new(Failed, e))?;
                 self.mapper
@@ -319,19 +486,9 @@ impl Worker {
             }
             Command::MidiRescan {} => self.midi.rescan().map_err(|e| Fault::new(Busy, e))?,
             Command::MidiLearn { mapping, replace } => {
-                // Validate the template and replacement before starting learn, with the existing profile rules.
-                let mut p = self.mapper.profile.clone();
-                if let Some(i) = replace {
-                    let row = p
-                        .mappings
-                        .get_mut(i)
-                        .ok_or_else(|| Fault::new(Invalid, "Invalid mapping index"))?;
-                    *row = mapping.clone();
-                } else {
-                    p.mappings.push(mapping.clone());
-                }
-                p.validate().map_err(|e| Fault::new(Invalid, e))?;
-                self.mapper.learn = Some(Learn { mapping, replace });
+                self.mapper
+                    .begin_learn(mapping, replace)
+                    .map_err(|e| Fault::new(Invalid, e))?;
             }
             Command::MidiCancelLearn {} => self.mapper.learn = None,
         }
@@ -366,6 +523,105 @@ mod tests {
             id,
             command: Command::Snapshot {},
         }
+    }
+    #[test]
+    fn full_queue_release_latches_and_invalidates_an_older_momentary_press() {
+        let barrier = Arc::new(std::sync::Barrier::new(2));
+        let release = barrier.clone();
+        let mut service = Service::spawn_inner(move || {
+            release.wait();
+            Worker::new(Profile::default(), None)
+        })
+        .unwrap();
+        let client = service.client();
+        let hold = client
+            .submit(Request {
+                version: VERSION,
+                id: 1,
+                command: Command::Perform {
+                    action: Action::HoldMode {
+                        token: 1,
+                        mode: crate::Mode::Filter,
+                        pressed: true,
+                    },
+                    source: InputSource::Keyboard,
+                },
+            })
+            .unwrap();
+        let rest: Vec<_> = (1..CAPACITY)
+            .map(|i| client.submit(request(i as u32 + 1)).unwrap())
+            .collect();
+        let result = client.submit(Request {
+            version: VERSION,
+            id: 99,
+            command: Command::ReleaseModes {
+                source: InputSource::Keyboard,
+            },
+        });
+        assert_eq!(result.err().unwrap().code, ErrorCode::Busy);
+        assert_eq!(client.releases[1].load(Ordering::Acquire), 1);
+        barrier.wait();
+        let error = hold.wait().result.unwrap_err();
+        assert_eq!(error.code, ErrorCode::Invalid);
+        assert!(error.message.contains("Stale momentary"));
+        for p in rest {
+            p.wait().result.unwrap();
+        }
+        service.shutdown();
+    }
+    #[test]
+    fn named_profiles_persist_roundtrip_and_stale_editor_changes_reject() {
+        let root = std::env::temp_dir().join(format!(
+            "dawj-web2-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir(&root).unwrap();
+        let default = root.join("midi.json");
+        let mut w = Worker::new(Profile::default(), Some(default.clone()));
+        w.handle(Command::MidiSaveAs {
+            name: "live-set".into(),
+        })
+        .unwrap();
+        assert_eq!(profiles::selected(&default), "live-set");
+        let disk = Profile::load(&profiles::path(&default, "live-set").unwrap()).unwrap();
+        assert_eq!(disk.mappings.len(), w.mapper.profile.mappings.len());
+        assert!(
+            profiles::list(&default)
+                .unwrap()
+                .contains(&"live-set".into())
+        );
+        for name in ["../escape", "C:\\escape", "", "a/b", "CON", "COM1"] {
+            assert!(profiles::path(&default, name).is_err());
+        }
+        let old = w.mapper.revision;
+        w.handle(Command::MidiFactory {}).unwrap();
+        let error = w
+            .handle(Command::MidiReplace {
+                profile: disk,
+                expected_revision: Some(old),
+            })
+            .unwrap_err();
+        assert_eq!(error.code, ErrorCode::Invalid);
+        w.handle(Command::MidiSelectProfile {
+            name: "live-set".into(),
+        })
+        .unwrap();
+        assert_eq!(w.profile_name, "live-set");
+        w.handle(Command::MidiSave {}).unwrap();
+        w.handle(Command::MidiLoad {}).unwrap();
+        let Response::Snapshot(s) = w.handle(Command::Snapshot {}).unwrap() else {
+            panic!("snapshot")
+        };
+        assert_eq!(s.profile_name, "live-set");
+        assert!(!s.midi_dirty);
+        w.shutdown();
+        // The test exclusively created this unique directory under the system temp root.
+        assert!(root.starts_with(std::env::temp_dir()));
+        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn worker_is_independent_bounded_and_shutdown_bypasses_a_full_queue() {

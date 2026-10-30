@@ -28,6 +28,11 @@ pub enum Command {
     },
     Stop {},
     Snapshot {},
+    TimelineView {
+        zoom_bars: u8,
+        follow: bool,
+        page_delta: i8,
+    },
     Perform {
         action: Action,
         #[serde(default = "gui")]
@@ -39,6 +44,8 @@ pub enum Command {
     MidiProfile {},
     MidiReplace {
         profile: crate::midi::profile::Profile,
+        #[serde(default)]
+        expected_revision: Option<u64>,
     },
     MidiConnect {
         input: Option<String>,
@@ -52,6 +59,14 @@ pub enum Command {
         replace: Option<usize>,
     },
     MidiCancelLearn {},
+    MidiProfiles {},
+    MidiSelectProfile {
+        name: String,
+    },
+    MidiSaveAs {
+        name: String,
+    },
+    MidiFactory {},
 }
 fn eight() -> u8 {
     8
@@ -184,6 +199,16 @@ impl From<TriggerRule> for Rule {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
+    CrossfaderStep {
+        delta: f32,
+    },
+    SelectPart {
+        deck: usize,
+        slot: usize,
+    },
+    Selected {
+        action: PartAction,
+    },
     Deck {
         deck: usize,
     },
@@ -254,6 +279,17 @@ pub enum Action {
 impl From<Action> for Intent {
     fn from(a: Action) -> Self {
         match a {
+            Action::CrossfaderStep { delta } => Self::CrossfaderStep(delta),
+            Action::SelectPart { deck, slot } => Self::SelectPart { deck, slot },
+            Action::Selected { action } => match action {
+                PartAction::Launch => Self::Launch,
+                PartAction::Stop => Self::Stop,
+                PartAction::Cancel => Self::Cancel,
+                PartAction::Retrigger => Self::Retrigger,
+                PartAction::Toggle => Self::Toggle,
+                PartAction::Gain(v) => Self::Gain(v),
+                PartAction::Cutoff(v) => Self::Cutoff(v),
+            },
             Action::Deck { deck } => Self::Deck(deck),
             Action::Slot { slot } => Self::Slot(slot),
             Action::Mode { mode } => Self::Mode(mode),
@@ -350,6 +386,7 @@ pub enum Response {
     Snapshot(Box<Snapshot>),
     Devices(Vec<Device>),
     MidiProfile(crate::midi::profile::Profile),
+    MidiProfiles(Vec<String>),
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Device {
@@ -478,6 +515,7 @@ pub struct Selection {
 }
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Snapshot {
+    pub control_revision: u64,
     pub online: bool,
     pub failed: bool,
     pub generation: Option<u64>,
@@ -500,6 +538,13 @@ pub struct Snapshot {
     pub feedback: [[String; 8]; 2],
     pub midi: Option<crate::midi::device::DeviceStatus>,
     pub midi_notice: String,
+    pub timeline: Option<crate::web_timeline::Projection>,
+    pub midi_revision: u64,
+    pub midi_dirty: bool,
+    pub midi_learning: bool,
+    pub midi_dropped: u64,
+    pub profile_name: String,
+    pub profile_path: String,
 }
 impl Snapshot {
     pub fn project(co: &Coordinator, failed: bool) -> Self {

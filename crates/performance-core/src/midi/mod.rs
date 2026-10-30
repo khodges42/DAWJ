@@ -2,6 +2,7 @@
 //! Generic MIDI normalization, mappings and state feedback. No audio callback access.
 pub mod device;
 pub mod profile;
+pub mod profiles;
 pub mod runtime;
 use crate::{Coordinator, InputSource, Intent, Mode, PartAction};
 use audio_backend::{
@@ -119,6 +120,23 @@ pub struct Mapper {
     led_cache: [Option<u8>; MAX_LEDS],
 }
 impl Mapper {
+    pub fn begin_learn(&mut self, mapping: Mapping, replace: Option<usize>) -> Result<(), String> {
+        if replace.is_some_and(|i| i >= self.profile.mappings.len())
+            || (replace.is_none() && self.profile.mappings.len() >= MAX_MAPPINGS)
+        {
+            return Err("Mapping index/capacity exceeded".into());
+        }
+        // Validate the template alone. Input conflicts are checked after the gesture supplies its new input.
+        let p = Profile {
+            mappings: vec![mapping.clone()],
+            leds: Vec::new(),
+            ..Profile::default()
+        };
+        p.validate()?;
+        self.learn = Some(Learn { mapping, replace });
+        self.status = "Learning: press a note or move a CC".into();
+        Ok(())
+    }
     pub fn new(profile: Profile) -> Result<Self, String> {
         profile.validate()?;
         Ok(Self {

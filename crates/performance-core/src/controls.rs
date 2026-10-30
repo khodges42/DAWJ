@@ -28,6 +28,14 @@ pub enum RuleAction {
 impl Coordinator {
     pub fn dispatch(&mut self, intent: Intent, source: InputSource) -> Result<(), &'static str> {
         match intent {
+            Intent::CrossfaderStep(delta) => {
+                if !delta.is_finite() {
+                    return Err("Invalid crossfader step");
+                }
+                return self.execute_intent(Intent::Crossfader(
+                    (self.parameters.crossfader + delta).clamp(0.0, 1.0),
+                ));
+            }
             Intent::Rule { deck, slot, action } => {
                 if deck >= 2 || slot >= SLOTS {
                     return Err("invalid rule address");

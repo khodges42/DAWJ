@@ -20,6 +20,8 @@ pub mod midi;
 pub mod output;
 pub mod service;
 pub mod timeline;
+pub mod web_contract;
+pub mod web_timeline;
 pub use audio_backend::performance_state;
 pub use controls::{InputSource, PartAction, RuleAction};
 
@@ -35,6 +37,10 @@ pub enum Mode {
 
 #[derive(Clone, Copy, Debug)]
 pub enum Intent {
+    SelectPart {
+        deck: usize,
+        slot: usize,
+    },
     Deck(usize),
     Slot(usize),
     Mode(Mode),
@@ -48,6 +54,7 @@ pub enum Intent {
     Cutoff(Option<f32>),
     DeckGain(usize, f32),
     Crossfader(f32),
+    CrossfaderStep(f32),
     OutputTrim(f32),
     Cue(usize),
     Tempo(f64),
@@ -91,6 +98,10 @@ impl Focus {
     }
     pub fn update(&mut self, intent: Intent) -> bool {
         match intent {
+            Intent::SelectPart { deck, slot } if deck < 2 && slot < SLOTS => {
+                self.deck = deck;
+                self.slots[deck] = slot;
+            }
             Intent::Deck(d) if d < 2 => self.deck = d,
             Intent::Slot(s) if s < SLOTS => self.slots[self.deck] = s,
             Intent::Mode(m) => self.mode = m,
