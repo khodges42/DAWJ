@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 use audio_backend::{
-    OutputDevice, OutputDiscovery,
-    cpal_backend::{CpalDiscovery, CpalPlayback, PlaybackConfig, RequestedBuffer, SampleEncoding},
-    demo::{self, NAMES, RATE, TITLES},
+    OutputDevice,
+    cpal_backend::CpalPlayback,
+    demo::{NAMES, TITLES},
     live::Quantize,
-    routing::OutputRouting,
 };
+#[cfg(test)]
+use audio_backend::{demo, routing::OutputRouting};
 use dawj::{Coordinator, InputSource, Intent, Mode, lifecycle_label, musical_position};
 use eframe::egui::{self, Color32, RichText};
 use std::time::Duration;
@@ -147,7 +148,7 @@ impl PerformanceWindow {
         }
     }
     fn scan(&mut self) {
-        match CpalDiscovery::default().output_devices() {
+        match dawj::output::discover() {
             Ok(devices) => {
                 self.devices = devices;
                 self.selected_device = 0;
@@ -171,46 +172,10 @@ impl PerformanceWindow {
             .devices
             .get(self.selected_device)
             .ok_or("No audio output device")?;
-        let channels = if self.four_channels { 4 } else { 2 };
-        let configs = device
-            .configurations
-            .as_ref()
-            .map_err(ToString::to_string)?;
-        let encoding = [SampleEncoding::F32, SampleEncoding::I16, SampleEncoding::I32, SampleEncoding::U8]
-            .into_iter().find(|encoding| {
-                let name = match encoding { SampleEncoding::F32 => "f32", SampleEncoding::I16 => "i16", SampleEncoding::I32 => "i32", SampleEncoding::U8 => "u8" };
-                configs.iter().any(|c| c.channels == channels && c.sample_format == name && (c.min_sample_rate_hz..=c.max_sample_rate_hz).contains(&RATE))
-            }).ok_or("Unsupported configuration: demo requires 48 kHz, 2 or 4 channels, f32/i16/i32/u8. Choose another output or routing.")?;
-        // Recheck ordinal/name after discovery. Users explicitly rescan after device changes.
-        let fresh = CpalDiscovery::default()
-            .output_devices()
-            .map_err(|e| e.to_string())?;
-        if fresh.get(self.selected_device).map(|d| &d.name) != Some(&device.name) {
-            return Err("Output enumeration changed. Rescan and select the output again.".into());
-        }
-        let routing = OutputRouting::new(channels, [0, 1], self.four_channels.then_some([2, 3]))?;
-        let (engine, control, mixer) = demo::prepare_with_phrase_bars(self.phrase_bars)
-            .map_err(|e| format!("Demo asset / engine preparation failed: {e}"))?;
-        let mut session = Coordinator::new(control, mixer, self.four_channels);
-        let mut stream = CpalPlayback::open_live(
-            Some(device.ordinal),
-            PlaybackConfig {
-                sample_rate_hz: RATE,
-                channels,
-                encoding,
-                buffer: RequestedBuffer::Default,
-            },
-            routing,
-            engine,
-        )
-        .map_err(|e| e.to_string())?;
-        stream.start().map_err(|e| e.to_string())?;
-        eprintln!(
-            "Started {}: {:?}, {:?}",
-            stream.device_name(),
-            stream.config(),
-            stream.routing()
-        );
+        let output =
+            dawj::output::OutputSession::open(device, self.four_channels, self.phrase_bars)?;
+        let mut session = output.coordinator;
+        let stream = output.stream;
         session.notice = "Output started. Parts are stopped; select a slot and Launch.".into();
         self.stream = Some(stream);
         self.session = Some(session);
@@ -244,11 +209,12 @@ impl PerformanceWindow {
     }
     fn keyboard(&mut self, ctx: &egui::Context) {
         let focused = ctx.input(|i| i.focused);
-        if self.window_focused && !focused {
-            if let Some(s) = &mut self.session {
-                s.release_modes(InputSource::Keyboard);
-                s.release_modes(InputSource::Midi);
-            }
+        if self.window_focused
+            && !focused
+            && let Some(s) = &mut self.session
+        {
+            s.release_modes(InputSource::Keyboard);
+            s.release_modes(InputSource::Midi);
         }
         self.window_focused = focused;
         // Release before the text-entry guard: editing or modifier release must
@@ -270,17 +236,17 @@ impl PerformanceWindow {
                     egui::Key::F => Some((2, Mode::Filter)),
                     _ => None,
                 };
-                if let (Some((token, mode)), Some(s)) = (hold, &mut self.session) {
-                    if !pressed || (modifiers.shift && !repeat && !editing) {
-                        let _ = s.dispatch(
-                            Intent::HoldMode {
-                                token,
-                                mode,
-                                pressed,
-                            },
-                            InputSource::Keyboard,
-                        );
-                    }
+                if let (Some((token, mode)), Some(s)) = (hold, &mut self.session)
+                    && (!pressed || (modifiers.shift && !repeat && !editing))
+                {
+                    let _ = s.dispatch(
+                        Intent::HoldMode {
+                            token,
+                            mode,
+                            pressed,
+                        },
+                        InputSource::Keyboard,
+                    );
                 }
             }
         }
@@ -297,20 +263,20 @@ impl PerformanceWindow {
             return;
         };
         for &(key, intent, _) in BINDINGS {
-            if plain_key(ctx, key) {
-                if let Err(e) = session.dispatch(intent, InputSource::Keyboard) {
-                    session.notice = format!("Keyboard rejected: {e}");
-                }
+            if plain_key(ctx, key)
+                && let Err(e) = session.dispatch(intent, InputSource::Keyboard)
+            {
+                session.notice = format!("Keyboard rejected: {e}");
             }
         }
         for (key, delta) in [(egui::Key::ArrowLeft, -0.05), (egui::Key::ArrowRight, 0.05)] {
-            if plain_key(ctx, key) {
-                if let Err(e) = session.dispatch(
+            if plain_key(ctx, key)
+                && let Err(e) = session.dispatch(
                     Intent::Crossfader((session.parameters.crossfader + delta).clamp(0.0, 1.0)),
                     InputSource::Keyboard,
-                ) {
-                    session.notice = format!("Keyboard rejected: {e}");
-                }
+                )
+            {
+                session.notice = format!("Keyboard rejected: {e}");
             }
         }
     }
@@ -352,10 +318,10 @@ impl PerformanceWindow {
                                 .speed(0.2)
                                 .suffix(" BPM"),
                         );
-                        if ui.button("Queue tempo").clicked() {
-                            if let Some(s) = &mut self.session {
-                                s.act(Intent::Tempo(self.bpm_edit));
-                            }
+                        if ui.button("Queue tempo").clicked()
+                            && let Some(s) = &mut self.session
+                        {
+                            s.act(Intent::Tempo(self.bpm_edit));
                         }
                     },
                 );
@@ -368,10 +334,10 @@ impl PerformanceWindow {
                     .map_or(("MIDI: off", String::from("MIDI settings")), |m| {
                         (m.badge(), m.hint())
                     });
-                if ui.button(midi_label).on_hover_text(midi_hint).clicked() {
-                    if let Some(midi) = &mut self.midi {
-                        midi.open = !midi.open;
-                    }
+                if ui.button(midi_label).on_hover_text(midi_hint).clicked()
+                    && let Some(midi) = &mut self.midi
+                {
+                    midi.open = !midi.open;
                 }
             });
             ui.horizontal(|ui| {
@@ -501,10 +467,9 @@ impl PerformanceWindow {
                                     .color(color),
                             )
                             .clicked()
+                            && let Some(s) = &mut self.session
                         {
-                            if let Some(s) = &mut self.session {
-                                s.act(Intent::Deck(deck));
-                            }
+                            s.act(Intent::Deck(deck));
                         }
                         ui.heading(TITLES[deck]);
                         if let Some(state) = self.session.as_ref().and_then(|s| s.snapshot) {

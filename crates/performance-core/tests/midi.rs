@@ -4,7 +4,7 @@ use audio_backend::{
     live::{LiveEngine, Quantize, SlotState},
     routing::OutputRouting,
 };
-use dawj::{
+use dawj_core::{
     Coordinator, InputSource, Intent, Mode, PartAction,
     midi::{self, Event, Learn, Mapper, profile::*},
 };
@@ -67,7 +67,7 @@ fn normalization_is_channel_aware_and_rejects_invalid_or_unsupported_messages() 
 
 #[test]
 fn real_callback_bridge_is_bounded_tagged_and_never_owns_the_engine() {
-    use dawj::midi::device::{EVENT_CAPACITY, input_bridge, unique_port};
+    use dawj_core::midi::device::{EVENT_CAPACITY, input_bridge, unique_port};
     let (bridge, rx) = input_bridge(7);
     let producer = std::thread::spawn(move || {
         for _ in 0..EVENT_CAPACITY + 3 {

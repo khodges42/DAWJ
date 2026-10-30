@@ -11,7 +11,7 @@ expected = {tuple(p[k] for k in fields) for p in inventory}
 metadata = json.loads(subprocess.check_output([
     'cargo', 'metadata', '--format-version', '1', '--locked', '--offline',
     '--filter-platform', 'x86_64-pc-windows-msvc',
-], cwd=root, text=True))
+], cwd=root, text=True, encoding='utf-8'))
 actual = set()
 for package in metadata['packages']:
     if package['source'] is None:

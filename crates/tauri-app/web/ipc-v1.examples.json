@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "request": {"version":1,"id":42,"command":{"kind":"perform","action":{"kind":"launch","deck":0,"slot":0}}},
+  "reply": {"version":1,"id":42,"result":{"Err":{"code":"Busy","message":"Control admission full; try again"}}}
+}

@@ -6,7 +6,7 @@ use audio_backend::{
     performance_state::TransportState,
     routing::OutputRouting,
 };
-use dawj::{
+use dawj_core::{
     Coordinator, Focus, Intent, Mode, crossfader_position, lifecycle_label, musical_position,
     request_for,
 };

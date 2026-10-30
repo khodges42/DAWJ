@@ -369,10 +369,10 @@ impl MusicalScheduler {
             .ok_or("deck out of range")?
             .command(slot, command)?;
         self.manual_frame[deck][slot] = Some(self.frame);
-        if matches!(action, Action::Stop) {
-            if let Some(rule) = &mut self.rules[deck][slot] {
-                rule.status.next = None;
-            }
+        if matches!(action, Action::Stop)
+            && let Some(rule) = &mut self.rules[deck][slot]
+        {
+            rule.status.next = None;
         }
         self.immediate[deck][slot] = if q == Quantization::Immediate {
             Some(self.frame)

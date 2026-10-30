@@ -32,10 +32,10 @@ impl Part {
         if self.timing.nominal_length.0 <= 0 || self.timing.quantum.0 <= 0 {
             return Err("invalid musical timing");
         }
-        if let PlaybackMode::Loop { start, end } = self.playback.mode {
-            if start >= end {
-                return Err("empty loop");
-            }
+        if let PlaybackMode::Loop { start, end } = self.playback.mode
+            && start >= end
+        {
+            return Err("empty loop");
         }
         Ok(self)
     }

@@ -17,7 +17,7 @@ impl PreparedBuffer {
         if rate == 0
             || channels == 0
             || samples.is_empty()
-            || samples.len() % usize::from(channels) != 0
+            || !samples.len().is_multiple_of(usize::from(channels))
             || samples.iter().any(|s| !s.is_finite() || s.abs() > 1.0)
         {
             return Err("invalid prepared PCM geometry, rate, or sample");

@@ -26,17 +26,16 @@ pub struct InputBridge {
 impl InputBridge {
     /// The real midir callback and synthetic sources use this same bounded path.
     pub fn receive(&self, bytes: &[u8]) {
-        if let Some(event) = normalize(bytes) {
-            if self
+        if let Some(event) = normalize(bytes)
+            && self
                 .tx
                 .try_send(Packet {
                     epoch: self.epoch,
                     event,
                 })
                 .is_err()
-            {
-                self.dropped.fetch_add(1, Ordering::Relaxed);
-            }
+        {
+            self.dropped.fetch_add(1, Ordering::Relaxed);
         }
     }
     fn with_epoch(&self, epoch: u64) -> Self {
@@ -66,7 +65,7 @@ pub fn unique_port(names: &[String], name: &str) -> Result<Option<usize>, &'stat
         Ok(first)
     }
 }
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, serde::Serialize, serde::Deserialize)]
 pub struct DeviceStatus {
     pub inputs: Vec<String>,
     pub outputs: Vec<String>,
@@ -232,49 +231,45 @@ fn run(
                         state.output = None;
                         state.output_epoch = state.output_epoch.wrapping_add(1);
                     }
-                    if input.is_none() {
-                        if let Some(name) = &wanted_in {
-                            if let Ok(Some(index)) = unique_port(&state.inputs, name) {
-                                mi.ignore(midir::Ignore::All);
-                                let producer = bridge.with_epoch(state.input_epoch.wrapping_add(1));
-                                match mi.connect(
-                                    &ip[index],
-                                    "DAWJ controls",
-                                    move |_, bytes, _| producer.receive(bytes),
-                                    (),
-                                ) {
-                                    Ok(c) => {
-                                        input = Some(c);
-                                        state.input = Some(name.clone());
-                                        state.input_epoch = state.input_epoch.wrapping_add(1);
-                                        state.message = "MIDI input connected".into();
-                                    }
-                                    Err(e) => {
-                                        state.message = format!("MIDI input connection failed: {e}")
-                                    }
+                    if input.is_none()
+                        && let Some(name) = &wanted_in
+                    {
+                        if let Ok(Some(index)) = unique_port(&state.inputs, name) {
+                            mi.ignore(midir::Ignore::All);
+                            let producer = bridge.with_epoch(state.input_epoch.wrapping_add(1));
+                            match mi.connect(
+                                &ip[index],
+                                "DAWJ controls",
+                                move |_, bytes, _| producer.receive(bytes),
+                                (),
+                            ) {
+                                Ok(c) => {
+                                    input = Some(c);
+                                    state.input = Some(name.clone());
+                                    state.input_epoch = state.input_epoch.wrapping_add(1);
+                                    state.message = "MIDI input connected".into();
                                 }
-                            } else {
-                                state.message = format!(
-                                    "Input '{name}' unavailable or ambiguous; reconnect/rescan"
-                                );
+                                Err(e) => {
+                                    state.message = format!("MIDI input connection failed: {e}")
+                                }
                             }
+                        } else {
+                            state.message = format!(
+                                "Input '{name}' unavailable or ambiguous; reconnect/rescan"
+                            );
                         }
                     }
-                    if output.is_none() {
-                        if let Some(name) = &wanted_out {
-                            if let Ok(Some(index)) = unique_port(&state.outputs, name) {
-                                match mo.connect(&op[index], "DAWJ state") {
-                                    Ok(c) => {
-                                        output = Some(c);
-                                        state.output = Some(name.clone());
-                                        state.output_epoch = state.output_epoch.wrapping_add(1);
-                                    }
-                                    Err(e) => {
-                                        state.message =
-                                            format!("MIDI output connection failed: {e}")
-                                    }
-                                }
+                    if output.is_none()
+                        && let Some(name) = &wanted_out
+                        && let Ok(Some(index)) = unique_port(&state.outputs, name)
+                    {
+                        match mo.connect(&op[index], "DAWJ state") {
+                            Ok(c) => {
+                                output = Some(c);
+                                state.output = Some(name.clone());
+                                state.output_epoch = state.output_epoch.wrapping_add(1);
                             }
+                            Err(e) => state.message = format!("MIDI output connection failed: {e}"),
                         }
                     }
                 }

@@ -148,24 +148,25 @@ pub fn markers(s: &PerformanceState, w: Window) -> Vec<Marker> {
     for deck in 0..2 {
         for slot in 0..8 {
             let p = s.decks[deck].slots[slot];
-            if let Some(a) = p.pending {
-                if a.target >= w.start && a.target <= w.end {
-                    out.push(Marker {
-                        deck,
-                        slot,
-                        at: a.target,
-                        kind: match a.kind {
-                            PendingKind::Launch if p.pending_one_shot => MarkerKind::Fill,
-                            PendingKind::Launch => MarkerKind::Launch,
-                            PendingKind::Stop => MarkerKind::Stop,
-                            PendingKind::Retrigger => MarkerKind::Retrigger,
-                            PendingKind::Replace => MarkerKind::Replace,
-                        },
-                        projected: false,
-                        manual: true,
-                        command_id: a.command_id,
-                    });
-                }
+            if let Some(a) = p.pending
+                && a.target >= w.start
+                && a.target <= w.end
+            {
+                out.push(Marker {
+                    deck,
+                    slot,
+                    at: a.target,
+                    kind: match a.kind {
+                        PendingKind::Launch if p.pending_one_shot => MarkerKind::Fill,
+                        PendingKind::Launch => MarkerKind::Launch,
+                        PendingKind::Stop => MarkerKind::Stop,
+                        PendingKind::Retrigger => MarkerKind::Retrigger,
+                        PendingKind::Replace => MarkerKind::Replace,
+                    },
+                    projected: false,
+                    manual: true,
+                    command_id: a.command_id,
+                });
             }
             if let Some(r) = p.rule {
                 if let Some(at) = r.last_fired.filter(|at| w.contains(*at)) {

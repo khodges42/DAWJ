@@ -113,14 +113,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     } else {
         None
     };
-    if let (Some(path), Some(source)) = (&output, &script) {
-        if std::path::Path::new(path)
+    if let (Some(path), Some(source)) = (&output, &script)
+        && std::path::Path::new(path)
             .canonicalize()
             .ok()
             .is_some_and(|p| Some(p) == std::path::Path::new(source).canonicalize().ok())
-        {
-            return Err("output cannot overwrite script".into());
-        }
+    {
+        return Err("output cannot overwrite script".into());
     }
     let routing = OutputRouting::new(
         channels,

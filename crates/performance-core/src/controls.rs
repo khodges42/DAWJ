@@ -2,13 +2,13 @@
 //! Semantic dispatch independent of GUI, keyboard or MIDI source.
 use super::*;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum InputSource {
     Gui,
     Keyboard,
     Midi,
 }
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 pub enum PartAction {
     Launch,
     Stop,

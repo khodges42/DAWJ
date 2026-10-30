@@ -118,3 +118,25 @@ above. Linux's ALSA MIDI backend is structurally supported but still needs its
 own native packaging/build/hardware verification. No advisory/release audit is
 claimed by the metadata gate.
 
+## M3.Web1 shared frontend dependency review
+
+The workspace pins Rust 1.93.0 and adds Tauri 2.12.5 / tauri-build 2.7.4 with
+Apache-2.0 selected. Existing audio/DSP dependencies and eframe 0.31.1 remain.
+The common `dawj-core` crate contains no GUI framework dependency. Windows-filtered
+metadata now inventories **347 external packages**, including optional resolved
+nodes. Exact versions, sources, declared/selected licenses, repositories and
+packaged license filenames are recorded in `windows-dependencies.json`.
+
+Added selected licenses remain GPLv3-compatible permissive terms or MPL-2.0.
+Scoped MPL screening exceptions cover cssparser 0.37.0, cssparser-macros 0.7.1,
+dtoa-short 0.3.5, option-ext 0.2.0 and selectors 0.38.0. Retain MPL notices and
+covered source, and all other applicable notices/source obligations. No third-party
+source was modified. Existing separately licensed font obligations remain intact.
+Empty inventory license-file lists require gathering upstream texts before release.
+The experiment's small icon is original generated artwork, retained with the code.
+No new samples, proprietary SDK, web assets or runtime installer were added.
+
+WebView2 remains a Windows runtime prerequisite and is not redistributed here.
+Linux WebKitGTK/ALSA/native packaging requires separate validation and licensing
+review. Inventory screening is not a vulnerability scan or final release audit.
+

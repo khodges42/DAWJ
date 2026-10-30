@@ -1,0 +1,25 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "DAWJ Web",
+  "version": "0.1.0",
+  "identifier": "org.dawj.performance",
+  "build": {
+    "frontendDist": "web"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "DAWJ | Web Performance",
+        "width": 1280,
+        "height": 820
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost; img-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": false
+  }
+}

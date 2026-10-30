@@ -563,15 +563,10 @@ impl LiveEngine {
                             if self.scheduler.complete(deck, slot).is_err() {
                                 self.failed = true;
                             }
-                            if matches!(self.scheduler.state(deck, slot), Some(State::Stopped)) {
-                                if let Some(receipt) = self.pending[deck][slot].take() {
-                                    publish(
-                                        &self.queue,
-                                        receipt.row,
-                                        receipt.id,
-                                        Outcome::Superseded,
-                                    );
-                                }
+                            if matches!(self.scheduler.state(deck, slot), Some(State::Stopped))
+                                && let Some(receipt) = self.pending[deck][slot].take()
+                            {
+                                publish(&self.queue, receipt.row, receipt.id, Outcome::Superseded);
                             }
                         }
                     } else if self.transitions[deck][slot].remaining > 0 {

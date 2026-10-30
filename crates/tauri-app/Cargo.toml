@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+[package]
+name = "dawj-tauri"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+[dependencies]
+tauri = { version = "=2.12.5", features = [] }
+dawj-core = { path = "../performance-core" }
+serde_json = "=1.0.150"
+[build-dependencies]
+tauri-build = "=2.7.4"
+[lints]
+workspace = true

@@ -4,7 +4,7 @@ use audio_backend::{
     live::{LiveEngine, Quantize, RulePhase, RuleUnit, SlotState, TriggerRule},
     routing::OutputRouting,
 };
-use dawj::{
+use dawj_core::{
     Coordinator, Intent, PartAction, RuleAction,
     timeline::{self, BAR, MarkerKind, View},
 };

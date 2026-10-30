@@ -5,7 +5,7 @@ use dawj::midi::{
     device::{DeviceStatus, Devices},
     profile::*,
 };
-use std::{path::PathBuf, sync::atomic::Ordering, time::Instant};
+use std::{path::PathBuf, time::Instant};
 
 pub(super) struct MidiPanel {
     pub open: bool,
@@ -42,15 +42,7 @@ impl MidiPanel {
     }
     pub fn new() -> Self {
         let path = default_path();
-        let mut notice = String::new();
-        let profile = if path.exists() {
-            Profile::load(&path).unwrap_or_else(|e| {
-                notice = format!("Saved profile rejected: {e}");
-                Profile::default()
-            })
-        } else {
-            Profile::default()
-        };
+        let (profile, notice) = dawj::midi::runtime::load_profile(&path);
         let devices = Devices::new(profile.input.clone(), profile.output.clone());
         let edit = profile.mappings.first().cloned().unwrap_or_else(|| {
             Mapping::new(
@@ -83,73 +75,18 @@ impl MidiPanel {
     pub fn reset(&mut self, co: Option<&mut Coordinator>) {
         self.mapper.reset(co);
     }
-    pub fn poll(&mut self, mut co: Option<&mut Coordinator>) {
-        let state = self.devices.status();
-        let dropped = self.devices.dropped.load(Ordering::Relaxed);
-        if state.input_epoch != self.state.input_epoch || dropped != self.dropped {
-            self.mapper.reset(co.as_deref_mut());
-            if dropped != self.dropped {
-                // A lost release makes queued button presses unsafe to replay.
-                for _ in self
-                    .devices
-                    .events
-                    .try_iter()
-                    .take(dawj::midi::device::EVENT_CAPACITY)
-                {}
-                self.mapper.status =
-                    format!("MIDI input overflow: {dropped} dropped; temporary modes/pickup reset");
-            }
-        }
-        if state.output_epoch != self.state.output_epoch {
-            self.mapper.refresh_feedback();
-        }
-        self.dropped = dropped;
-        self.state = state;
-        for packet in self.devices.events.try_iter().take(128) {
-            if packet.epoch == self.state.input_epoch {
-                let revision = self.mapper.revision;
-                self.mapper.handle(packet.event, co.as_deref_mut());
-                if self.mapper.revision != revision {
-                    for _ in self
-                        .devices
-                        .events
-                        .try_iter()
-                        .take(dawj::midi::device::EVENT_CAPACITY)
-                    {}
-                    break;
-                }
-            }
-        }
-        if let Some(co) = &mut co {
-            co.flush_parameters();
-        }
-        if self.feedback_tick.elapsed() >= Duration::from_millis(50) && self.state.output.is_some()
-        {
-            self.feedback_tick = Instant::now();
-            let updates: Vec<_> = self
-                .mapper
-                .feedback(co.as_deref())
-                .into_iter()
-                .take(16)
-                .collect();
-            if !updates.is_empty()
-                && self
-                    .devices
-                    .feedback(updates.iter().map(|(_, m)| *m).collect())
-            {
-                self.mapper.mark_sent(&updates);
-            }
-        }
+    pub fn poll(&mut self, co: Option<&mut Coordinator>) {
+        dawj::midi::runtime::poll(
+            &mut self.mapper,
+            &self.devices,
+            &mut self.state,
+            &mut self.dropped,
+            &mut self.feedback_tick,
+            co,
+        );
     }
     pub fn shutdown(&mut self) {
-        self.devices.shutdown(
-            self.mapper
-                .profile
-                .leds
-                .iter()
-                .map(|l| l.output.message(self.mapper.profile.values.stopped))
-                .collect(),
-        );
+        dawj::midi::runtime::shutdown(&self.mapper, &mut self.devices);
     }
     pub fn show(&mut self, ctx: &egui::Context, mut co: Option<&mut Coordinator>) {
         let revision = self.mapper.revision;
@@ -166,7 +103,7 @@ impl MidiPanel {
                     self.notice=match self.devices.connect(self.mapper.profile.input.clone(),self.mapper.profile.output.clone()) {Ok(())=>"Connection requested; save to remember device choices".into(),Err(e)=>e};
                 }
                 if ui.button("Disconnect").clicked() {self.mapper.reset(co.as_deref_mut());if let Err(e)=self.devices.connect(None,None){self.notice=e;}}
-                if ui.button("Rescan").clicked() {if let Err(e)=self.devices.rescan(){self.notice=e;}}
+                if ui.button("Rescan").clicked()&& let Err(e)=self.devices.rescan(){self.notice=e;}
             });
             ui.horizontal(|ui| {
                 if ui.button("Save profile").clicked() {self.notice=match self.mapper.profile.save(&self.path){Ok(())=>{self.mapper.dirty=false;"Profile saved".into()},Err(e)=>e};}

@@ -31,10 +31,10 @@ impl OutputRouting {
         if !valid_pair(master) {
             return Err("invalid master channel pair");
         }
-        if let Some(pair) = cue {
-            if !valid_pair(pair) || pair.iter().any(|ch| master.contains(ch)) {
-                return Err("cue needs two distinct in-range channels separate from master");
-            }
+        if let Some(pair) = cue
+            && (!valid_pair(pair) || pair.iter().any(|ch| master.contains(ch)))
+        {
+            return Err("cue needs two distinct in-range channels separate from master");
         }
         Ok(Self {
             channels,

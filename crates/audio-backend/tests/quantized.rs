@@ -300,16 +300,16 @@ fn hardening_concurrent_snapshots_have_one_clock_and_sixteen_matching_cursors() 
     });
     let mut observed = 0;
     while !done.load(std::sync::atomic::Ordering::Acquire) {
-        if let Some(s) = c.performance_state() {
-            if s.frame.0 > 0 {
-                for deck in s.decks {
-                    for slot in deck.slots {
-                        assert_eq!(slot.position, Some(s.frame.0 as u64));
-                        assert_eq!(slot.active, Some(PartId(1)));
-                    }
+        if let Some(s) = c.performance_state()
+            && s.frame.0 > 0
+        {
+            for deck in s.decks {
+                for slot in deck.slots {
+                    assert_eq!(slot.position, Some(s.frame.0 as u64));
+                    assert_eq!(slot.active, Some(PartId(1)));
                 }
-                observed += 1;
             }
+            observed += 1;
         }
     }
     t.join().unwrap();

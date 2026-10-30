@@ -2,6 +2,7 @@
 //! Generic MIDI normalization, mappings and state feedback. No audio callback access.
 pub mod device;
 pub mod profile;
+pub mod runtime;
 use crate::{Coordinator, InputSource, Intent, Mode, PartAction};
 use audio_backend::{
     live::{Quantize, SlotState},
@@ -187,15 +188,14 @@ impl Mapper {
             let button = mapping.behavior == Behavior::Button;
             match self.install(mapping, replace, co) {
                 Ok(()) => {
-                    if button {
-                        if let Some(i) = self
+                    if button
+                        && let Some(i) = self
                             .profile
                             .mappings
                             .iter()
                             .position(|m| m.input == event.control)
-                        {
-                            self.runtime[i].pressed = true;
-                        }
+                    {
+                        self.runtime[i].pressed = true;
                     }
                     self.status = format!("Learned {:?}; save profile to persist", event.control);
                 }
