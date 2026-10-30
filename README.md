@@ -14,6 +14,14 @@ basic performance surface, keyboard modes, MIDI settings and shared musical
 timeline. Both applications use the existing audio engine; egui remains the
 default fallback. Follow the [five-minute Tauri walkthrough](docs/M3_WEB2_WALKTHROUGH.md).
 
+[M3.Web3 portable skins](docs/M3_WEB3_SKINS.md) adds nine bundled palettes,
+live previews, import/export and accessibility settings under **MIDI / settings
+→ Skins & accessibility**. See the [authoring guide](docs/SKIN_AUTHORING.md),
+[CSS reference](docs/SKIN_REFERENCE.md) and [sample package](crates/tauri-app/web/skins/soft-grid.dawjskin.json).
+Recover independently of skin CSS through the native **Appearance → Restore
+default interface** menu or **Ctrl+Alt+Shift+R**. Launch with `--safe-mode` to
+ignore the saved skin, or `--reset-skin` to clear user skin state.
+
 The [native M3 performance application](docs/M3_GUI_ARCHITECTURE.md) controls the
 existing audio engine with two visible eight-part decks. Run it on Windows:
 
