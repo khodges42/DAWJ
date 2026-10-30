@@ -2,7 +2,9 @@
 // Opt-in actual WebView/CPAL integration. No physical MIDI messages or profile files are written.
 import {invokeRequest} from './protocol.mjs';
 import {summary} from './model.mjs';
-export async function runSmoke({t,getState,invoke}){
+export async function runSmoke({t,getState,invoke,skinManager}){
+  const skinKeys=['dawj.skins.v1','dawj.skin-preferences.v1','customCSS','theme','accent'],savedSkinStorage=new Map(skinKeys.map(k=>[k,localStorage.getItem(k)]));
+  const restoreSkinStorage=()=>{for(const[k,v]of savedSkinStorage){if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}};
   const $=id=>document.getElementById(id),assert=(yes,message)=>{if(!yes)throw Error(message)};
   const settle=async()=>{await Promise.resolve();await Promise.resolve();await t.serial;await new Promise(r=>setTimeout(r,15));await t.serial};
   const click=async id=>{assert(!$(id).disabled,`Disabled control: ${id}`);$(id).click();await settle()};
@@ -13,12 +15,15 @@ export async function runSmoke({t,getState,invoke}){
   const input=async(id,value)=>{$(id).value=value;$(id).dispatchEvent(new Event('input',{bubbles:true}));while(t.latest.size||t.sending){await t.flush();await new Promise(r=>setTimeout(r,10))}await settle()};
   let original;
   try{
+    const {skinSmoke}=await import('./skin-smoke.mjs');const skinMetrics=await skinSmoke(skinManager,invoke);
     await click('start');
     const essential=[...document.querySelectorAll('article button,article .context,footer input,#transport button')];
     const outside=essential.filter(e=>{const r=e.getBoundingClientRect();return r.bottom>innerHeight||r.left<0||r.right>innerWidth}).map(e=>e.id);
     assert(outside.length===0,'Essential controls outside viewport: '+outside.join(','));
     await click('launch-0-0');await click('launch-1-3');
     let sawQueued=false;await wait(s=>{sawQueued ||= !!s.decks[0][0].pending;return s.decks[0][0].active!=null&&s.decks[1][3].active!=null},'two-deck playback');
+    const frameBefore=getState().frame,playingIds=[getState().decks[0][0].active,getState().decks[1][3].active];
+    await skinManager.preview('bundled:psychic-genesis');await t.call({kind:'snapshot'});assert(getState().frame>frameBefore&&getState().decks[0][0].active===playingIds[0]&&getState().decks[1][3].active===playingIds[1],'Skin preview interrupted audio');await skinManager.cancel();skinMetrics.skin_live_audio=true;
     await key('a');await key('2');await key(' ');await wait(s=>s.decks[0][1].active!=null,'keyboard selected launch');
     await key('F4');await key('3');await key(' ');await wait(s=>!!s.decks[0][2].pending,'queued phrase launch');
     const pendingId=getState().decks[0][2].pending.command_id;await key('Escape');await wait(s=>!s.decks[0][2].pending,'cancel queued ID');
@@ -50,11 +55,11 @@ export async function runSmoke({t,getState,invoke}){
     $('settings').close();document.activeElement?.blur();
     const samples=[];for(let i=0;i<100;i++){const start=performance.now();await invokeRequest(invoke,{kind:'snapshot'});samples.push(performance.now()-start)}
     await click('stop-0-0');await wait(s=>s.decks[0][0].active==null,'independent stop');assert(getState().decks[1][3].active!=null,'B stopped with A');
-    const metrics={web2:true,controls_fit:true,viewport:[innerWidth,innerHeight],ipc_ms:summary(samples),audio_peaks:getState().peaks,saw_queued:sawQueued,cancelled_id:pendingId,keyboard:true,context_modes:true,focus_release:true,timeline:true,rules:true,midi_editor:true,independent_stop:true};
+    const metrics={...skinMetrics,web2:true,controls_fit:true,viewport:[innerWidth,innerHeight],ipc_ms:summary(samples),audio_peaks:getState().peaks,saw_queued:sawQueued,cancelled_id:pendingId,keyboard:true,context_modes:true,focus_release:true,timeline:true,rules:true,midi_editor:true,independent_stop:true};
     await click('stop');assert(!getState().online,'Output still online');metrics.clean_audio_shutdown=true;
-    await invoke('report',{metrics});
+    restoreSkinStorage();await invoke('report',{metrics});
   }catch(e){
     if(original)await t.call({kind:'midi_replace',profile:original}).catch(()=>{});
-    await t.call({kind:'stop'}).catch(()=>{});await invoke('report',{metrics:{error:String(e),web2:true}});
+    await t.call({kind:'stop'}).catch(()=>{});restoreSkinStorage();await invoke('report',{metrics:{error:String(e),web2:true}});
   }
 }

@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later
+   Product safety boundary. Imported CSS rejects !important and cannot override these minima. */
+body{position:static!important;transform:none!important;visibility:visible!important;opacity:1!important;overflow-x:hidden!important;overflow-y:auto!important}
+#decks{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.deck,.slots,article,.actions,#transport,#inspector,footer,body>header{position:static!important;transform:none!important;visibility:visible!important;opacity:1!important;overflow:visible!important}
+.deck{min-width:0!important}article{grid-template-rows:minmax(var(--control-height),auto) minmax(calc(27px * var(--font-scale)),auto) minmax(var(--control-height),auto) minmax(24px,auto)!important}
+.deck button,.deck input,#transport button,#transport input,#transport select,#inspector button,#inspector input,#inspector select,#phrase-panel button,#phrase-panel input,#phrase-panel select,footer input,body>header button,body>header select{
+ visibility:visible!important;position:static!important;transform:none!important;clip-path:none!important;pointer-events:auto!important;min-width:28px!important;min-height:var(--control-height)!important;font-size:max(12px,var(--ui-font-size))!important;line-height:1.2!important;color:var(--color-text)!important;background-color:var(--color-raised)!important
+}
+.deck input[type=range],#inspector input[type=range],footer input[type=range]{min-height:24px!important}
+.deck button,.deck input,.deck .state,#transport button,#transport input,#transport select,#inspector button,#inspector input,#inspector select,#phrase-panel button,#phrase-panel input,#phrase-panel select,footer input,footer output,body>header button,body>header select,#clock,#mode-status,#selected-name,#rule-status,#inspection,#phrase-position{background-image:none!important}
+.deck .state{display:block!important;visibility:visible!important;opacity:1!important;min-height:26px!important;font-size:max(11px,calc(11px * var(--font-scale)))!important;line-height:1.2!important;overflow:visible!important;color:var(--color-text)!important;background-color:var(--color-surface)!important}
+#clock,#mode-status,#selected-name,#rule-status,#inspection,#phrase-position,footer output{visibility:visible!important;opacity:1!important;font-size:max(12px,calc(12px * var(--font-scale)))!important;color:var(--color-text)!important;background-color:var(--color-surface)!important}
+button[aria-pressed=true]{background-color:color-mix(in srgb,var(--color-primary) 25%,var(--color-raised))!important}
+.deck .identity{white-space:nowrap!important}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--color-focus)!important;outline-offset:2px!important}
+html[data-enhanced-contrast=true] small{color:var(--color-text)!important;opacity:1!important}html[data-enhanced-contrast=true] button,html[data-enhanced-contrast=true] input,html[data-enhanced-contrast=true] select{border-color:var(--color-text)!important}
+html[data-reduced-motion=true] *,html[data-reduced-motion=true] *::before,html[data-reduced-motion=true] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+body[data-theme=light]{color-scheme:light}body[data-theme=dark],body[data-theme=high-contrast]{color-scheme:dark}
+@media(max-width:1179px){.slots{grid-template-columns:repeat(2,minmax(0,1fr))}}

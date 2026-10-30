@@ -3,6 +3,8 @@ import {Transport} from './transport.mjs';
 import {Keyboard,HELP} from './keyboard.mjs';
 import {address,gestureTarget,partAction,contextValue,contextAction,slotView,meterDb,timelineHits,nearestMarker} from './performance.mjs';
 import {MidiPanel} from './midi.mjs';
+import {SkinManager,SkinPanel} from './skins.mjs';
+import {browserStorage} from './skin-store.mjs';
 const $=id=>document.getElementById(id),invoke=window.__TAURI__.core.invoke;
 let state={online:false},errorText='',lastMode='Volume',hits=[],markerSignature='',dragging=new Map(),midi;
 function error(e){errorText=String(e);$('error').textContent=errorText}
@@ -82,16 +84,17 @@ bind('help-open',()=>openDialog('help'));$('bindings').textContent=HELP;
 bind('midi-open',async()=>{openDialog('settings');await midi.open()});
 document.querySelectorAll('[data-close]').forEach(e=>e.onclick=()=>$(e.dataset.close).close());
 for(const type of ['keydown','keyup'])window.addEventListener(type,e=>{
-  const editing=!!e.target.isContentEditable||!!e.target.closest?.('input,textarea,select');
+  const editing=!!e.target.isContentEditable||!!e.target.closest?.('input,textarea,select')||e.composedPath().some(n=>n?.hasAttribute?.('data-skin-ui'));
   if(type==='keydown'&&e.key==='Escape'&&document.querySelector('dialog[open]'))return;
   const commands=keyboard.handle(e,editing);if(commands.length)e.preventDefault();
   for(const c of commands){if(c.ui==='help'){if($('help').open)$('help').close();else openDialog('help')}else if(c.kind==='release_modes')void t.release(c.source);else{if(c.kind==='mode'||c.kind==='hold_mode')t.dropContinuous();fire(c,'Keyboard')}}
 });
-// Preserve the experiment's existing appearance controls, without extending its theme system.
-$('theme').value=localStorage.theme??'dark';document.body.dataset.theme=$('theme').value;$('theme').onchange=e=>{document.body.dataset.theme=e.target.value;localStorage.theme=e.target.value};
-$('accent').value=localStorage.accent??'#73c5df';document.documentElement.style.setProperty('--accent',$('accent').value);$('accent').oninput=e=>{document.documentElement.style.setProperty('--accent',e.target.value);localStorage.accent=e.target.value};
-$('user-style').textContent=localStorage.customCSS??'';$('css').onchange=async e=>{const file=e.target.files[0];if(!file)return;if(file.size>65536)return error('CSS limit 64 KiB');const css=await file.text();$('user-style').textContent=css;localStorage.customCSS=css};
-$('reset-style').onclick=()=>{localStorage.removeItem('customCSS');$('user-style').textContent=''};
+// Skins remain a presentation-only boundary; no engine or performance IPC changes.
+const skinManager=new SkinManager(browserStorage(),message=>{$('skin-status').textContent=message;$('skin-status').title=message;if(/rejected|unsafe|not saved|unavailable/i.test(message))error(message)});
+try{await skinManager.initialize(await invoke('skin_startup'))}catch(e){error('Skin fallback: '+e.message);skinManager.reset()}
+const skinPanel=new SkinPanel(skinManager);
+bind('skins-open',()=>{$('settings').close();skinPanel.refresh();openDialog('skins')});
+document.addEventListener('dawj-skin-applied',drawTimeline);
 function show(s){
   if((s.control_revision??0)<(state.control_revision??0))return;
   const old=address(state),next=address(s);if(old.deck!==next.deck||old.slot!==next.slot){t.latest.delete('selected-gain');t.latest.delete('selected-cutoff')}
@@ -137,12 +140,12 @@ function drawTimeline(){
   const canvas=$('timeline'),r=canvas.getBoundingClientRect(),scale=devicePixelRatio||1;
   if(canvas.width!==Math.round(r.width*scale)||canvas.height!==Math.round(r.height*scale)){canvas.width=Math.round(r.width*scale);canvas.height=Math.round(r.height*scale)}
   const ctx=canvas.getContext('2d');ctx.setTransform(scale,0,0,scale,0,0);ctx.clearRect(0,0,r.width,r.height);
-  const colors=getComputedStyle(document.body),fg=colors.color,a=colors.getPropertyValue('--accent'),b=colors.getPropertyValue('--b');ctx.font='12px system-ui';ctx.fillStyle=fg;
+  const colors=getComputedStyle(document.body),fg=colors.color,a=colors.getPropertyValue('--accent'),b=colors.getPropertyValue('--b');ctx.font=`${Math.max(11,12*parseFloat(colors.getPropertyValue('--font-scale')||'1'))}px ${colors.fontFamily}`;ctx.fillStyle=fg;
   const projection=state.timeline,left=116,right=r.width-12,laneHeight=(r.height-28)/3;hits=timelineHits(projection,r.width,r.height,address(state));
   if(!projection){ctx.fillText('Start output for the repeating musical timeline',12,36);return}
-  for(const line of projection.grid){const x=left+line.fraction*(right-left);ctx.strokeStyle=line.bar!=null?'#718096':'#495565';ctx.beginPath();ctx.moveTo(x,20);ctx.lineTo(x,r.height);ctx.stroke();if(line.bar!=null){ctx.fillStyle=fg;ctx.fillText(String(line.bar),x+2,13)}}
+  for(const line of projection.grid){const x=left+line.fraction*(right-left);ctx.strokeStyle=colors.getPropertyValue('--color-grid');ctx.globalAlpha=line.bar!=null?1:.35;ctx.beginPath();ctx.moveTo(x,20);ctx.lineTo(x,r.height);ctx.stroke();ctx.globalAlpha=1;if(line.bar!=null){ctx.fillStyle=fg;ctx.fillText(String(line.bar),x+2,13)}}
   for(let lane=0;lane<3;lane++){ctx.fillStyle=lane===0?a:lane===1?b:fg;ctx.fillText(lane<2?`${lane?'B':'A'} · ${projection.activity[lane]} playing`:`${address(state).deck?'B':'A'}${address(state).slot+1} selected`,3,28+(lane+.5)*laneHeight+4)}
-  for(const m of hits){const width=m.width??24;ctx.fillStyle=m.deck===0?a:b;ctx.globalAlpha=m.projected?.55:1;ctx.fillRect(m.x-width/2,m.y-9,width,18);ctx.fillStyle=colors.getPropertyValue('--bg');ctx.fillText(m.label,m.x-width/2+2,m.y+4);ctx.globalAlpha=1}
+  for(const m of hits){const width=m.width??24;ctx.fillStyle=m.deck===0?a:b;ctx.globalAlpha=m.projected?.55:1;ctx.fillRect(m.x-width/2,m.y-9,width,18);ctx.fillStyle=colors.getPropertyValue('--color-on-primary');ctx.fillText(m.label,m.x-width/2+2,m.y+4);ctx.globalAlpha=1}
   if(projection.playhead!=null){const x=left+projection.playhead*(right-left);ctx.strokeStyle=fg;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,18);ctx.lineTo(x,r.height);ctx.stroke();ctx.lineWidth=1}
   const signature=JSON.stringify(projection.markers.map(m=>[m.deck,m.slot,m.tick,m.kind,m.projected]));
   if(signature!==markerSignature){markerSignature=signature;$('marker-list').replaceChildren();const initial=document.createElement('option');initial.value=-1;initial.textContent='Scheduled actions';$('marker-list').append(initial);projection.markers.forEach((m,i)=>{const e=document.createElement('option');e.value=i;e.textContent=`${m.deck?'B':'A'}${m.slot+1} ${m.label} @ ${m.tick}`;$('marker-list').append(e)})}
@@ -150,5 +153,5 @@ function drawTimeline(){
 window.addEventListener('resize',drawTimeline);
 setInterval(()=>{void t.flush()},20);
 try{await scan();show(await t.call({kind:'snapshot'}))}catch(e){error(e)}
-if(await invoke('smoke_enabled')){const {runSmoke}=await import('./smoke.mjs');await runSmoke({t,getState:()=>state,invoke,show})}
+if(await invoke('smoke_enabled')){const {runSmoke}=await import('./smoke.mjs');await runSmoke({t,getState:()=>state,invoke,show,skinManager})}
 async function poll(){try{await t.call({kind:'snapshot'})}catch(e){error(e)}setTimeout(poll,33)}poll();
