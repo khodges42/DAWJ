@@ -131,7 +131,15 @@ impl Coordinator {
                 {
                     return Err("invalid part parameter");
                 }
-                if source == InputSource::Midi {
+                // Merge rapid GUI/keyboard gestures with the accepted target too.
+                // Keep one pending publication per slot; bounded latest values
+                // use the same fair flush budget as MIDI and reserve stop capacity.
+                if source == InputSource::Midi
+                    || self
+                        .receipts
+                        .iter()
+                        .any(|r| r.parameter && r.deck == deck && r.slot == slot)
+                {
                     self.queued_parameters[deck][slot] = Some(parameters);
                     return Ok(());
                 }
@@ -203,7 +211,7 @@ impl Coordinator {
                         self.parameter_cursor = (index + 1) % (2 * SLOTS);
                     }
                     Err(e) => {
-                        self.notice = format!("MIDI parameter awaiting admission: {e}");
+                        self.notice = format!("Parameter awaiting admission: {e}");
                         return;
                     }
                 }

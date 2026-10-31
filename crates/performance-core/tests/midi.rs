@@ -446,3 +446,25 @@ fn continuous_flood_leaves_room_for_stop_and_invalid_events_cannot_panic() {
     cc(&mut m, &mut c, 1, 64);
     assert!(m.status.contains("rejected"));
 }
+
+#[test]
+fn sustained_gui_gain_and_filter_merge_without_losing_stop_capacity() {
+    let (mut e, mut c, _) = setup();
+    c.try_act(Intent::Quantize(Quantize::Immediate)).unwrap();
+    c.try_act(Intent::Launch).unwrap();
+    render(&mut e, &mut c, 128);
+    c.try_act(Intent::Gain(0.2)).unwrap();
+    for i in 0..10000 {
+        c.try_act(Intent::Gain(i as f32 / 10000.0)).unwrap();
+        c.try_act(Intent::Cutoff(Some(500.0))).unwrap();
+    }
+    assert_eq!(c.snapshot.unwrap().decks[0].slots[0].parameters.gain, 1.0);
+    c.try_act(Intent::Stop).unwrap();
+    render(&mut e, &mut c, 128);
+    c.flush_parameters();
+    render(&mut e, &mut c, 128);
+    let part = c.snapshot.unwrap().decks[0].slots[0];
+    assert!((part.parameters.gain - 0.9999).abs() < 0.00001);
+    assert_eq!(part.parameters.cutoff_hz, Some(500.0));
+    assert_eq!(part.lifecycle, SlotState::Stopped);
+}
