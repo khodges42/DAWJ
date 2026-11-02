@@ -10,10 +10,10 @@ rustfmt/Clippy components. Use the checked-in lockfile and pinned frontend versi
 From the repository root:
 
 ```powershell
-cargo build --release -p dawj -p dawj-tauri --locked
-cargo run --release -p dawj-tauri --locked
+cargo build --release -p dawj -p dawj-egui --locked
+cargo run --release --locked
 # Egui fallback:
-cargo run --release -p dawj --locked
+cargo run --release -p dawj-egui --locked
 ```
 
 The first build needs registry/network access. Add `--offline` once dependencies
@@ -34,6 +34,7 @@ cargo test --workspace --locked --offline
 node --test crates/tauri-app/web/model.test.mjs crates/tauri-app/web/protocol.test.mjs crates/tauri-app/web/performance.test.mjs crates/tauri-app/web/skins.test.mjs crates/tauri-app/web/reliability.test.mjs
 python scripts/audio_dependencies.py
 python scripts/test_web4_report.py
+python scripts/test_alpha_layout.py
 python scripts/check_docs.py
 cargo run -p dawj-core --example web_contract --locked --offline -- --check
 ```
@@ -52,6 +53,13 @@ device arguments: read `--help` before opting into playback.
 See [performance validation](performance-validation.md) for release trials, host-load
 preflight, measurement definitions and manual hardware gates. Do not benchmark
 while playing a game, compiling, or intentionally loading the CPU/GPU.
+
+## Local alpha builds
+
+See the [repeatable Windows procedure](windows-alpha.md) and
+[cutover review](alpha-cutover.md). Tauri is the default `dawj` application;
+`dawj-egui` remains an independently runnable fallback. Alpha status does not
+clear packaging/licenses or certify a live-show hardware setup.
 
 ## Contributing
 

@@ -10,7 +10,8 @@ Start with the [project introduction](../README.md) and [vision/roadmap](design/
 
 ## Build and contribute
 
-- [Development guide and documentation policy](development/README.md).
+- [Development guide and documentation policy](development/README.md),
+  [Windows alpha builds](development/windows-alpha.md) and [frontend review](development/alpha-cutover.md).
 - [Architecture overview](architecture/overview.md), [engine contracts](architecture/engine.md),
   and [performance-state contract](architecture/performance-state.md).
 - [Performance validation](development/performance-validation.md) and

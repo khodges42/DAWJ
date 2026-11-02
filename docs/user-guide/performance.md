@@ -1,6 +1,6 @@
 # Performing with DAWJ
 
-Use `cargo run -p dawj-tauri --locked` on Windows with WebView2. Rust 1.93.0 and
+Use `cargo run -p dawj --locked` on Windows with WebView2. Rust 1.93.0 and
 the existing Tauri versions are pinned. No controller or external assets are
 needed. This is a reproducible manual performance exercise, not a claim that a
 five-minute human listening or hardware session was performed during development.
@@ -93,4 +93,4 @@ applies a loaded profile's port choices; loading alone does not switch ports.
 Close settings, independently stop the remaining parts, then at **5:00** press
 **Stop / reset**. This closes output; restarting constructs a fresh demo clock.
 There is no pause/resume transport in the existing engine. Egui remains available
-via `cargo run -p dawj --locked`.
+via `cargo run -p dawj-egui --locked`.

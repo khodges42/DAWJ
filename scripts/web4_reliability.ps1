@@ -9,6 +9,11 @@ try {
  $env:DAWJ_TEST_OUTPUT=$Output; $env:DAWJ_TEST_SECONDS="$Seconds"; $env:DAWJ_TEST_PROFILE=([int]$Profile.IsPresent).ToString()
  $resultPath=Join-Path $workspacePath "target/web4-$Run"
  if(Test-Path -LiteralPath (Join-Path $resultPath 'dawj-tauri.metrics.json')){throw 'Legacy binary labels exist in this run. Choose a fresh -Run name.'}
+ $primaryRecord=Join-Path $resultPath 'dawj.metrics.json'
+ if(Test-Path -LiteralPath $primaryRecord){
+  $record=Get-Content -LiteralPath $primaryRecord -Raw | ConvertFrom-Json
+  if($record.frontend -ne 'tauri'){throw 'The old dawj record is egui or unknown. Choose a fresh -Run name; history is not relabeled.'}
+ }
  New-Item -ItemType Directory -Path $resultPath -Force | Out-Null
  foreach($name in @('dawj','dawj-egui') | Where-Object {$Frontend -eq 'both' -or $_ -eq $Frontend}) {
   $stderrPath=Join-Path $resultPath "$name.stderr.log"

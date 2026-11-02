@@ -12,8 +12,8 @@ processes. Running both starts independent sessions, subject to device sharing.
 | `event-engine` | Offline and live musical scheduling, periodic rules |
 | `audio-backend` | Resident samples, part DSP, mixer, cue routing and CPAL callback |
 | `dawj-core` | Coordinator, semantic actions, MIDI, pure timeline projection, IPC and worker |
-| `dawj` | Egui application and keyboard/performance surface |
-| `dawj-tauri` | Thin Tauri host and HTML/CSS/Canvas performance surface |
+| `dawj-egui` | Egui fallback and keyboard/performance surface |
+| `dawj` | Default Tauri alpha host and HTML/CSS/Canvas surface |
 | `offline-render` | Deterministic offline WAV fixture |
 
 ```mermaid

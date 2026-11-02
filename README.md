@@ -23,7 +23,8 @@ What works today:
 - Shared BPM/transport, periodic triggers and fills, and truthful queued/playing states.
 - Part gain and filtering, deck gains, crossfader, output trim and master diagnostics.
 - Keyboard performance controls, generic MIDI learn/profiles, pickup and Note/CC feedback.
-- A Tauri interface with portable CSS skins, live previews and recovery; an egui fallback.
+- Tauri as the default alpha interface, with portable CSS skins, previews and recovery;
+  a maintained `dawj-egui` fallback.
 
 Stereo output is master-only. Independent logical cue needs four output channels;
 physical headphone isolation and controller behavior require hardware validation.
@@ -36,9 +37,9 @@ workload/Windows SDK, and Microsoft WebView2 Runtime. The repository pins Rust
 1.93.0. From the repository root:
 
 ```powershell
-cargo run --release -p dawj-tauri --locked
+cargo run --release --locked
 # Egui fallback:
-cargo run --release -p dawj --locked
+cargo run --release -p dawj-egui --locked
 ```
 
 Choose your intended audio output and press **Start output**. Copper Steps and
@@ -53,14 +54,15 @@ interface** menu or **Ctrl+Alt+Shift+R**. `--safe-mode` ignores saved skin selec
 ## Status and documentation
 
 DAWJ is a development alpha, not certified for live shows. Windows is the main
-development target; Linux native/audio/MIDI validation and distribution packaging
-remain incomplete. The frontends share one Rust control layer and existing audio
-engine. Latency, device recovery and hardware limits are documented rather than
+development target; Linux native/audio/MIDI validation and public-release packaging
+remain incomplete. [Windows alpha builds](docs/development/windows-alpha.md)
+provide a repeatable local build/check procedure. The frontends share one Rust
+control layer and existing audio engine. Latency, device recovery and hardware limits are documented rather than
 implied by unit-test success.
 
 - [Documentation](docs/README.md) and [vision/roadmap](docs/design/vision.md).
 - [MIDI controllers](docs/user-guide/controllers.md) and [skin authoring](docs/skins/authoring.md).
-- [Build, test and contribute](docs/development/README.md).
+- [Build, test and contribute](docs/development/README.md) and [alpha review](docs/development/alpha-cutover.md).
 - [Architecture](docs/architecture/overview.md) and [latency findings](docs/M3_WEB4_1_LATENCY.md).
 
 Focused fixes, reproducible bug reports and hardware test results are welcome.

@@ -9,19 +9,24 @@ retained as engineering evidence; they include uncontrolled/shared-load sessions
 ## Reproduce
 
 ```powershell
-cargo build --release -p dawj -p dawj-tauri --locked --offline
+cargo build --release -p dawj -p dawj-egui --locked --offline
 # Three trials per frontend, alternating order, then an opt-in profiled trial:
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/web4_1_trials.ps1 -Seconds 60 -Output HyperX
 # 30 minutes per frontend, sequential by default:
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/web4_reliability.ps1 -Seconds 1800 -Output HyperX -Run soak -ObserveHost
 # A single 20-minute memory investigation:
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/web4_reliability.ps1 -Seconds 1200 -Output HyperX -Run isolated-memory -Frontend dawj-tauri -ObserveHost
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/web4_reliability.ps1 -Seconds 1200 -Output HyperX -Run isolated-memory -Frontend dawj -ObserveHost
 ```
 
 Scripts open actual audio. A uniquely matched HyperX output is required by default;
 missing/ambiguous devices fail, without changing the system default or selecting
 another output. `-Output` explicitly changes that test requirement. No unrelated
 applications are terminated. Close games/heavy loads before latency trials.
+
+Choose a fresh `-Run` name for each repeat. The trial wrapper accepts `-RunPrefix`
+to group a new cohort. Existing results are not overwritten, and folders with old
+`dawj-tauri` binary labels are rejected to prevent mixing pre-cutover egui/Tauri
+filenames. Recorded JSON frontend fields remain authoritative for historical data.
 
 The trial wrapper samples host CPU/GPU before starting and defers if CPU average
 exceeds 20%, a GPU engine exceeds 30%, or a recognized game is running. Game-name
@@ -78,7 +83,7 @@ in-process cancellation of a permanently blocked driver is not guaranteed.
 For functional native checks:
 
 ```powershell
-cargo build -p dawj -p dawj-tauri --locked --offline
+cargo build -p dawj -p dawj-egui --locked --offline
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke_frontends.ps1
 ```
 

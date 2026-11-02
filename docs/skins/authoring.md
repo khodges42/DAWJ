@@ -1,6 +1,6 @@
 # Make a DAWJ skin
 
-Open Tauri with `cargo run -p dawj-tauri --locked`, then **MIDI / settings → Skins
+Open Tauri with `cargo run -p dawj --locked`, then **MIDI / settings → Skins
 & accessibility**. Export a bundled skin, edit its JSON in a text editor, and
 import it. Selection previews live for 15 seconds; Keep saves it, Undo or expiry
 restores the saved selection. Changing a skin never schedules musical actions.
@@ -116,8 +116,8 @@ Audio ownership remains with the existing worker; temporary input modes release.
 You can also launch with:
 
 ```powershell
-cargo run -p dawj-tauri --locked -- --safe-mode
-cargo run -p dawj-tauri --locked -- --reset-skin
+cargo run -p dawj --locked -- --safe-mode
+cargo run -p dawj --locked -- --reset-skin
 ```
 
 Safe mode ignores the saved skin for that launch without deleting the library.

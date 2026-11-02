@@ -1,5 +1,9 @@
 # Frontend latency validation
 
+This study predates the alpha cutover. Reproduction commands below use the current
+package names (`dawj` = Tauri, `dawj-egui` = fallback); recorded JSON retains its
+original binary labels. See the [alpha review](development/alpha-cutover.md).
+
 ## Decision summary
 
 The earlier 206.4 ms Tauri command outlier and separate 10.4 ms p95 did **not
@@ -35,9 +39,9 @@ Audio used only **Speakers (HyperX Cloud III S Wireless)**, 48 kHz stereo master
 Missing/ambiguous named outputs fail; no sim-rig/default-device fallback occurs.
 
 ```powershell
-cargo build --release -p dawj -p dawj-tauri --locked --offline
+cargo build --release -p dawj -p dawj-egui --locked --offline
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/web4_1_trials.ps1 -Seconds 60 -Output HyperX
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/web4_reliability.ps1 -Seconds 1200 -Output HyperX -Run isolated-memory -Frontend dawj-tauri -ObserveHost
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/web4_reliability.ps1 -Seconds 1200 -Output HyperX -Run isolated-memory -Frontend dawj -ObserveHost
 python scripts/web4_report.py target/web4-isolated-1 target/web4-isolated-2 target/web4-isolated-3 target/web4-isolated-profile target/web4-isolated-memory --preflight target/web4_1-preflight.json --output target/web4_1-results.json
 ```
 
