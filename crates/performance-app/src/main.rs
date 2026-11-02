@@ -4,11 +4,12 @@ fn main() -> eframe::Result {
     let args: Vec<_> = std::env::args().skip(1).collect();
     let smoke = match args.as_slice() {
         [] => None,
+        [arg] if arg == "--reliability" => None,
         [arg] if arg == "--smoke-window" => Some(window::Smoke::new(false)),
         [arg] if arg == "--smoke-test" => Some(window::Smoke::new(true)),
         _ => {
             eprintln!(
-                "Usage: dawj [--smoke-window | --smoke-test]\nSmoke modes capture the native window and close; --smoke-test starts real demo audio."
+                "Usage: dawj [--smoke-window | --smoke-test | --reliability]\nSmoke modes capture and close. Audio tests require DAWJ_TEST_OUTPUT (default HyperX); reliability duration uses DAWJ_TEST_SECONDS (default 1800)."
             );
             std::process::exit(2);
         }

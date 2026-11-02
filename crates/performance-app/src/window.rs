@@ -12,6 +12,7 @@ use eframe::egui::{self, Color32, RichText};
 use std::time::Duration;
 mod midi_settings;
 mod phrase;
+mod reliability;
 mod smoke;
 pub use smoke::Smoke;
 
@@ -86,6 +87,7 @@ pub struct PerformanceWindow {
     help: bool,
     bpm_edit: f64,
     smoke: Option<Smoke>,
+    bench: Option<reliability::Bench>,
     midi: Option<midi_settings::MidiPanel>,
     window_focused: bool,
     phrase_bars: u8,
@@ -133,6 +135,9 @@ impl PerformanceWindow {
             help: false,
             bpm_edit: 120.0,
             smoke: None,
+            bench: std::env::args()
+                .any(|a| a == "--reliability")
+                .then(reliability::Bench::new),
             midi: None,
             window_focused: true,
             phrase_bars: 8,
@@ -713,6 +718,7 @@ impl eframe::App for PerformanceWindow {
         });
         ctx.request_repaint_after(Duration::from_millis(33));
         self.smoke_tick(ctx);
+        self.reliability_tick(ctx);
     }
 }
 impl Drop for PerformanceWindow {

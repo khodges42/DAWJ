@@ -84,6 +84,16 @@ fn skin_test_window(app: tauri::AppHandle, width: u32, height: u32) -> Result<()
         .map_err(|e| e.to_string())
 }
 #[tauri::command]
+fn skin_test_zoom(app: tauri::AppHandle, zoom: f64) -> Result<(), String> {
+    if !smoke_enabled() || ![1.0, 1.25, 1.5, 2.0].contains(&zoom) {
+        return Err("Invalid smoke zoom".into());
+    }
+    app.get_webview_window("main")
+        .ok_or("Main window unavailable")?
+        .set_zoom(zoom)
+        .map_err(|e| e.to_string())
+}
+#[tauri::command]
 async fn request(client: tauri::State<'_, Client>, request: Request) -> Result<Reply, String> {
     let id = request.id;
     let pending = match client.submit(request) {
@@ -95,8 +105,21 @@ async fn request(client: tauri::State<'_, Client>, request: Request) -> Result<R
         .unwrap_or_else(|e| Reply::new(id, Err(Fault::new(ErrorCode::Closed, e.to_string())))))
 }
 #[tauri::command]
+fn reliability_options() -> serde_json::Value {
+    let seconds = if std::env::args().any(|a| a == "--reliability") {
+        std::env::var("DAWJ_TEST_SECONDS")
+            .ok()
+            .and_then(|s| s.parse::<u32>().ok())
+            .filter(|n| (5..=3600).contains(n))
+            .unwrap_or(1800)
+    } else {
+        0
+    };
+    serde_json::json!({"seconds":seconds,"output":std::env::var("DAWJ_TEST_OUTPUT").unwrap_or_else(|_| "HyperX".into())})
+}
+#[tauri::command]
 fn smoke_enabled() -> bool {
-    std::env::args().any(|a| a == "--smoke")
+    std::env::args().any(|a| a == "--smoke" || a == "--reliability")
 }
 #[tauri::command]
 fn report(app: tauri::AppHandle, metrics: serde_json::Value) -> Result<(), String> {
@@ -104,7 +127,15 @@ fn report(app: tauri::AppHandle, metrics: serde_json::Value) -> Result<(), Strin
         return Err("Smoke reporting is disabled".into());
     }
     eprintln!("TAURI_METRICS {metrics}");
-    app.exit(if metrics.get("error").is_some() { 1 } else { 0 });
+    if metrics.get("error").is_some() {
+        app.exit(1);
+    } else {
+        // Use normal window destruction, rather than terminating from an IPC callback.
+        app.get_webview_window("main")
+            .ok_or("Main window unavailable")?
+            .close()
+            .map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 fn main() {
@@ -134,7 +165,9 @@ fn main() {
             smoke_enabled,
             report,
             skin_startup,
+            reliability_options,
             skin_test_reset,
+            skin_test_zoom,
             skin_test_window
         ])
         .build(tauri::generate_context!())

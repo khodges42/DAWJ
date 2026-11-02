@@ -62,7 +62,27 @@ impl PerformanceWindow {
                     .is_some_and(|state| state.decks[1].slots[3].active.is_some());
             if smoke.step < 8 && ready && smoke.last_step.elapsed() >= Duration::from_millis(350) {
                 match smoke.step {
-                    0 => self.start(),
+                    0 => {
+                        let requested =
+                            std::env::var("DAWJ_TEST_OUTPUT").unwrap_or_else(|_| "HyperX".into());
+                        match dawj_core::reliability::test_output(
+                            &self
+                                .devices
+                                .iter()
+                                .map(|d| d.name.clone().unwrap_or_default())
+                                .collect::<Vec<_>>(),
+                            &requested,
+                        ) {
+                            Ok(index) => {
+                                self.selected_device = index;
+                                self.start();
+                            }
+                            Err(error) => {
+                                self.error = error;
+                                smoke.command_failed = true;
+                            }
+                        }
+                    }
                     step => {
                         if let Some(s) = &mut self.session {
                             let intents: &[Intent] = match step {

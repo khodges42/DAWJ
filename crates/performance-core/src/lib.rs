@@ -18,6 +18,7 @@ pub mod controls;
 pub mod ipc;
 pub mod midi;
 pub mod output;
+pub mod reliability;
 pub mod service;
 pub mod timeline;
 pub mod web_contract;
@@ -355,8 +356,8 @@ impl Coordinator {
             None
         };
         let parameter = parameters.is_some();
-        // At most one unacknowledged knob update per slot. No retry queue;
-        // rejected intent is visible and the next frame uses accepted parameters.
+        // At most one unacknowledged knob publication per slot. Dispatch merges
+        // later gestures in the bounded latest-target array before reaching here.
         if parameter
             && self
                 .receipts

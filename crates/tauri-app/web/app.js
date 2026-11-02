@@ -153,5 +153,7 @@ function drawTimeline(){
 window.addEventListener('resize',drawTimeline);
 setInterval(()=>{void t.flush()},20);
 try{await scan();show(await t.call({kind:'snapshot'}))}catch(e){error(e)}
-if(await invoke('smoke_enabled')){const {runSmoke}=await import('./smoke.mjs');await runSmoke({t,getState:()=>state,invoke,show,skinManager})}
+const reliability=await invoke('reliability_options');
+if(reliability.seconds){const {runReliability}=await import('./reliability.mjs');await runReliability({t,getState:()=>state,invoke,skinManager,options:reliability})}
+else if(await invoke('smoke_enabled')){const {runSmoke}=await import('./smoke.mjs');await runSmoke({t,getState:()=>state,invoke,show,skinManager})}
 async function poll(){try{await t.call({kind:'snapshot'})}catch(e){error(e)}setTimeout(poll,33)}poll();

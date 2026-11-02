@@ -16,6 +16,10 @@ export async function runSmoke({t,getState,invoke,skinManager}){
   let original;
   try{
     const {skinSmoke}=await import('./skin-smoke.mjs');const skinMetrics=await skinSmoke(skinManager,invoke);
+    const options=await invoke('reliability_options');
+    const outputs=[...$('device').options].filter(o=>o.textContent.toLowerCase().includes(options.output.toLowerCase()));
+    assert(options.output.trim()&&outputs.length===1,'Required test output missing or ambiguous: '+options.output);
+    $('device').value=outputs[0].value;
     await click('start');
     const essential=[...document.querySelectorAll('article button,article .context,footer input,#transport button')];
     const outside=essential.filter(e=>{const r=e.getBoundingClientRect();return r.bottom>innerHeight||r.left<0||r.right>innerWidth}).map(e=>e.id);
@@ -57,6 +61,9 @@ export async function runSmoke({t,getState,invoke,skinManager}){
     await click('stop-0-0');await wait(s=>s.decks[0][0].active==null,'independent stop');assert(getState().decks[1][3].active!=null,'B stopped with A');
     const metrics={...skinMetrics,web2:true,controls_fit:true,viewport:[innerWidth,innerHeight],ipc_ms:summary(samples),audio_peaks:getState().peaks,saw_queued:sawQueued,cancelled_id:pendingId,keyboard:true,context_modes:true,focus_release:true,timeline:true,rules:true,midi_editor:true,independent_stop:true};
     await click('stop');assert(!getState().online,'Output still online');metrics.clean_audio_shutdown=true;
+    await click('start');assert(getState().online&&!getState().decks.flat().some(p=>p.active!=null),'Restart reused old part state');
+    await click('launch-0-0');await wait(s=>s.decks[0][0].active!=null,'software output restart');
+    await click('stop');assert(!getState().online,'Restarted output did not close');metrics.software_restart=true;
     restoreSkinStorage();await invoke('report',{metrics});
   }catch(e){
     if(original)await t.call({kind:'midi_replace',profile:original}).catch(()=>{});
