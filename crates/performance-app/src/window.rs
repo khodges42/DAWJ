@@ -7,7 +7,7 @@ use audio_backend::{
 };
 #[cfg(test)]
 use audio_backend::{demo, routing::OutputRouting};
-use dawj::{Coordinator, InputSource, Intent, Mode, lifecycle_label, musical_position};
+use dawj_egui::{Coordinator, InputSource, Intent, Mode, lifecycle_label, musical_position};
 use eframe::egui::{self, Color32, RichText};
 use std::time::Duration;
 mod midi_settings;
@@ -91,7 +91,7 @@ pub struct PerformanceWindow {
     midi: Option<midi_settings::MidiPanel>,
     window_focused: bool,
     phrase_bars: u8,
-    phrase_view: dawj::timeline::View,
+    phrase_view: dawj_egui::timeline::View,
     rule_kind: u8,
     rule_number: u16,
     #[cfg(test)]
@@ -153,7 +153,7 @@ impl PerformanceWindow {
         }
     }
     fn scan(&mut self) {
-        match dawj::output::discover() {
+        match dawj_egui::output::discover() {
             Ok(devices) => {
                 self.devices = devices;
                 self.selected_device = 0;
@@ -178,13 +178,13 @@ impl PerformanceWindow {
             .get(self.selected_device)
             .ok_or("No audio output device")?;
         let output =
-            dawj::output::OutputSession::open(device, self.four_channels, self.phrase_bars)?;
+            dawj_egui::output::OutputSession::open(device, self.four_channels, self.phrase_bars)?;
         let mut session = output.coordinator;
         let stream = output.stream;
         session.notice = "Output started. Parts are stopped; select a slot and Launch.".into();
         self.stream = Some(stream);
         self.session = Some(session);
-        self.phrase_view = dawj::timeline::View::default();
+        self.phrase_view = dawj_egui::timeline::View::default();
         if let Some(midi) = &mut self.midi {
             midi.reset(self.session.as_mut());
         }
@@ -655,7 +655,7 @@ impl PerformanceWindow {
                                             )
                                             .on_hover_text(format!(
                                                 "{detail}\n{}",
-                                                dawj::timeline::inspector(p)
+                                                dawj_egui::timeline::inspector(p)
                                             ));
                                         } else {
                                             ui.small("UNAVAILABLE / OUTPUT OFFLINE");
@@ -933,7 +933,7 @@ mod tests {
         co.try_act(Intent::Part {
             deck: 1,
             slot: 7,
-            action: dawj::PartAction::Launch,
+            action: dawj_egui::PartAction::Launch,
         })
         .unwrap();
         e.render(&mut [0.0; 2], OutputRouting::stereo_master_only());

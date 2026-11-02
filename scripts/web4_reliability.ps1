@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Release-only, sequential frontend scenarios. No output fallback. 30 minutes EACH by default.
-param([ValidateRange(5,3600)][int]$Seconds=1800,[string]$Output='HyperX',[string]$Run='soak',[ValidateSet('both','dawj','dawj-tauri')][string]$Frontend='both',[switch]$ObserveHost,[switch]$Profile,[switch]$Capture)
+param([ValidateRange(5,3600)][int]$Seconds=1800,[string]$Output='HyperX',[ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$')][string]$Run='soak',[ValidateSet('both','dawj','dawj-egui')][string]$Frontend='both',[switch]$ObserveHost,[switch]$Profile,[switch]$Capture)
 $ErrorActionPreference='Stop'
 $workspacePath=Split-Path -Parent $PSScriptRoot
 Push-Location -LiteralPath $workspacePath
@@ -8,9 +8,11 @@ $oldOutput=$env:DAWJ_TEST_OUTPUT; $oldSeconds=$env:DAWJ_TEST_SECONDS; $oldProfil
 try {
  $env:DAWJ_TEST_OUTPUT=$Output; $env:DAWJ_TEST_SECONDS="$Seconds"; $env:DAWJ_TEST_PROFILE=([int]$Profile.IsPresent).ToString()
  $resultPath=Join-Path $workspacePath "target/web4-$Run"
+ if(Test-Path -LiteralPath (Join-Path $resultPath 'dawj-tauri.metrics.json')){throw 'Legacy binary labels exist in this run. Choose a fresh -Run name.'}
  New-Item -ItemType Directory -Path $resultPath -Force | Out-Null
- foreach($name in @('dawj-tauri','dawj') | Where-Object {$Frontend -eq 'both' -or $_ -eq $Frontend}) {
+ foreach($name in @('dawj','dawj-egui') | Where-Object {$Frontend -eq 'both' -or $_ -eq $Frontend}) {
   $stderrPath=Join-Path $resultPath "$name.stderr.log"
+  if(Test-Path -LiteralPath $stderrPath){throw "Existing run data for $name; choose a fresh -Run name. Nothing overwritten."}
   $process=Start-Process -FilePath (Join-Path $workspacePath "target/release/$name.exe") -ArgumentList '--reliability' -WindowStyle Hidden -RedirectStandardOutput (Join-Path $resultPath "$name.stdout.log") -RedirectStandardError $stderrPath -PassThru
   $processHandle=$process.Handle; $watch=[Diagnostics.Stopwatch]::StartNew(); $samples=@(); $hostSamples=@(); $captured=$false
   while(-not $process.WaitForExit(5000)) {

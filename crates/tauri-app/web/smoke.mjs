@@ -15,6 +15,7 @@ export async function runSmoke({t,getState,invoke,skinManager}){
   const input=async(id,value)=>{$(id).value=value;$(id).dispatchEvent(new Event('input',{bubbles:true}));while(t.latest.size||t.sending){await t.flush();await new Promise(r=>setTimeout(r,10))}await settle()};
   let original;
   try{
+    const safeStartup=(await invoke('skin_startup'))==='safe';if(safeStartup)assert(skinManager.current==='bundled:dark','Safe startup did not ignore persisted skin');
     const {skinSmoke}=await import('./skin-smoke.mjs');const skinMetrics=await skinSmoke(skinManager,invoke);
     const options=await invoke('reliability_options');
     const outputs=[...$('device').options].filter(o=>o.textContent.toLowerCase().includes(options.output.toLowerCase()));
@@ -59,7 +60,7 @@ export async function runSmoke({t,getState,invoke,skinManager}){
     $('settings').close();document.activeElement?.blur();
     const samples=[];for(let i=0;i<100;i++){const start=performance.now();await invokeRequest(invoke,{kind:'snapshot'});samples.push(performance.now()-start)}
     await click('stop-0-0');await wait(s=>s.decks[0][0].active==null,'independent stop');assert(getState().decks[1][3].active!=null,'B stopped with A');
-    const metrics={...skinMetrics,web2:true,controls_fit:true,viewport:[innerWidth,innerHeight],ipc_ms:summary(samples),audio_peaks:getState().peaks,saw_queued:sawQueued,cancelled_id:pendingId,keyboard:true,context_modes:true,focus_release:true,timeline:true,rules:true,midi_editor:true,independent_stop:true};
+    const metrics={...skinMetrics,safe_startup:safeStartup,web2:true,controls_fit:true,viewport:[innerWidth,innerHeight],ipc_ms:summary(samples),audio_peaks:getState().peaks,saw_queued:sawQueued,cancelled_id:pendingId,keyboard:true,context_modes:true,focus_release:true,timeline:true,rules:true,midi_editor:true,independent_stop:true};
     await click('stop');assert(!getState().online,'Output still online');metrics.clean_audio_shutdown=true;
     await click('start');assert(getState().online&&!getState().decks.flat().some(p=>p.active!=null),'Restart reused old part state');
     await click('launch-0-0');await wait(s=>s.decks[0][0].active!=null,'software output restart');

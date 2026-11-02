@@ -62,12 +62,12 @@ impl PerformanceWindow {
                     Intent::Part {
                         deck: 0,
                         slot: 0,
-                        action: dawj::PartAction::Launch,
+                        action: dawj_egui::PartAction::Launch,
                     },
                     Intent::Part {
                         deck: 1,
                         slot: 3,
-                        action: dawj::PartAction::Launch,
+                        action: dawj_egui::PartAction::Launch,
                     },
                 ] {
                     if s.try_act(intent).is_err() {

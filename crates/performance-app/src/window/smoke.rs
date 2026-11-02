@@ -2,7 +2,7 @@
 //! Explicit opt-in native delivery check. Calls the same coordinator as UI input.
 use super::*;
 use audio_backend::live::{RulePhase, RuleUnit, TriggerRule};
-use dawj::{PartAction, RuleAction};
+use dawj_egui::{PartAction, RuleAction};
 use std::{
     sync::{
         Arc,

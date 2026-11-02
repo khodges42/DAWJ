@@ -4,7 +4,7 @@ use audio_backend::{
     live::{RulePhase, RuleUnit, TriggerRule},
     performance_state::PerformanceState,
 };
-use dawj::{
+use dawj_egui::{
     PartAction, RuleAction,
     timeline::{self, Marker, MarkerKind},
 };

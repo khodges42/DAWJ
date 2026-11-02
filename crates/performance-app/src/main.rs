@@ -9,14 +9,14 @@ fn main() -> eframe::Result {
         [arg] if arg == "--smoke-test" => Some(window::Smoke::new(true)),
         _ => {
             eprintln!(
-                "Usage: dawj [--smoke-window | --smoke-test | --reliability]\nSmoke modes capture and close. Audio tests require DAWJ_TEST_OUTPUT (default HyperX); reliability duration uses DAWJ_TEST_SECONDS (default 1800)."
+                "Usage: dawj-egui [--smoke-window | --smoke-test | --reliability]\nSmoke modes capture and close. Audio tests require DAWJ_TEST_OUTPUT (default HyperX); reliability duration uses DAWJ_TEST_SECONDS (default 1800)."
             );
             std::process::exit(2);
         }
     };
     let result = smoke.as_ref().map(|s| s.result.clone());
     eframe::run_native(
-        "DAWJ | Performance",
+        "DAWJ | egui fallback (Alpha)",
         eframe::NativeOptions {
             viewport: eframe::egui::ViewportBuilder::default()
                 .with_inner_size([1280.0, 820.0])

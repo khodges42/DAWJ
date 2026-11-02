@@ -3,8 +3,8 @@
 param([switch]$Play)
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
-$executable = Join-Path $workspace 'target/debug/dawj.exe'
-if (-not (Test-Path -LiteralPath $executable)) { throw 'Build with cargo build -p dawj first.' }
+$executable = Join-Path $workspace 'target/debug/dawj-egui.exe'
+if (-not (Test-Path -LiteralPath $executable)) { throw 'Build with cargo build -p dawj-egui first.' }
 $mode = if ($Play) { '--smoke-test' } else { '--smoke-window' }
 $logPath = Join-Path $workspace 'target/m3-native-smoke.log'
 $outPath = Join-Path $workspace 'target/m3-native-stdout.log'

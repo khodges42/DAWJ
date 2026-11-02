@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 use super::*;
-use dawj::midi::{
+use dawj_egui::midi::{
     Learn, Mapper,
     device::{DeviceStatus, Devices},
     profile::*,
@@ -42,7 +42,7 @@ impl MidiPanel {
     }
     pub fn new() -> Self {
         let path = default_path();
-        let (profile, notice) = dawj::midi::runtime::load_profile(&path);
+        let (profile, notice) = dawj_egui::midi::runtime::load_profile(&path);
         let devices = Devices::new(profile.input.clone(), profile.output.clone());
         let edit = profile.mappings.first().cloned().unwrap_or_else(|| {
             Mapping::new(
@@ -76,7 +76,7 @@ impl MidiPanel {
         self.mapper.reset(co);
     }
     pub fn poll(&mut self, co: Option<&mut Coordinator>) {
-        dawj::midi::runtime::poll(
+        dawj_egui::midi::runtime::poll(
             &mut self.mapper,
             &self.devices,
             &mut self.state,
@@ -86,7 +86,7 @@ impl MidiPanel {
         );
     }
     pub fn shutdown(&mut self) {
-        dawj::midi::runtime::shutdown(&self.mapper, &mut self.devices);
+        dawj_egui::midi::runtime::shutdown(&self.mapper, &mut self.devices);
     }
     pub fn show(&mut self, ctx: &egui::Context, mut co: Option<&mut Coordinator>) {
         let revision = self.mapper.revision;
@@ -173,7 +173,7 @@ impl MidiPanel {
                 .devices
                 .events
                 .try_iter()
-                .take(dawj::midi::device::EVENT_CAPACITY)
+                .take(dawj_egui::midi::device::EVENT_CAPACITY)
             {}
         }
     }

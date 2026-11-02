@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 [package]
-name = "dawj-tauri"
+name = "dawj"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

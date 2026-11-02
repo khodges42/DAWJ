@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "DAWJ Web",
+  "productName": "DAWJ",
   "version": "0.1.0",
   "identifier": "org.dawj.performance",
   "build": {
@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "DAWJ | Web Performance",
+        "title": "DAWJ | Alpha",
         "width": 1280,
         "height": 820
       }

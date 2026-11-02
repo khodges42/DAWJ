@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! No MIDI or audio hardware required: real engine, normalized virtual messages.
 use audio_backend::{demo, live::SlotState, routing::OutputRouting};
-use dawj::{
+use dawj_egui::{
     Coordinator, Mode,
     midi::{Mapper, device::input_bridge, profile::Profile},
 };
