@@ -6,8 +6,8 @@ the architecture reviews. They are not a new engine design.
 ## Callback constraints
 
 No GUI, filesystem, network, decoding, blocking locks, heap allocation or
-unbounded work belongs in the realtime callback. Media and voice banks are
-prepared before streaming. Rendering uses fixed slot counts and bounded buffers;
+unbounded work belongs in the realtime callback. Media and immutable voices are
+prepared off-thread before publication; another deck can continue streaming. Rendering uses fixed slot counts and bounded buffers;
 command admission and diagnostic history are bounded. Empty buffers do not
 advance musical time or admit commands.
 
@@ -62,7 +62,8 @@ stop an already playing source. One-shot playback naturally stops at EOF.
 The resident WAV loader supports mono/stereo PCM 16/24/32 and IEEE float32 at the
 configured rate. Invalid/truncated media, non-finite or out-of-range samples and
 unsupported encodings reject during preparation. There is no streaming importer,
-automatic sample-rate conversion or time stretching in the performance demo.
+time stretching in the performance demo. Local Jam1 WAV preparation can convert
+rates off-thread before resident publication; it does not resample in the callback.
 
 Part gain and low-pass cutoff use existing engine smoothing. Resonance/EQ/synth
 controls are not implemented. Bypass, retrigger, stop and EOF preserve bounded
@@ -94,3 +95,9 @@ publication cannot be made fresh just by rereading the same generation.
 Run workspace regressions before changing these guarantees. Existing offline
 tests cover boundary inclusion, late admission, tempo retiming, cancellation,
 rule precedence, bounded transitions, smoothing and concurrent publication.
+
+User content uses the same engine with an initially empty resident bank. Its
+64 cells support producer-only immutable publication; current and retired voices
+share a 256 MiB PCM cap until output closes. See the [ownership contract](overview.md#local-content-and-resident-publication).
+Loading/replacing content requires the affected deck(s) stopped with no pending
+actions or rules. Another deck can continue on the same sample-frame clock.

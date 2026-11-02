@@ -11,7 +11,7 @@ processes. Running both starts independent sessions, subject to device sharing.
 | `parts` | Fixed-slot lifecycle reducer and part identity |
 | `event-engine` | Offline and live musical scheduling, periodic rules |
 | `audio-backend` | Resident samples, part DSP, mixer, cue routing and CPAL callback |
-| `dawj-core` | Coordinator, semantic actions, MIDI, pure timeline projection, IPC and worker |
+| `dawj-core` | Coordinator, semantic actions, MIDI, timeline, local sessions, IPC and worker |
 | `dawj-egui` | Egui fallback and keyboard/performance surface |
 | `dawj` | Default Tauri alpha host and HTML/CSS/Canvas surface |
 | `offline-render` | Deterministic offline WAV fixture |
@@ -37,7 +37,7 @@ CPAL renders on the audio callback. Prepared resident media, scheduler, voice
 cursors, filters and smoothers belong to that engine. Frontends never mutate
 those structures or implement duplicate mixing/scheduling.
 
-Tauri's named control worker prepares assets, enumerates/opens/closes output,
+Tauri's named control worker enumerates/opens/closes output, prepares initial assets,
 services Coordinator/MIDI and produces IPC replies. The separate MIDI worker
 owns driver connections and feedback sends. Potentially slow driver calls are
 outside the audio callback, but can delay control replies and shutdown joins.
@@ -79,3 +79,49 @@ Native reset remains outside user CSS. See [skin authoring](../skins/authoring.m
 
 Contributions should preserve [realtime guarantees](engine.md), update the state
 contract when APIs change, and use the [development checks](../development/README.md).
+
+## Local content and resident publication
+
+`dawj_core::session` wraps the existing `parts::Part`, playback and timing fields
+in versioned JSON metadata, without a second synthesis/pattern/scheduling model.
+Its strict typed deserializer and semantic validation check names, identities,
+references, timing, loop bounds, parameter ranges, version and document budget.
+Save writes/syncs a unique sibling temp file then atomically replaces the destination.
+Open resolves references against that document; Save As rebases relative media.
+
+Typed IPC v1 gains an additive `session` command family and workspace view in the
+snapshot. These are application configuration and preparation feedback; they
+cannot claim audio execution. `available` means a prepared immutable voice exists
+for that slot. Lifecycle and timeline continue to use one engine publication.
+Initial targets are admitted before device opening so driver delay cannot discard
+saved parameters; the UI still waits for fresh publications before performing.
+
+At most one media preparation thread exists per worker. It receives a bounded
+candidate document, decodes/resamples WAV off the control/audio/WebView threads,
+and returns through a capacity-one channel. Other deck actions and MIDI continue.
+Destination quiescence is checked before work and before commit, including
+unacknowledged discrete receipts. Failed/stale preparation leaves content intact.
+Shutdown drops the receiver; it does not join a potentially stalled file read.
+New/Open requires output closed. A single-deck edit requires only affected decks
+stopped, with no pending actions or installed periodic rules.
+
+The engine bank is a fixed array of 64 `OnceLock<SampleVoice>` cells shared with
+the sole `LiveControl` producer. Producer-only preflight checks rate, duplicate
+voice definitions, free cells and the 256 MiB aggregate budget before immutable
+publication. The callback only uses nonblocking `get`/indexed reads. No callback
+asset decode, file I/O, mutex, allocation, mutable-bank swap or PCM destruction
+is added. Replaced versions remain resident until stream/control ownership ends;
+exhaustion rejects further installs until output restarts. Names/parameter edits
+reuse versions. Changed sample/playback/timing definitions prepare new versions.
+
+Local settings retain independent per-deck shaping and periodic definitions,
+even when both reference one composition. Session Open does not resume transport,
+pending actions, held modes or saved periodic execution. Saved rules require an
+explicit ordinary engine arm command. The native file dialog adapter uses rfd on
+a blocking pool; native drop emits only one path/position into the existing local
+frontend. CSP and skin execution restrictions remain intact.
+
+See [the user workflow and limits](../user-guide/local-sessions.md). The engine
+currently has no pattern-note data type: Jam2 must extend the actual domain and
+scheduler before exposing pattern editing. The exploratory portable package
+schema remains a distinct future design, not the local document schema.

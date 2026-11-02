@@ -20,9 +20,9 @@ The first build needs registry/network access. Add `--offline` once dependencies
 are cached. No Node runtime, npm build, development server or Tauri CLI is needed
 to run either application. Node and Python are used for validation tools.
 
-Choose the intended output in the application before starting. The prepared
-Copper Steps and Glass Tide demo is generated locally; no audio downloads or
-composition import are required. See the [performance guide](../user-guide/performance.md).
+Choose the intended output in the application before starting. Tauri starts empty:
+create/load WAV compositions through [local sessions](../user-guide/local-sessions.md),
+or explicitly select the supplied demo. Egui retains the demo performance fallback. See the [performance guide](../user-guide/performance.md).
 
 ## Checks
 
@@ -31,7 +31,7 @@ cargo fmt --all -- --check
 cargo check --workspace --locked --offline
 cargo clippy --workspace --all-targets --locked --offline -- -D warnings
 cargo test --workspace --locked --offline
-node --test crates/tauri-app/web/model.test.mjs crates/tauri-app/web/protocol.test.mjs crates/tauri-app/web/performance.test.mjs crates/tauri-app/web/skins.test.mjs crates/tauri-app/web/reliability.test.mjs
+node --test crates/tauri-app/web/model.test.mjs crates/tauri-app/web/protocol.test.mjs crates/tauri-app/web/performance.test.mjs crates/tauri-app/web/skins.test.mjs crates/tauri-app/web/reliability.test.mjs crates/tauri-app/web/content.test.mjs
 python scripts/audio_dependencies.py
 python scripts/test_web4_report.py
 python scripts/test_alpha_layout.py
@@ -44,7 +44,9 @@ MIDI, IPC and frontend projection regressions. Generated performance-contract
 fixtures are checked against Rust types. Do not weaken tests to make a build pass.
 The Windows dependency inventory check is not a vulnerability or final release audit.
 
-Native smoke and release tests open real audio. Frontend automation requires a
+The [Jam1 end-to-end script](../../scripts/jam1_smoke.ps1) tests real session
+authoring, save/close and reopen in two application processes. Native smoke and
+release tests open real audio. Frontend automation requires a
 unique **HyperX** output by default and fails if missing/ambiguous; it never falls
 back to the default endpoint. Set `DAWJ_TEST_OUTPUT` or the runner's `-Output`
 explicitly for a different test device. Other old audio examples have their own

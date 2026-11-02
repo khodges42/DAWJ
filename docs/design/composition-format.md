@@ -13,6 +13,12 @@ No composition ZIP importer, library browser, synthesizer, ordinary-song player
 or general preparation editor is implemented. Schema fields describing those
 features are proposals; do not infer support from a schema-valid manifest.
 
+The implemented [local session format](../user-guide/local-sessions.md) is a
+separate, small JSON document wrapping existing sample/loop parts. It supports
+local WAV assignment and stopped-deck loading, without ZIP containers, pattern
+notes or synthesizers. Its authoritative schema and semantic checks are in
+`dawj_core::session`; it does not import this exploratory manifest.
+
 ## Importer requirements
 
 JSON Schema checks shape and bounds, not semantic or resource safety. A future

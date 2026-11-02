@@ -18,7 +18,7 @@ try {
  Invoke-Checked cargo (@('check','--workspace')+$locked)
  Invoke-Checked cargo (@('clippy','--workspace','--all-targets')+$locked+@('--','-D','warnings'))
  Invoke-Checked cargo (@('test','--workspace')+$locked)
- Invoke-Checked node @('--test','crates/tauri-app/web/model.test.mjs','crates/tauri-app/web/protocol.test.mjs','crates/tauri-app/web/performance.test.mjs','crates/tauri-app/web/skins.test.mjs','crates/tauri-app/web/reliability.test.mjs')
+ Invoke-Checked node @('--test','crates/tauri-app/web/model.test.mjs','crates/tauri-app/web/protocol.test.mjs','crates/tauri-app/web/performance.test.mjs','crates/tauri-app/web/skins.test.mjs','crates/tauri-app/web/reliability.test.mjs','crates/tauri-app/web/content.test.mjs')
  foreach($check in @('scripts/audio_dependencies.py','scripts/test_web4_report.py','scripts/test_alpha_layout.py','scripts/check_docs.py')){Invoke-Checked python @($check)}
  Invoke-Checked cargo (@('run','-p','dawj-core','--example','web_contract')+$locked+@('--','--check'))
  $targetPath=Join-Path $workspacePath 'target'

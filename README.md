@@ -5,8 +5,8 @@ Rust, licensed under GPL-3.0-or-later. Instead of playing a fixed arrangement,
 you perform its musical parts and mix the result between two decks.
 
 The vision is to combine performable compositions and conventional DJ tracks in
-one instrument. **The current alpha performs the two supplied demo compositions;
-ordinary DJ-track playback and composition import are planned.**
+one instrument. **The current alpha performs your own WAV-based compositions and saves local
+two-deck sessions. Ordinary DJ-track playback remains planned.**
 
 ![Actual DAWJ Tauri performance interface with both demo decks](docs/images/tauri-performance.png)
 
@@ -19,6 +19,8 @@ position and upcoming activity without becoming a DAW arrangement editor.
 
 What works today:
 
+- Create compositions, assign WAV sounds, edit loops, and save/reopen local JSON sessions.
+
 - Real sample/loop/one-shot playback with quantized launch, stop, cancel and retrigger.
 - Shared BPM/transport, periodic triggers and fills, and truthful queued/playing states.
 - Part gain and filtering, deck gains, crossfader, output trim and master diagnostics.
@@ -28,7 +30,8 @@ What works today:
 
 Stereo output is master-only. Independent logical cue needs four output channels;
 physical headphone isolation and controller behavior require hardware validation.
-There is no arbitrary plugin host, synth engine, song library or preparation editor.
+WAV is supported; MP3, pattern editing and time stretching are not implemented.
+There is no arbitrary plugin host, synth engine or song library.
 
 ## Build and run on Windows
 
@@ -42,9 +45,10 @@ cargo run --release --locked
 cargo run --release -p dawj-egui --locked
 ```
 
-Choose your intended audio output and press **Start output**. Copper Steps and
-Glass Tide are prepared locally; no controller, downloaded media or npm server
-is needed. Open **Help** for shortcuts and **MIDI / settings** for controllers
+Start with **Session / sounds** to create a composition on each deck and assign
+your WAV files. Save/reopen the jam with **Save As** / **Open**. Choose your intended
+audio output and press **Start output**. **Supplied demo** is also available; no
+controller or npm server is needed. See [your first local jam](docs/user-guide/local-sessions.md). Open **Help** for shortcuts and **MIDI / settings** for controllers
 and skins. See the [performance guide](docs/user-guide/performance.md).
 
 A broken skin can be reset through the native **Appearance > Restore default

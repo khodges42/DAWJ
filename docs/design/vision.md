@@ -7,7 +7,7 @@ can be understood while the outgoing one plays.
 
 The longer-term direction is to mix these live compositions alongside conventional
 DJ tracks in one application. Conventional track playback is **planned**, not
-implemented. DAWJ currently performs the two supplied demo compositions.
+implemented. DAWJ performs user-authored WAV compositions and the optional supplied demos.
 
 The interaction is intentionally smaller than a DAW: select a part, launch or stop
 it at a musical boundary, shape its volume/filter, cue and mix. The repeating
@@ -16,6 +16,8 @@ timeline explains current and upcoming activity; it is not an arrangement editor
 ## Available now
 
 - Two decks with eight independently controlled parts each.
+- Local WAV import, composition/loop authoring, independent stopped-deck loading
+  and versioned JSON session save/reopen in Tauri.
 - Resident sample playback, loops, one-shots and quantized launch/stop/retrigger.
 - A shared musical clock, BPM changes, periodic triggers and fills.
 - Part gain/filter, deck gain, crossfader, master diagnostics and logical cue buses.
@@ -26,8 +28,8 @@ timeline explains current and upcoming activity; it is not an arrangement editor
 
 ## Planned and unverified
 
-Prepared composition import and authoring, safe incoming-deck loading, conventional
-DJ-track playback, a library/preparation workflow and recording remain future work.
+Pattern sequencing/editing, portable composition packages, conventional DJ-track
+playback, a library/catalog workflow and recording remain future work.
 The package schema is a design fixture, not a working importer. Beat matching,
 time stretching, key matching and arbitrary plugin hosting are not implemented.
 

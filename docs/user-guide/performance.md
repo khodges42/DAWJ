@@ -5,7 +5,9 @@ the existing Tauri versions are pinned. No controller or external assets are
 needed. This is a reproducible manual performance exercise, not a claim that a
 five-minute human listening or hardware session was performed during development.
 
-Before the clock starts, choose the intended audio device, **Stereo master**,
+For this optional demo walkthrough, open **Session / sounds**, choose **Supplied
+demo**, and return to performance. To use your own material instead, follow
+[local sessions](local-sessions.md). Before the clock starts, choose the intended audio device, **Stereo master**,
 **8 bars**, and **Beat** quantization. Use a comfortable system/headphone level.
 The existing demo defaults to +36 dB makeup and retains its output limiters.
 Stereo output has no isolated cue bus. Four-channel cue requires a compatible
