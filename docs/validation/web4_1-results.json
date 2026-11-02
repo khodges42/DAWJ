@@ -1,0 +1,774 @@
+{
+  "timing_resolution_ms": 0.1,
+  "quantiles_are_bin_upper_bounds": true,
+  "histogram_overflow_ms": 1000,
+  "runs": [
+    {
+      "host_load": {
+        "samples": 10,
+        "cpu_median_percent": 9.5,
+        "cpu_max_percent": 19.0,
+        "gpu_busiest_engine_max_percent": 10.0,
+        "detected_games": [],
+        "outlier_correlations": []
+      },
+      "run": "web4-isolated-1",
+      "metrics": {
+        "changes": 1070,
+        "command_ms": {
+          "median": 2.9,
+          "n": 3210,
+          "p95": 3.9,
+          "worst": 11.199999988079073
+        },
+        "frame_ms": {
+          "median": 5,
+          "n": 12004,
+          "p95": 5.2,
+          "worst": 5.69999999999709
+        },
+        "frontend": "tauri",
+        "longtask_observer": true,
+        "outliers": [],
+        "passed": true,
+        "peaks": [
+          0.088718824,
+          0.070975065
+        ],
+        "phases_ms": {
+          "bridge_residual": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "native": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "projection": {
+            "median": 1,
+            "n": 4280,
+            "p95": 1.3,
+            "worst": 1.9000000357627869
+          },
+          "serial_to_invoke": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "worker_handle": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "worker_poll": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "worker_queue": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          }
+        },
+        "profiled": false,
+        "receipt_to_frame_ms": {
+          "median": 6.9,
+          "n": 1070,
+          "p95": 8.2,
+          "worst": 8.5
+        },
+        "seconds": 60.02919999998808,
+        "snapshot_roundtrip_ms": {
+          "median": 2.9,
+          "n": 1070,
+          "p95": 3.7,
+          "worst": 6.5
+        },
+        "startup_command_ms": {
+          "median": 2.9,
+          "n": 4,
+          "p95": 1000,
+          "worst": 1243.199999988079
+        },
+        "themes": 5
+      },
+      "memory": {
+        "samples": 10,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": 6.1170066999999975,
+        "first_private_mib": 281.00390625,
+        "peak_private_mib": 289.59375,
+        "last_five_minutes_median_private_mib": 287.0,
+        "slope_after_ten_minutes_mib_per_minute": null,
+        "process_counts": [
+          8
+        ]
+      },
+      "teardown_1412_count": 0
+    },
+    {
+      "host_load": {
+        "samples": 10,
+        "cpu_median_percent": 11.0,
+        "cpu_max_percent": 19.0,
+        "gpu_busiest_engine_max_percent": 5.0,
+        "detected_games": [],
+        "outlier_correlations": []
+      },
+      "run": "web4-isolated-1",
+      "metrics": {
+        "frontend": "egui",
+        "passed": true,
+        "seconds": 60.0042408,
+        "changes": 1136,
+        "command_ms": {
+          "median": 0.1,
+          "n": 3408,
+          "p95": 0.1,
+          "worst": 0.085
+        },
+        "frame_ms": {
+          "median": 5.0,
+          "n": 11985,
+          "p95": 5.3,
+          "worst": 87.9841
+        },
+        "receipt_to_frame_ms": {
+          "median": 5.0,
+          "n": 1135,
+          "p95": 5.3,
+          "worst": 6.093
+        }
+      },
+      "memory": {
+        "samples": 10,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": 6.0411041999999995,
+        "first_private_mib": 104.67578125,
+        "peak_private_mib": 104.67578125,
+        "last_five_minutes_median_private_mib": 102.400390625,
+        "slope_after_ten_minutes_mib_per_minute": null,
+        "process_counts": [
+          2
+        ]
+      },
+      "teardown_1412_count": 0
+    },
+    {
+      "host_load": {
+        "samples": 10,
+        "cpu_median_percent": 12.0,
+        "cpu_max_percent": 17.0,
+        "gpu_busiest_engine_max_percent": 3.0,
+        "detected_games": [],
+        "outlier_correlations": []
+      },
+      "run": "web4-isolated-2",
+      "metrics": {
+        "changes": 1072,
+        "command_ms": {
+          "median": 2.5,
+          "n": 3216,
+          "p95": 3.5,
+          "worst": 6.399999976158142
+        },
+        "frame_ms": {
+          "median": 5,
+          "n": 12002,
+          "p95": 5.2,
+          "worst": 5.599999999998545
+        },
+        "frontend": "tauri",
+        "longtask_observer": true,
+        "outliers": [],
+        "passed": true,
+        "peaks": [
+          0.08869369,
+          0.070954956
+        ],
+        "phases_ms": {
+          "bridge_residual": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "native": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "projection": {
+            "median": 1,
+            "n": 4288,
+            "p95": 1.3,
+            "worst": 1.899999976158142
+          },
+          "serial_to_invoke": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "worker_handle": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "worker_poll": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "worker_queue": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          }
+        },
+        "profiled": false,
+        "receipt_to_frame_ms": {
+          "median": 7.4,
+          "n": 1072,
+          "p95": 8.3,
+          "worst": 9
+        },
+        "seconds": 60.018,
+        "snapshot_roundtrip_ms": {
+          "median": 2.7,
+          "n": 1072,
+          "p95": 3.4,
+          "worst": 23.400000035762787
+        },
+        "startup_command_ms": {
+          "median": 3,
+          "n": 4,
+          "p95": 1000,
+          "worst": 1198.399999976158
+        },
+        "themes": 5
+      },
+      "memory": {
+        "samples": 10,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": 6.1184498000000005,
+        "first_private_mib": 279.859375,
+        "peak_private_mib": 288.5234375,
+        "last_five_minutes_median_private_mib": 286.267578125,
+        "slope_after_ten_minutes_mib_per_minute": null,
+        "process_counts": [
+          8
+        ]
+      },
+      "teardown_1412_count": 0
+    },
+    {
+      "host_load": {
+        "samples": 10,
+        "cpu_median_percent": 22.0,
+        "cpu_max_percent": 27.0,
+        "gpu_busiest_engine_max_percent": 4.0,
+        "detected_games": [],
+        "outlier_correlations": []
+      },
+      "run": "web4-isolated-2",
+      "metrics": {
+        "frontend": "egui",
+        "passed": true,
+        "seconds": 60.0011775,
+        "changes": 1138,
+        "command_ms": {
+          "median": 0.1,
+          "n": 3414,
+          "p95": 0.1,
+          "worst": 0.027399999999999997
+        },
+        "frame_ms": {
+          "median": 5.0,
+          "n": 11970,
+          "p95": 5.6,
+          "worst": 76.3236
+        },
+        "receipt_to_frame_ms": {
+          "median": 5.0,
+          "n": 1138,
+          "p95": 5.8,
+          "worst": 11.8219
+        }
+      },
+      "memory": {
+        "samples": 10,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": 6.097845900000003,
+        "first_private_mib": 104.76171875,
+        "peak_private_mib": 104.76171875,
+        "last_five_minutes_median_private_mib": 102.484375,
+        "slope_after_ten_minutes_mib_per_minute": null,
+        "process_counts": [
+          2
+        ]
+      },
+      "teardown_1412_count": 0
+    },
+    {
+      "host_load": {
+        "samples": 10,
+        "cpu_median_percent": 13.0,
+        "cpu_max_percent": 22.0,
+        "gpu_busiest_engine_max_percent": 2.0,
+        "detected_games": [],
+        "outlier_correlations": []
+      },
+      "run": "web4-isolated-3",
+      "metrics": {
+        "changes": 1145,
+        "command_ms": {
+          "median": 2.9,
+          "n": 3435,
+          "p95": 4,
+          "worst": 6.600000023841858
+        },
+        "frame_ms": {
+          "median": 5,
+          "n": 12002,
+          "p95": 5.2,
+          "worst": 5.400000000001455
+        },
+        "frontend": "tauri",
+        "longtask_observer": true,
+        "outliers": [],
+        "passed": true,
+        "peaks": [
+          0.088697076,
+          0.07095767
+        ],
+        "phases_ms": {
+          "bridge_residual": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "native": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "projection": {
+            "median": 1.2,
+            "n": 4580,
+            "p95": 1.5,
+            "worst": 2.199999988079071
+          },
+          "serial_to_invoke": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "worker_handle": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "worker_poll": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "worker_queue": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          }
+        },
+        "profiled": false,
+        "receipt_to_frame_ms": {
+          "median": 7,
+          "n": 1145,
+          "p95": 8,
+          "worst": 8.5
+        },
+        "seconds": 60.01669999998808,
+        "snapshot_roundtrip_ms": {
+          "median": 3,
+          "n": 1145,
+          "p95": 3.8,
+          "worst": 8.800000011920929
+        },
+        "startup_command_ms": {
+          "median": 3.6,
+          "n": 4,
+          "p95": 1000,
+          "worst": 1204.5
+        },
+        "themes": 5
+      },
+      "memory": {
+        "samples": 10,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": 6.1959774,
+        "first_private_mib": 280.5,
+        "peak_private_mib": 291.19140625,
+        "last_five_minutes_median_private_mib": 286.705078125,
+        "slope_after_ten_minutes_mib_per_minute": null,
+        "process_counts": [
+          8
+        ]
+      },
+      "teardown_1412_count": 0
+    },
+    {
+      "host_load": {
+        "samples": 10,
+        "cpu_median_percent": 10.5,
+        "cpu_max_percent": 20.0,
+        "gpu_busiest_engine_max_percent": 3.0,
+        "detected_games": [],
+        "outlier_correlations": []
+      },
+      "run": "web4-isolated-3",
+      "metrics": {
+        "frontend": "egui",
+        "passed": true,
+        "seconds": 60.0022709,
+        "changes": 1138,
+        "command_ms": {
+          "median": 0.1,
+          "n": 3414,
+          "p95": 0.1,
+          "worst": 0.0054
+        },
+        "frame_ms": {
+          "median": 5.0,
+          "n": 11997,
+          "p95": 5.2,
+          "worst": 29.165799999999997
+        },
+        "receipt_to_frame_ms": {
+          "median": 5.0,
+          "n": 1138,
+          "p95": 5.2,
+          "worst": 5.9831
+        }
+      },
+      "memory": {
+        "samples": 10,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": 5.992810899999995,
+        "first_private_mib": 104.73828125,
+        "peak_private_mib": 104.73828125,
+        "last_five_minutes_median_private_mib": 102.703125,
+        "slope_after_ten_minutes_mib_per_minute": null,
+        "process_counts": [
+          2
+        ]
+      },
+      "teardown_1412_count": 0
+    },
+    {
+      "host_load": {
+        "samples": 10,
+        "cpu_median_percent": 11.0,
+        "cpu_max_percent": 14.0,
+        "gpu_busiest_engine_max_percent": 3.0,
+        "detected_games": [],
+        "outlier_correlations": []
+      },
+      "run": "web4-isolated-profile",
+      "metrics": {
+        "changes": 1124,
+        "command_ms": {
+          "median": 2.7,
+          "n": 3372,
+          "p95": 3.8,
+          "worst": 5.899999976158142
+        },
+        "frame_ms": {
+          "median": 5,
+          "n": 12003,
+          "p95": 5.2,
+          "worst": 5.69999999999709
+        },
+        "frontend": "tauri",
+        "longtask_observer": true,
+        "outliers": [],
+        "passed": true,
+        "peaks": [
+          0.08869569003582001,
+          0.07095654308795929
+        ],
+        "phases_ms": {
+          "bridge_residual": {
+            "median": 1.7,
+            "n": 4496,
+            "p95": 2.5,
+            "worst": 4.594400047683716
+          },
+          "native": {
+            "median": 0.2,
+            "n": 4496,
+            "p95": 0.2,
+            "worst": 0.3695
+          },
+          "projection": {
+            "median": 1,
+            "n": 4496,
+            "p95": 1.3,
+            "worst": 1.699999988079071
+          },
+          "serial_to_invoke": {
+            "median": 0,
+            "n": 4496,
+            "p95": 0.1,
+            "worst": 0.20000004768371585
+          },
+          "worker_handle": {
+            "median": 0.1,
+            "n": 4496,
+            "p95": 0.1,
+            "worst": 0.1988
+          },
+          "worker_poll": {
+            "median": 0.1,
+            "n": 4496,
+            "p95": 0.1,
+            "worst": 0.2221
+          },
+          "worker_queue": {
+            "median": 0.1,
+            "n": 4496,
+            "p95": 0.1,
+            "worst": 0.2177
+          }
+        },
+        "profiled": true,
+        "receipt_to_frame_ms": {
+          "median": 7.4,
+          "n": 1124,
+          "p95": 8.4,
+          "worst": 8.600000023841858
+        },
+        "seconds": 60.02,
+        "snapshot_roundtrip_ms": {
+          "median": 2.9,
+          "n": 1124,
+          "p95": 3.7,
+          "worst": 5.800000011920929
+        },
+        "startup_command_ms": {
+          "median": 3.7,
+          "n": 4,
+          "p95": 1000,
+          "worst": 1236.699999988079
+        },
+        "themes": 5
+      },
+      "memory": {
+        "samples": 10,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": 6.117778699999999,
+        "first_private_mib": 281.19140625,
+        "peak_private_mib": 291.42578125,
+        "last_five_minutes_median_private_mib": 289.048828125,
+        "slope_after_ten_minutes_mib_per_minute": null,
+        "process_counts": [
+          8
+        ]
+      },
+      "teardown_1412_count": 0
+    },
+    {
+      "host_load": {
+        "samples": 195,
+        "cpu_median_percent": 12.0,
+        "cpu_max_percent": 36.0,
+        "gpu_busiest_engine_max_percent": 5.0,
+        "detected_games": [],
+        "outlier_correlations": [
+          {
+            "event": {
+              "kind": "gain",
+              "ms": 26.899999976158146,
+              "stage": "command",
+              "utc_ms": 1793615825230
+            },
+            "nearest_host_sample": {
+              "utc": "2026-11-02T10:37:06.3486248Z",
+              "seconds": "48.858762",
+              "cpu_percent": "26",
+              "gpu_busiest_engine_percent": "1",
+              "detected_games": ""
+            },
+            "distance_ms": 1118.6240234375
+          },
+          {
+            "event": {
+              "kind": "gain",
+              "ms": 26.100000023841854,
+              "stage": "command",
+              "utc_ms": 1793616258075
+            },
+            "nearest_host_sample": {
+              "utc": "2026-11-02T10:44:18.0592036Z",
+              "seconds": "480.5692457",
+              "cpu_percent": "25",
+              "gpu_busiest_engine_percent": "1",
+              "detected_games": ""
+            },
+            "distance_ms": 15.797119140625
+          }
+        ]
+      },
+      "run": "web4-isolated-memory",
+      "metrics": {
+        "changes": 22563,
+        "command_ms": {
+          "median": 3,
+          "n": 67689,
+          "p95": 4.2,
+          "worst": 26.899999976158146
+        },
+        "frame_ms": {
+          "median": 5,
+          "n": 239996,
+          "p95": 5.2,
+          "worst": 20.099999999998545
+        },
+        "frontend": "tauri",
+        "longtask_observer": true,
+        "outliers": [
+          {
+            "kind": "gain",
+            "ms": 26.899999976158146,
+            "stage": "command",
+            "utc_ms": 1793615825230
+          },
+          {
+            "kind": "gain",
+            "ms": 26.100000023841854,
+            "stage": "command",
+            "utc_ms": 1793616258075
+          }
+        ],
+        "passed": true,
+        "peaks": [
+          0.08871791,
+          0.07097433
+        ],
+        "phases_ms": {
+          "bridge_residual": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "native": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "projection": {
+            "median": 1.2,
+            "n": 90258,
+            "p95": 1.5,
+            "worst": 2.699999988079071
+          },
+          "serial_to_invoke": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "worker_handle": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "worker_poll": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          },
+          "worker_queue": {
+            "median": 0,
+            "n": 0,
+            "p95": 0,
+            "worst": 0
+          }
+        },
+        "profiled": false,
+        "receipt_to_frame_ms": {
+          "median": 6.8,
+          "n": 22563,
+          "p95": 8.2,
+          "worst": 9.800000011920927
+        },
+        "seconds": 1200.033800000012,
+        "snapshot_roundtrip_ms": {
+          "median": 3,
+          "n": 22563,
+          "p95": 4,
+          "worst": 14.099999964237211
+        },
+        "startup_command_ms": {
+          "median": 3.7,
+          "n": 4,
+          "p95": 1000,
+          "worst": 1204.699999988079
+        },
+        "themes": 120
+      },
+      "memory": {
+        "samples": 195,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": 6.154301749999888,
+        "first_private_mib": 280.12890625,
+        "peak_private_mib": 309.64453125,
+        "last_five_minutes_median_private_mib": 302.01953125,
+        "slope_after_ten_minutes_mib_per_minute": 0.7088729863008153,
+        "process_counts": [
+          8
+        ]
+      },
+      "teardown_1412_count": 0
+    }
+  ],
+  "preflight": [
+    {
+      "utc": "2026-11-02T10:26:18.4792120Z",
+      "cpu_percent": 0,
+      "gpu_busiest_engine_percent": 0
+    },
+    {
+      "utc": "2026-11-02T10:26:22.1347241Z",
+      "cpu_percent": 19,
+      "gpu_busiest_engine_percent": 1
+    },
+    {
+      "utc": "2026-11-02T10:26:25.7924156Z",
+      "cpu_percent": 15,
+      "gpu_busiest_engine_percent": 0
+    }
+  ]
+}

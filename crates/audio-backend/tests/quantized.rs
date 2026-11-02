@@ -667,6 +667,19 @@ fn half_open_callback_boundary_and_sample_output() {
 }
 
 #[test]
+fn producer_delay_across_a_beat_uses_engine_admission_time_not_gui_intent_time() {
+    for (admission_frame, expected) in [(3900, 4000), (4100, 8000)] {
+        let (mut e, mut c) = engine(8000);
+        render(&mut e, admission_frame, 128);
+        let ticket = c.submit(0, 0, Request::Launch(0), Quantize::Beat).unwrap();
+        let (_, events) = render(&mut e, 4200, 128);
+        assert_eq!(ticket.outcome(), Outcome::Applied);
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].frame.0, expected);
+    }
+}
+
+#[test]
 fn dropped_engine_closes_control_and_pending_tickets() {
     let (e, mut c) = engine(8000);
     let ticket = c.submit(0, 0, Request::Launch(0), Quantize::Beat).unwrap();

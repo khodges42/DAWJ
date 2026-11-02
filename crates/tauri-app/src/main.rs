@@ -105,6 +105,23 @@ async fn request(client: tauri::State<'_, Client>, request: Request) -> Result<R
         .unwrap_or_else(|e| Reply::new(id, Err(Fault::new(ErrorCode::Closed, e.to_string())))))
 }
 #[tauri::command]
+async fn reliability_request(
+    client: tauri::State<'_, Client>,
+    request: Request,
+) -> Result<serde_json::Value, String> {
+    if !smoke_enabled() {
+        return Err("Diagnostic requests disabled".into());
+    }
+    let start = std::time::Instant::now();
+    let pending = client.submit_profiled(request).map_err(|e| e.message)?;
+    let (reply, timing) = tauri::async_runtime::spawn_blocking(move || pending.wait_profiled())
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(
+        serde_json::json!({"reply":reply,"worker":timing,"native_ms":start.elapsed().as_secs_f64()*1000.0}),
+    )
+}
+#[tauri::command]
 fn reliability_options() -> serde_json::Value {
     let seconds = if std::env::args().any(|a| a == "--reliability") {
         std::env::var("DAWJ_TEST_SECONDS")
@@ -115,7 +132,7 @@ fn reliability_options() -> serde_json::Value {
     } else {
         0
     };
-    serde_json::json!({"seconds":seconds,"output":std::env::var("DAWJ_TEST_OUTPUT").unwrap_or_else(|_| "HyperX".into())})
+    serde_json::json!({"profile":std::env::var("DAWJ_TEST_PROFILE").is_ok_and(|s|s=="1"),"seconds":seconds,"output":std::env::var("DAWJ_TEST_OUTPUT").unwrap_or_else(|_| "HyperX".into())})
 }
 #[tauri::command]
 fn smoke_enabled() -> bool {
@@ -166,6 +183,7 @@ fn main() {
             report,
             skin_startup,
             reliability_options,
+            reliability_request,
             skin_test_reset,
             skin_test_zoom,
             skin_test_window

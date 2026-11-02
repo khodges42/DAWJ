@@ -7,6 +7,18 @@ from web4_report import summarize
 
 
 class ReportTests(unittest.TestCase):
+    def test_host_sample_correlates_by_wall_time_without_claiming_causation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'dawj.metrics.json').write_text(json.dumps({'outliers': [{'utc_ms': 1000, 'ms': 80}]}), encoding='utf-8')
+            (root / 'dawj.memory.csv').write_text('seconds,private_bytes,processes\n1,1048576,1\n', encoding='utf-8')
+            (root / 'dawj.host.csv').write_text('utc,cpu_percent,gpu_busiest_engine_percent,detected_games\n1970-01-01T00:00:02Z,7,3,\n', encoding='utf-8')
+            (root / 'dawj.stderr.log').write_text('', encoding='utf-8')
+            result, = summarize(root)
+            self.assertEqual(result['host_load']['cpu_max_percent'], 7)
+            self.assertEqual(result['host_load']['outlier_correlations'][0]['distance_ms'], 1000)
+            self.assertEqual(result['host_load']['detected_games'], [])
+
     def test_process_tree_samples_and_bom_metrics_retain_outliers(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

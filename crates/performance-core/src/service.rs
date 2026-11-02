@@ -34,7 +34,18 @@ fn source_index(source: InputSource) -> usize {
         InputSource::Midi => 2,
     }
 }
+#[derive(Default, Debug, serde::Serialize)]
+pub struct WorkerTiming {
+    pub queue_ms: f64,
+    pub poll_ms: f64,
+    pub handle_ms: f64,
+}
+struct Probe {
+    admitted: Instant,
+    tx: SyncSender<WorkerTiming>,
+}
 struct Envelope {
+    probe: Option<Probe>,
     hold_epoch: Option<(InputSource, u64)>,
     request: Request,
     reply: SyncSender<Reply>,
@@ -50,9 +61,15 @@ pub struct Client {
 pub struct Pending {
     id: u32,
     rx: Receiver<Reply>,
+    timing: Option<Receiver<WorkerTiming>>,
 }
 impl Pending {
     /// Only call on a non-UI, non-audio worker. Dropped receivers do not cancel musical actions.
+    pub fn wait_profiled(mut self) -> (Reply, Option<WorkerTiming>) {
+        let timing = self.timing.take();
+        let reply = self.wait();
+        (reply, timing.and_then(|rx| rx.try_recv().ok()))
+    }
     pub fn wait(self) -> Reply {
         self.rx.recv().unwrap_or_else(|_| {
             Reply::new(
@@ -64,6 +81,26 @@ impl Pending {
 }
 impl Client {
     pub fn submit(&self, request: Request) -> Result<Pending, Fault> {
+        self.submit_inner(request, None, None)
+    }
+    /// Opt-in non-realtime diagnostic channel. Normal requests allocate no probe.
+    pub fn submit_profiled(&self, request: Request) -> Result<Pending, Fault> {
+        let (tx, rx) = mpsc::sync_channel(1);
+        self.submit_inner(
+            request,
+            Some(Probe {
+                admitted: Instant::now(),
+                tx,
+            }),
+            Some(rx),
+        )
+    }
+    fn submit_inner(
+        &self,
+        request: Request,
+        probe: Option<Probe>,
+        timing: Option<Receiver<WorkerTiming>>,
+    ) -> Result<Pending, Fault> {
         if request.version != VERSION {
             return Err(Fault::new(
                 ErrorCode::UnsupportedVersion,
@@ -100,12 +137,13 @@ impl Client {
         let (tx, rx) = mpsc::sync_channel(1);
         let id = request.id;
         match self.tx.try_send(Envelope {
+            probe,
             hold_epoch,
             request,
             reply: tx,
             _permit: permit,
         }) {
-            Ok(()) => Ok(Pending { id, rx }),
+            Ok(()) => Ok(Pending { id, rx, timing }),
             Err(TrySendError::Full(_)) => Err(Fault::new(ErrorCode::Busy, "Control queue full")),
             Err(TrySendError::Disconnected(_)) => {
                 Err(Fault::new(ErrorCode::Closed, "Control worker closed"))
@@ -154,11 +192,19 @@ impl Service {
                             if stop.load(Ordering::Acquire) {
                                 break;
                             }
+                            let timing_start = envelope.probe.as_ref().map(|_| Instant::now());
+                            let queue_ms = envelope
+                                .probe
+                                .as_ref()
+                                .map_or(0.0, |p| p.admitted.elapsed().as_secs_f64() * 1000.0);
                             worker.poll();
                             worker.apply_releases(&release_worker);
                             let stale = envelope.hold_epoch.is_some_and(|(s, e)| {
                                 release_worker[source_index(s)].load(Ordering::Acquire) != e
                             });
+                            let poll_ms =
+                                timing_start.map_or(0.0, |t| t.elapsed().as_secs_f64() * 1000.0);
+                            let handling = envelope.probe.as_ref().map(|_| Instant::now());
                             let result = if stale {
                                 Err(Fault::new(
                                     ErrorCode::Invalid,
@@ -167,6 +213,14 @@ impl Service {
                             } else {
                                 worker.handle(envelope.request.command)
                             };
+                            if let Some(probe) = envelope.probe {
+                                let _ = probe.tx.try_send(WorkerTiming {
+                                    queue_ms,
+                                    poll_ms,
+                                    handle_ms: handling
+                                        .map_or(0.0, |t| t.elapsed().as_secs_f64() * 1000.0),
+                                });
+                            }
                             // At most one reply fits. Receiver cancellation cannot block this worker.
                             let _ = envelope
                                 .reply
@@ -673,6 +727,18 @@ mod tests {
         };
         assert!(!s.online);
         assert!(s.decks.is_none());
+        service.shutdown();
+        assert_eq!(client.admitted.load(Ordering::Acquire), 0);
+    }
+    #[test]
+    fn opt_in_timing_preserves_reply_and_releases_bounded_admission() {
+        let mut service = Service::spawn_inner(|| Worker::new(Profile::default(), None)).unwrap();
+        let client = service.client();
+        let (reply, timing) = client.submit_profiled(request(17)).unwrap().wait_profiled();
+        assert_eq!(reply.id, 17);
+        assert!(reply.result.is_ok());
+        let timing = timing.unwrap();
+        assert!(timing.queue_ms >= 0.0 && timing.poll_ms >= 0.0 && timing.handle_ms >= 0.0);
         service.shutdown();
         assert_eq!(client.admitted.load(Ordering::Acquire), 0);
     }

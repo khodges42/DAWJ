@@ -3,6 +3,7 @@
 """Summarize opt-in Windows release runs; no device access or dependencies."""
 import argparse
 import csv
+from datetime import datetime
 import json
 from pathlib import Path
 from statistics import median
@@ -30,7 +31,24 @@ def summarize(root):
                   'slope_after_ten_minutes_mib_per_minute': slope,
                   'process_counts': sorted({int(r['processes']) for r in rows})}
         log = (root / (name + '.stderr.log')).read_text(encoding='utf-8', errors='replace')
-        results.append({'run': root.name, 'metrics': metrics, 'memory': memory,
+        host_path = root / (name + '.host.csv')
+        host = None
+        if host_path.exists():
+            with host_path.open(encoding='utf-8-sig') as stream:
+                observed = list(csv.DictReader(stream))
+            cpu = [float(r['cpu_percent']) for r in observed if r['cpu_percent']]
+            gpu = [float(r['gpu_busiest_engine_percent']) for r in observed if r['gpu_busiest_engine_percent']]
+            correlated = []
+            for event in metrics.get('outliers', []):
+                if observed:
+                    nearest = min(observed, key=lambda r: abs(datetime.fromisoformat(r['utc'].replace('Z', '+00:00')).timestamp()*1000-event['utc_ms']))
+                    delta = abs(datetime.fromisoformat(nearest['utc'].replace('Z', '+00:00')).timestamp()*1000-event['utc_ms'])
+                    correlated.append({'event': event, 'nearest_host_sample': nearest, 'distance_ms': delta})
+            host = {'samples': len(observed), 'cpu_median_percent': median(cpu) if cpu else None,
+                    'cpu_max_percent': max(cpu, default=None), 'gpu_busiest_engine_max_percent': max(gpu, default=None),
+                    'detected_games': sorted({r['detected_games'] for r in observed if r['detected_games']}),
+                    'outlier_correlations': correlated}
+        results.append({'host_load': host, 'run': root.name, 'metrics': metrics, 'memory': memory,
                         'teardown_1412_count': log.count('Error = 1412')})
     return results
 
@@ -39,9 +57,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('runs', nargs='+', type=Path)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--preflight', type=Path)
     args = parser.parse_args()
     result = {'timing_resolution_ms': 0.1, 'quantiles_are_bin_upper_bounds': True,
               'histogram_overflow_ms': 1000, 'runs': [r for p in args.runs for r in summarize(p)]}
+    if args.preflight:
+        result['preflight'] = json.loads(args.preflight.read_text(encoding='utf-8-sig'))
     if not result['runs']:
         parser.error('No completed metric files found')
     args.output.write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
