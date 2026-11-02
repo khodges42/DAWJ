@@ -468,3 +468,22 @@ fn sustained_gui_gain_and_filter_merge_without_losing_stop_capacity() {
     assert_eq!(part.parameters.cutoff_hz, Some(500.0));
     assert_eq!(part.lifecycle, SlotState::Stopped);
 }
+
+#[test]
+fn gui_update_after_ack_merges_with_waiting_target_instead_of_replaying_it() {
+    let (mut e, mut c, _) = setup();
+    c.try_act(Intent::Gain(0.2)).unwrap();
+    c.try_act(Intent::Cutoff(Some(500.0))).unwrap();
+    render(&mut e, &mut c, 128);
+    // A new GUI batch can arrive after poll acknowledged the first publication,
+    // before a caller has flushed the waiting cutoff target.
+    c.try_act(Intent::Gain(0.6)).unwrap();
+    assert_eq!(c.parameter_target(0, 0).unwrap().gain, 0.6);
+    for _ in 0..2 {
+        c.flush_parameters();
+        render(&mut e, &mut c, 128);
+    }
+    let part = c.snapshot.unwrap().decks[0].slots[0];
+    assert_eq!(part.parameters.gain, 0.6);
+    assert_eq!(part.parameters.cutoff_hz, Some(500.0));
+}

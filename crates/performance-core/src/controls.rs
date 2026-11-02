@@ -135,6 +135,7 @@ impl Coordinator {
                 // Keep one pending publication per slot; bounded latest values
                 // use the same fair flush budget as MIDI and reserve stop capacity.
                 if source == InputSource::Midi
+                    || self.queued_parameters[deck][slot].is_some()
                     || self
                         .receipts
                         .iter()
