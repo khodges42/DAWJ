@@ -18,7 +18,79 @@ pub struct LoadedSample {
     rate: u32,
     pcm: Box<[f32]>,
 }
+#[derive(Clone, Debug)]
+pub struct SampleInfo {
+    pub sample_rate: u32,
+    pub channels: u16,
+    pub frames: usize,
+    pub prepared_frames: usize,
+}
 impl LoadedSample {
+    /// Worker-only local preparation; decoder semantics stay strict, conversion never runs in render.
+    pub fn prepare_file(
+        id: AssetId,
+        path: &Path,
+        target: u32,
+    ) -> Result<(Self, SampleInfo), String> {
+        let mut bytes = Vec::new();
+        File::open(path)
+            .map_err(|e| format!("{}: {e}", path.display()))?
+            .take((MAX_WAV_BYTES + 1) as u64)
+            .read_to_end(&mut bytes)
+            .map_err(|e| e.to_string())?;
+        let mut at = 12;
+        let mut format = None;
+        while at + 8 <= bytes.len() {
+            let n = u32::from_le_bytes(bytes[at + 4..at + 8].try_into().unwrap()) as usize;
+            let end = at
+                .checked_add(8)
+                .and_then(|x| x.checked_add(n))
+                .ok_or("WAV chunk overflow")?;
+            if end > bytes.len() {
+                break;
+            }
+            if &bytes[at..at + 4] == b"fmt " && n >= 16 {
+                format = Some((
+                    u16::from_le_bytes(bytes[at + 10..at + 12].try_into().unwrap()),
+                    u32::from_le_bytes(bytes[at + 12..at + 16].try_into().unwrap()),
+                ));
+                break;
+            }
+            at = end + (n % 2);
+        }
+        let (channels, rate) = format
+            .ok_or("Missing WAV format; only PCM/float WAV is supported (MP3 is not decoded)")?;
+        if !(1000..=384000).contains(&rate) || target == 0 {
+            return Err("Unsupported sample rate".into());
+        }
+        let mut sample = Self::decode(id, &bytes, rate).map_err(str::to_owned)?;
+        let frames = sample.frames();
+        if rate != target {
+            let count = (frames as u64 * u64::from(target)).div_ceil(u64::from(rate)) as usize;
+            if count == 0 || count > MAX_DECK_FRAMES {
+                return Err("Converted sample exceeds resident PCM budget".into());
+            }
+            let mut pcm = Vec::with_capacity(count * 2);
+            for i in 0..count {
+                let x = i as f64 * f64::from(rate) / f64::from(target);
+                let a = (x as usize).min(frames - 1);
+                let b = (a + 1).min(frames - 1);
+                let t = (x - a as f64) as f32;
+                for ch in 0..2 {
+                    pcm.push(sample.pcm[a * 2 + ch] * (1.0 - t) + sample.pcm[b * 2 + ch] * t)
+                }
+            }
+            sample.pcm = pcm.into_boxed_slice();
+            sample.rate = target;
+        }
+        let info = SampleInfo {
+            sample_rate: rate,
+            channels,
+            frames,
+            prepared_frames: sample.frames(),
+        };
+        Ok((sample, info))
+    }
     pub fn load(id: AssetId, path: &Path, rate: u32) -> Result<Self, String> {
         let mut data = Vec::new();
         File::open(path)
@@ -150,7 +222,7 @@ pub struct SampleVoice {
     elapsed: u64,
 }
 impl SampleVoice {
-    pub(crate) fn resident_frames(&self) -> usize {
+    pub fn resident_frames(&self) -> usize {
         self.pcm.len() / 2
     }
     pub fn prepare(

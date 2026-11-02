@@ -1369,3 +1369,35 @@ fn once_fill_losing_to_manual_launch_is_spent_not_deferred() {
     assert!(render(&mut e, 8000, 8192).1.is_empty());
     assert_eq!(enable.outcome(), Outcome::Rejected);
 }
+
+#[test]
+fn resident_publication_is_bounded_transactional_and_available_to_the_same_callback() {
+    let (mut e, mut c) = engine(8000);
+    let rate = 8000;
+    // A duplicate batch must publish neither new member.
+    assert!(
+        c.install_voices(vec![voice(100, rate, false), voice(100, rate, false)])
+            .is_err()
+    );
+    let first = c.install_voice(voice(100, rate, false)).unwrap();
+    let ticket = c
+        .submit(1, 0, Request::Launch(first), Quantize::Immediate)
+        .unwrap();
+    render(&mut e, 64, 64);
+    assert_eq!(ticket.outcome(), Outcome::Applied);
+    assert_eq!(
+        c.performance_state().unwrap().decks[1].slots[0].active,
+        Some(PartId(100))
+    );
+    let mut next = 101;
+    while c.install_voice(voice(next, rate, false)).is_ok() {
+        next += 1;
+        assert!(next < 200);
+    }
+    assert!(c.install_voice(voice(999, rate, false)).is_err());
+    render(&mut e, 64, 64);
+    assert_eq!(
+        c.performance_state().unwrap().decks[1].slots[0].active,
+        Some(PartId(100))
+    );
+}

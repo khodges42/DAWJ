@@ -12,7 +12,7 @@ use event_engine::live::{Action, Event, MusicalScheduler, Quantization};
 pub use event_engine::rules::{RulePhase, RuleUnit, TriggerRule};
 use parts::{Applied, SLOTS, State};
 use std::sync::{
-    Arc,
+    Arc, OnceLock,
     atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
 };
 use timebase::SampleFrame;
@@ -90,6 +90,7 @@ struct Queue {
     snapshot: crate::performance_state::Publication,
 }
 pub struct LiveControl {
+    bank: Arc<ResidentBank>,
     queue: Arc<Queue>,
     next: u64,
 }
@@ -134,6 +135,46 @@ fn publish(queue: &Queue, row: usize, id: u64, outcome: Outcome) {
     }
 }
 impl LiveControl {
+    /// Non-realtime producer only. Immutable publication; old voices retire at stream close.
+    pub fn install_voices(&mut self, voices: Vec<SampleVoice>) -> Result<Vec<u8>, &'static str> {
+        if self.is_closed() {
+            return Err("engine closed");
+        }
+        if self.bank.iter().count() + voices.len() > 64 {
+            return Err("64 resident versions exhausted; stop output and restart");
+        }
+        if self
+            .bank
+            .iter()
+            .map(SampleVoice::resident_frames)
+            .sum::<usize>()
+            + voices
+                .iter()
+                .map(SampleVoice::resident_frames)
+                .sum::<usize>()
+            > 2 * crate::samples::MAX_DECK_FRAMES
+        {
+            return Err("Resident PCM budget exhausted; stop output and restart");
+        }
+        if voices.iter().any(|v| v.rate() != self.bank.rate) {
+            return Err("Prepared voice rate mismatch");
+        }
+        for (i, voice) in voices.iter().enumerate() {
+            if self.bank.iter().any(|v| v.part() == voice.part())
+                || voices[..i].iter().any(|v| v.part() == voice.part())
+            {
+                return Err("duplicate resident Part definition");
+            }
+        }
+        voices.into_iter().map(|v| self.bank.append(v)).collect()
+    }
+    pub fn install_voice(&mut self, voice: SampleVoice) -> Result<u8, &'static str> {
+        if self.is_closed() {
+            return Err("engine closed");
+        }
+        self.bank.append(voice)
+    }
+
     /// One bounded coherent read; retain the previous snapshot if publication overlaps.
     pub fn performance_state(&self) -> Option<crate::performance_state::PerformanceState> {
         let mut state = self.queue.snapshot.read()?;
@@ -266,9 +307,49 @@ struct Active {
     bank: usize,
     elapsed: u64,
 }
+struct ResidentBank {
+    rate: u32,
+    cells: [OnceLock<SampleVoice>; 64],
+}
+impl ResidentBank {
+    fn get(&self, index: usize) -> Option<&SampleVoice> {
+        self.cells.get(index)?.get()
+    }
+    fn iter(&self) -> impl Iterator<Item = &SampleVoice> {
+        self.cells.iter().filter_map(OnceLock::get)
+    }
+    fn append(&self, voice: SampleVoice) -> Result<u8, &'static str> {
+        if voice.rate() != self.rate {
+            return Err("resident voice rate mismatch");
+        }
+        if self.iter().any(|v| v.part() == voice.part()) {
+            return Err("duplicate resident Part definition");
+        }
+        if self.iter().map(SampleVoice::resident_frames).sum::<usize>() + voice.resident_frames()
+            > 2 * crate::samples::MAX_DECK_FRAMES
+        {
+            return Err("resident PCM budget exhausted; stop output and restart");
+        }
+        let index = self
+            .cells
+            .iter()
+            .position(|v| v.get().is_none())
+            .ok_or("64 prepared versions exhausted; stop output and restart")?;
+        self.cells[index]
+            .set(voice)
+            .map_err(|_| "resident publication collision")?;
+        Ok(index as u8)
+    }
+}
+impl std::ops::Index<usize> for ResidentBank {
+    type Output = SampleVoice;
+    fn index(&self, index: usize) -> &Self::Output {
+        self.get(index).expect("admitted resident bank index")
+    }
+}
 pub struct LiveEngine {
     scheduler: MusicalScheduler,
-    bank: Box<[SampleVoice]>,
+    bank: Arc<ResidentBank>,
     mixer: StereoMixer,
     queue: Arc<Queue>,
     active: [[Option<Active>; SLOTS]; 2],
@@ -285,6 +366,19 @@ impl LiveEngine {
         scheduler: MusicalScheduler,
         bank: Vec<SampleVoice>,
     ) -> Result<(Self, LiveControl, MixerControl), &'static str> {
+        Self::with_bank(scheduler, bank, false)
+    }
+    /// Empty user session, using the same scheduler/mixer/callback as resident demos.
+    pub fn empty(
+        scheduler: MusicalScheduler,
+    ) -> Result<(Self, LiveControl, MixerControl), &'static str> {
+        Self::with_bank(scheduler, Vec::new(), true)
+    }
+    fn with_bank(
+        scheduler: MusicalScheduler,
+        bank: Vec<SampleVoice>,
+        allow_empty: bool,
+    ) -> Result<(Self, LiveControl, MixerControl), &'static str> {
         if scheduler.frame().0 != 0
             || (0..2).any(|d| {
                 (0..SLOTS).any(|s| {
@@ -295,7 +389,10 @@ impl LiveEngine {
         {
             return Err("live engine requires a pristine scheduler");
         }
-        if bank.is_empty() || bank.len() > 64 || bank.iter().any(|v| v.rate() != scheduler.rate()) {
+        if (bank.is_empty() && !allow_empty)
+            || bank.len() > 64
+            || bank.iter().any(|v| v.rate() != scheduler.rate())
+        {
             return Err("invalid resident bank or rate");
         }
         if bank.iter().map(SampleVoice::resident_frames).sum::<usize>()
@@ -337,14 +434,22 @@ impl LiveEngine {
             closed: Arc::new(AtomicBool::new(false)),
             snapshot: crate::performance_state::Publication::new(),
         });
+        let resident = Arc::new(ResidentBank {
+            rate: scheduler.rate(),
+            cells: std::array::from_fn(|_| OnceLock::new()),
+        });
+        for voice in bank {
+            resident.append(voice)?;
+        }
         let control = LiveControl {
+            bank: resident.clone(),
             queue: queue.clone(),
             next: 1,
         };
         let result = (
             Self {
                 scheduler,
-                bank: bank.into_boxed_slice(),
+                bank: resident,
                 mixer,
                 queue,
                 active: [[None; SLOTS]; 2],
@@ -759,6 +864,10 @@ mod lifecycle_tests {
             snapshot: crate::performance_state::Publication::new(),
         });
         let mut control = LiveControl {
+            bank: Arc::new(ResidentBank {
+                rate: 48000,
+                cells: std::array::from_fn(|_| OnceLock::new()),
+            }),
             queue: queue.clone(),
             next: 1,
         };
