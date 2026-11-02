@@ -1,0 +1,396 @@
+{
+  "timing_resolution_ms": 0.1,
+  "quantiles_are_bin_upper_bounds": true,
+  "histogram_overflow_ms": 1000,
+  "runs": [
+    {
+      "run": "web4-sequential",
+      "metrics": {
+        "changes": 1192,
+        "command_ms": {
+          "median": 4.4,
+          "n": 3576,
+          "p95": 6.6,
+          "worst": 206.39999997615817
+        },
+        "frame_ms": {
+          "median": 5,
+          "n": 12425,
+          "p95": 5.2,
+          "worst": 189.89999999999964
+        },
+        "frontend": "tauri",
+        "passed": true,
+        "peaks": [
+          0.088714615,
+          0.07097169
+        ],
+        "receipt_to_frame_ms": {
+          "median": 6.2,
+          "n": 1192,
+          "p95": 7.7,
+          "worst": 40
+        },
+        "seconds": 60.022599999964235,
+        "snapshot_roundtrip_ms": {
+          "median": 4.4,
+          "n": 1192,
+          "p95": 6.5,
+          "worst": 9.600000023841858
+        },
+        "startup_command_ms": {
+          "median": 7.2,
+          "n": 4,
+          "p95": 1000,
+          "worst": 1558.800000011921
+        },
+        "themes": 5
+      },
+      "memory": {
+        "samples": 11,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": 5.727518999999997,
+        "first_private_mib": 284.78515625,
+        "peak_private_mib": 293.64453125,
+        "last_five_minutes_median_private_mib": 291.07421875,
+        "slope_after_ten_minutes_mib_per_minute": null,
+        "process_counts": [
+          8
+        ]
+      },
+      "teardown_1412_count": 0
+    },
+    {
+      "run": "web4-sequential",
+      "metrics": {
+        "frontend": "egui",
+        "passed": true,
+        "seconds": 60.0047524,
+        "changes": 1132,
+        "command_ms": {
+          "median": 0.1,
+          "n": 3396,
+          "p95": 0.1,
+          "worst": 0.024
+        },
+        "frame_ms": {
+          "median": 5.0,
+          "n": 11959,
+          "p95": 6.0,
+          "worst": 110.0946
+        },
+        "receipt_to_frame_ms": {
+          "median": 5.0,
+          "n": 1132,
+          "p95": 6.1,
+          "worst": 9.4095
+        }
+      },
+      "memory": {
+        "samples": 11,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": 5.558529949999998,
+        "first_private_mib": 105.91015625,
+        "peak_private_mib": 105.91015625,
+        "last_five_minutes_median_private_mib": 105.04296875,
+        "slope_after_ten_minutes_mib_per_minute": null,
+        "process_counts": [
+          2
+        ]
+      },
+      "teardown_1412_count": 0
+    },
+    {
+      "run": "web4-sequential-steady",
+      "metrics": {
+        "changes": 1172,
+        "command_ms": {
+          "median": 4,
+          "n": 3516,
+          "p95": 10.4,
+          "worst": 41.5
+        },
+        "frame_ms": {
+          "median": 5,
+          "n": 11980,
+          "p95": 5.2,
+          "worst": 60.10000000000582
+        },
+        "frontend": "tauri",
+        "passed": true,
+        "peaks": [
+          0.08866534,
+          0.07093227
+        ],
+        "receipt_to_frame_ms": {
+          "median": 6.4,
+          "n": 1172,
+          "p95": 8,
+          "worst": 54
+        },
+        "seconds": 60.04019999998808,
+        "snapshot_roundtrip_ms": {
+          "median": 3.9,
+          "n": 1172,
+          "p95": 10.2,
+          "worst": 66.89999997615814
+        },
+        "startup_command_ms": {
+          "median": 12.2,
+          "n": 4,
+          "p95": 1000,
+          "worst": 4271.300000011921
+        },
+        "themes": 6
+      },
+      "memory": {
+        "samples": 11,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": 5.75260345,
+        "first_private_mib": 244.5390625,
+        "peak_private_mib": 296.62109375,
+        "last_five_minutes_median_private_mib": 290.4375,
+        "slope_after_ten_minutes_mib_per_minute": null,
+        "process_counts": [
+          8
+        ]
+      },
+      "teardown_1412_count": 0
+    },
+    {
+      "run": "web4-sequential-steady",
+      "metrics": {
+        "frontend": "egui",
+        "passed": true,
+        "seconds": 60.0025309,
+        "changes": 1128,
+        "command_ms": {
+          "median": 0.1,
+          "n": 3384,
+          "p95": 0.1,
+          "worst": 0.019899999999999998
+        },
+        "frame_ms": {
+          "median": 5.1,
+          "n": 11727,
+          "p95": 6.7,
+          "worst": 144.95540000000003
+        },
+        "receipt_to_frame_ms": {
+          "median": 5.0,
+          "n": 1128,
+          "p95": 6.7,
+          "worst": 10.9609
+        }
+      },
+      "memory": {
+        "samples": 11,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": 5.585169150000002,
+        "first_private_mib": 109.85546875,
+        "peak_private_mib": 109.85546875,
+        "last_five_minutes_median_private_mib": 107.67578125,
+        "slope_after_ten_minutes_mib_per_minute": null,
+        "process_counts": [
+          2
+        ]
+      },
+      "teardown_1412_count": 0
+    },
+    {
+      "run": "web4-soak-tauri",
+      "metrics": {
+        "changes": 35474,
+        "command_ms": {
+          "median": 3.5,
+          "n": 106422,
+          "p95": 5,
+          "worst": 53.29999998211861
+        },
+        "frame_ms": {
+          "median": 5,
+          "n": 360154,
+          "p95": 5.2,
+          "worst": 55.100000000034925
+        },
+        "frontend": "tauri",
+        "passed": true,
+        "peaks": [
+          0.088718824,
+          0.070975065
+        ],
+        "receipt_to_frame_ms": {
+          "median": 6.4,
+          "n": 35474,
+          "p95": 8,
+          "worst": 55.5
+        },
+        "seconds": 1800.0192999999822,
+        "snapshot_roundtrip_ms": {
+          "median": 3.5,
+          "n": 35474,
+          "p95": 4.9,
+          "worst": 42
+        },
+        "startup_command_ms": {
+          "median": 5.5,
+          "n": 4,
+          "p95": 1000,
+          "worst": 1243.800000011921
+        },
+        "themes": 179
+      },
+      "memory": {
+        "samples": 324,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": 5.562704900000199,
+        "first_private_mib": 280.4453125,
+        "peak_private_mib": 483.6015625,
+        "last_five_minutes_median_private_mib": 317.77734375,
+        "slope_after_ten_minutes_mib_per_minute": 0.24008821709506933,
+        "process_counts": [
+          8,
+          9
+        ]
+      },
+      "teardown_1412_count": 0
+    },
+    {
+      "run": "web4-soak-egui",
+      "metrics": {
+        "frontend": "egui",
+        "passed": true,
+        "seconds": 1800.0019548,
+        "changes": 34076,
+        "command_ms": {
+          "median": 0.1,
+          "n": 102228,
+          "p95": 0.1,
+          "worst": 0.199
+        },
+        "frame_ms": {
+          "median": 5.0,
+          "n": 359773,
+          "p95": 5.7,
+          "worst": 85.0785
+        },
+        "receipt_to_frame_ms": {
+          "median": 5.0,
+          "n": 34076,
+          "p95": 5.7,
+          "worst": 15.263
+        }
+      },
+      "memory": {
+        "samples": 329,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": 5.461820450000019,
+        "first_private_mib": 105.21484375,
+        "peak_private_mib": 105.21484375,
+        "last_five_minutes_median_private_mib": 104.61328125,
+        "slope_after_ten_minutes_mib_per_minute": 0.007826112484104033,
+        "process_counts": [
+          2
+        ]
+      },
+      "teardown_1412_count": 0
+    },
+    {
+      "run": "web4-final-regression",
+      "metrics": {
+        "changes": 100,
+        "command_ms": {
+          "median": 5.1,
+          "n": 300,
+          "p95": 10.4,
+          "worst": 21.30000001192093
+        },
+        "frame_ms": {
+          "median": 5,
+          "n": 1001,
+          "p95": 5.2,
+          "worst": 9.900000000000546
+        },
+        "frontend": "tauri",
+        "passed": true,
+        "peaks": [
+          0.0883248,
+          0.07065984
+        ],
+        "receipt_to_frame_ms": {
+          "median": 6,
+          "n": 100,
+          "p95": 7.7,
+          "worst": 8.199999988079071
+        },
+        "seconds": 5.0155999999642376,
+        "snapshot_roundtrip_ms": {
+          "median": 5.2,
+          "n": 100,
+          "p95": 10.4,
+          "worst": 15.699999988079073
+        },
+        "startup_command_ms": {
+          "median": 5.2,
+          "n": 4,
+          "p95": 1000,
+          "worst": 1254
+        },
+        "themes": 0
+      },
+      "memory": {
+        "samples": 1,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": null,
+        "first_private_mib": 283.88671875,
+        "peak_private_mib": 283.88671875,
+        "last_five_minutes_median_private_mib": 283.88671875,
+        "slope_after_ten_minutes_mib_per_minute": null,
+        "process_counts": [
+          8
+        ]
+      },
+      "teardown_1412_count": 0
+    },
+    {
+      "run": "web4-final-regression",
+      "metrics": {
+        "frontend": "egui",
+        "passed": true,
+        "seconds": 5.0034954,
+        "changes": 92,
+        "command_ms": {
+          "median": 0.1,
+          "n": 276,
+          "p95": 0.1,
+          "worst": 0.0152
+        },
+        "frame_ms": {
+          "median": 5.2,
+          "n": 890,
+          "p95": 8.1,
+          "worst": 221.7182
+        },
+        "receipt_to_frame_ms": {
+          "median": 5.4,
+          "n": 91,
+          "p95": 8.2,
+          "worst": 10.311499999999999
+        }
+      },
+      "memory": {
+        "samples": 1,
+        "requested_sample_interval_seconds": 5,
+        "median_actual_sample_interval_seconds": null,
+        "first_private_mib": 108.41796875,
+        "peak_private_mib": 108.41796875,
+        "last_five_minutes_median_private_mib": 108.41796875,
+        "slope_after_ten_minutes_mib_per_minute": null,
+        "process_counts": [
+          2
+        ]
+      },
+      "teardown_1412_count": 0
+    }
+  ]
+}

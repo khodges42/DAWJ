@@ -22,6 +22,11 @@ Recover independently of skin CSS through the native **Appearance → Restore
 default interface** menu or **Ctrl+Alt+Shift+R**. Launch with `--safe-mode` to
 ignore the saved skin, or `--reset-skin` to clear user skin state.
 
+[M3.Web4 reliability](docs/M3_WEB4_PERFORMANCE.md) provides release-build timing
+and 30-minute soak automation for both frontends. These frontend tests require a
+unique HyperX output match; it never falls back to the default device. See the
+report for measurement definitions and remaining hardware gates.
+
 The [native M3 performance application](docs/M3_GUI_ARCHITECTURE.md) controls the
 existing audio engine with two visible eight-part decks. Run it on Windows:
 
