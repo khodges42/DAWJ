@@ -259,7 +259,16 @@ impl Drop for Service {
         self.shutdown();
     }
 }
+struct Preparation {
+    rx: Receiver<Result<crate::session::Prepared, String>>,
+    project: crate::session::Project,
+    affected: [bool; 2],
+    path: Option<String>,
+    opened: bool,
+}
 struct Worker {
+    jam: crate::session::Workspace,
+    preparation: Option<Preparation>,
     control_revision: u64,
     seen_releases: [u64; 3],
     view: crate::timeline::View,
@@ -278,6 +287,8 @@ impl Worker {
     fn new(profile: Profile, path: Option<PathBuf>) -> Self {
         let midi = Devices::new(profile.input.clone(), profile.output.clone());
         Self {
+            jam: crate::session::Workspace::default(),
+            preparation: None,
             control_revision: 0,
             seen_releases: [0; 3],
             view: crate::timeline::View::default(),
@@ -309,6 +320,7 @@ impl Worker {
         self.output.as_mut().map(|o| &mut o.coordinator)
     }
     fn poll(&mut self) {
+        self.poll_preparation();
         if let Some(o) = &mut self.output {
             o.coordinator.poll();
         }
@@ -320,6 +332,15 @@ impl Worker {
             &mut self.feedback_tick,
             self.output.as_mut().map(|o| &mut o.coordinator),
         );
+        if !self.jam.demo
+            && !self.jam.dirty
+            && self
+                .output
+                .as_ref()
+                .is_some_and(|o| self.jam.changed(&o.coordinator))
+        {
+            self.jam.dirty = true;
+        }
     }
     fn snapshot(&self) -> Snapshot {
         let mut s = self.output.as_ref().map_or_else(Snapshot::default, |o| {
@@ -328,6 +349,13 @@ impl Worker {
         s.timeline = self.output.as_ref().and_then(|o| {
             crate::web_timeline::Projection::from_coordinator(&o.coordinator, &self.view)
         });
+        if self.output.is_none() && !self.jam.demo {
+            let c = &self.jam.project.settings;
+            s.crossfader = c.crossfader;
+            s.deck_gain = c.deck_gain;
+            s.output_trim_db = c.output_trim_db;
+        }
+        s.session = Some(self.jam.clone());
         s.midi_revision = self.mapper.revision;
         s.midi_dirty = self.mapper.dirty;
         s.midi_learning = self.mapper.learn.is_some();
@@ -348,6 +376,9 @@ impl Worker {
         use ErrorCode::*;
         let revision = self.mapper.revision;
         match command {
+            Command::Session { action } => self
+                .session_action(action)
+                .map_err(|e| Fault::new(Invalid, e))?,
             Command::Devices {} => {
                 self.devices = output::discover().map_err(|e| Fault::new(Failed, e))?;
                 return Ok(Response::Devices(
@@ -373,15 +404,33 @@ impl Worker {
                     .iter()
                     .find(|d| d.ordinal == device)
                     .ok_or_else(|| Fault::new(Invalid, "Rescan and select an output device"))?;
-                self.output = Some(
-                    OutputSession::open(device, cue, phrase_bars)
-                        .map_err(|e| Fault::new(Failed, e))?,
-                );
+                if self.jam.busy {
+                    return Err(Fault::new(Busy, "Wait for content preparation"));
+                }
+                if self.jam.demo {
+                    self.output = Some(
+                        OutputSession::open(device, cue, phrase_bars)
+                            .map_err(|e| Fault::new(Failed, e))?,
+                    );
+                } else {
+                    self.jam.project.settings.phrase_bars = phrase_bars;
+                    let (output, media) =
+                        OutputSession::open_project(device, cue, &self.jam.project)
+                            .map_err(|e| Fault::new(Failed, e))?;
+                    self.jam.media = media;
+                    self.output = Some(output);
+                    self.jam.message =
+                        "Output ready. Saved periodic definitions require explicit re-arming."
+                            .into();
+                }
                 self.mapper
                     .reset(self.output.as_mut().map(|o| &mut o.coordinator));
             }
             Command::Stop {} => {
                 if let Some(mut o) = self.output.take() {
+                    if !self.jam.demo {
+                        self.jam.capture(&o.coordinator);
+                    }
                     self.mapper.reset(Some(&mut o.coordinator));
                     o.stop().map_err(|e| Fault::new(Failed, e))?;
                 }
@@ -558,6 +607,288 @@ impl Worker {
         self.poll();
         Ok(Response::Snapshot(Box::new(self.snapshot())))
     }
+    fn session_action(&mut self, action: crate::session::Action) -> Result<(), String> {
+        use crate::session::{self, Action::*};
+        if self.jam.busy {
+            return Err(
+                "Content preparation in progress; performance controls remain available".into(),
+            );
+        }
+        if let Some(o) = &self.output
+            && !self.jam.demo
+        {
+            self.jam.capture(&o.coordinator);
+        }
+        match action {
+            New {} | Demo {} => {
+                if self.output.is_some() {
+                    return Err("Stop output before replacing the whole session".into());
+                }
+                let demo = matches!(action, Demo {});
+                self.jam = session::Workspace {
+                    demo,
+                    message: if demo {
+                        "Bundled demonstration selected; Save is for user sessions".into()
+                    } else {
+                        "Empty session. Create a composition for either deck.".into()
+                    },
+                    ..Default::default()
+                };
+                return Ok(());
+            }
+            Open { path } => {
+                if self.output.is_some() {
+                    return Err("Stop output before opening a session".into());
+                }
+                let path = session::absolute(std::path::Path::new(&path))?;
+                let project = session::Project::load(&path)?;
+                return self.begin_preparation(
+                    project,
+                    [true; 2],
+                    false,
+                    Some(path.display().to_string()),
+                    true,
+                    None,
+                );
+            }
+            Save { path } => {
+                if self.jam.demo {
+                    return Err("Create a user session to save local compositions".into());
+                }
+                let path = path
+                    .or_else(|| self.jam.path.clone())
+                    .ok_or("Use Save As to choose a session path")?;
+                let path = session::absolute(std::path::Path::new(&path))?;
+                self.jam.project.save(&path)?;
+                self.jam.path = Some(path.display().to_string());
+                self.jam.dirty = false;
+                self.jam.message =
+                    "Session saved. Playback position and pending actions are not restored.".into();
+                return Ok(());
+            }
+            _ => {}
+        }
+        if self.jam.demo {
+            return Err("Stop output and choose New session before editing user content".into());
+        }
+        let mut project = self.jam.project.clone();
+        let force = if let Import {
+            composition, slot, ..
+        } = &action
+        {
+            Some((*composition, *slot))
+        } else {
+            None
+        };
+        match action {
+            Rename { name } => project.name = name,
+            Create { name, deck } => {
+                project.create(name, deck)?;
+            }
+            RenameComposition { composition, name } => {
+                project.composition_mut(composition)?.name = name
+            }
+            Assign { deck, composition } => {
+                if deck >= 2 {
+                    return Err("Invalid deck".into());
+                }
+                if let Some(n) = composition {
+                    project.composition(n)?;
+                }
+                project.decks[deck] = composition;
+            }
+            Import {
+                composition,
+                slot,
+                path,
+            } => {
+                if !project.decks.contains(&Some(composition)) {
+                    return Err("Load the composition on a deck before importing".into());
+                }
+                let c = project.composition_mut(composition)?;
+                let part = c.parts.get_mut(slot).ok_or("Invalid part slot")?;
+                let path = session::absolute(std::path::Path::new(&path))?;
+                part.name = path
+                    .file_stem()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .chars()
+                    .take(80)
+                    .collect();
+                part.media = Some(path.display().to_string());
+                part.loop_start = 0;
+                part.loop_end = None;
+            }
+            Remove { composition, slot } => {
+                let p = project
+                    .composition_mut(composition)?
+                    .parts
+                    .get_mut(slot)
+                    .ok_or("Invalid part slot")?;
+                p.media = None;
+                p.rule = None;
+                p.loop_start = 0;
+                p.loop_end = None;
+            }
+            Edit {
+                composition,
+                slot,
+                part,
+            } => {
+                let old = project
+                    .composition_mut(composition)?
+                    .parts
+                    .get_mut(slot)
+                    .ok_or("Invalid part slot")?;
+                if old.id != part.id || old.media != part.media {
+                    return Err(
+                        "Use Import/Remove to change media; identities cannot be edited".into(),
+                    );
+                }
+                // Authoring changes playback metadata. Live shaping/rules retain
+                // their current accepted targets through the semantic actions.
+                *old = crate::session::Sound {
+                    gain: old.gain,
+                    cutoff_hz: old.cutoff_hz,
+                    rule: old.rule,
+                    ..part
+                };
+            }
+            _ => return Err("Unsupported session operation".into()),
+        }
+        project.validate()?;
+        let affected = std::array::from_fn(|d| {
+            let before =
+                self.jam.project.decks[d].and_then(|n| self.jam.project.composition(n).ok());
+            let after = project.decks[d].and_then(|n| project.composition(n).ok());
+            force.is_some_and(|(n, _)| project.decks[d] == Some(n))
+                || serde_json::to_vec(&before).ok() != serde_json::to_vec(&after).ok()
+        });
+        if !affected.into_iter().any(|b| b) {
+            self.jam.project = project;
+            self.jam.dirty = true;
+            self.jam.revision += 1;
+            return Ok(());
+        }
+        self.begin_preparation(project, affected, true, self.jam.path.clone(), false, force)
+    }
+    fn editable(&self, affected: [bool; 2]) -> bool {
+        self.output.as_ref().is_none_or(|o| {
+            affected
+                .into_iter()
+                .enumerate()
+                .all(|(d, a)| !a || o.coordinator.deck_editable(d))
+        })
+    }
+    fn begin_preparation(
+        &mut self,
+        project: crate::session::Project,
+        affected: [bool; 2],
+        strict: bool,
+        path: Option<String>,
+        opened: bool,
+        force: Option<(u64, usize)>,
+    ) -> Result<(), String> {
+        if !self.editable(affected) {
+            return Err("Stop every part, cancel pending actions and remove periodic rules on the destination deck before changing its content. The other deck can keep playing.".into());
+        }
+        let (tx, rx) = mpsc::sync_channel(1);
+        let candidate = project.clone();
+        let mut before = self.jam.project.clone();
+        if let Some((n, s)) = force {
+            before.composition_mut(n)?.parts[s].media = None;
+        }
+        thread::Builder::new()
+            .name("dawj-media-prepare".into())
+            .spawn(move || {
+                let result = if opened {
+                    crate::session::prepare(&candidate, affected, strict)
+                } else {
+                    crate::session::prepare_changes(&candidate, &before, affected, strict)
+                };
+                let _ = tx.send(result);
+            })
+            .map_err(|e| e.to_string())?;
+        self.preparation = Some(Preparation {
+            rx,
+            project,
+            affected,
+            path,
+            opened,
+        });
+        self.jam.busy = true;
+        self.jam.message = "Preparing media in background; assignment is not committed yet".into();
+        Ok(())
+    }
+    fn poll_preparation(&mut self) {
+        let Some(job) = &self.preparation else { return };
+        let result = match job.rx.try_recv() {
+            Ok(r) => r,
+            Err(mpsc::TryRecvError::Empty) => return,
+            Err(_) => Err("Media preparation worker closed".into()),
+        };
+        let job = self.preparation.take().expect("preparation exists");
+        self.jam.busy = false;
+        if let Err(e) = result.and_then(|prepared| self.commit_preparation(job, prepared)) {
+            self.jam.message = format!("Content unchanged: {e}");
+        }
+    }
+    fn commit_preparation(
+        &mut self,
+        job: Preparation,
+        prepared: crate::session::Prepared,
+    ) -> Result<(), String> {
+        if !self.editable(job.affected) {
+            return Err("Destination became active while preparing. Stop it and retry.".into());
+        }
+        let mut project = job.project;
+        if let Some(o) = &self.output {
+            let mut live = self.jam.clone();
+            live.capture(&o.coordinator);
+            project.settings = live.project.settings.clone();
+            for (d, affected) in job.affected.into_iter().enumerate() {
+                if !affected
+                    && let Some(n) = project.decks[d]
+                    && let (Ok(old), Ok(next)) =
+                        (live.project.composition(n), project.composition_mut(n))
+                {
+                    *next = old.clone();
+                }
+            }
+        }
+        for (d, affected) in job.affected.into_iter().enumerate() {
+            if affected {
+                for s in 0..parts::SLOTS {
+                    if project.decks[d]
+                        .and_then(|n| project.composition(n).ok())
+                        .is_none_or(|c| c.parts[s].media.is_none())
+                    {
+                        project.settings.part_targets[d][s] = None;
+                    }
+                }
+            }
+        }
+        let changed = prepared.changed;
+        let media = if let Some(o) = &mut self.output {
+            crate::session::install(&mut o.coordinator, &project, prepared, job.affected)?
+        } else {
+            prepared.media
+        };
+        self.jam.media.retain(|m| !changed[m.deck][m.slot]);
+        self.jam.media.extend(media);
+        self.jam.project = project;
+        self.jam.path = job.path;
+        self.jam.dirty = !job.opened;
+        self.jam.demo = false;
+        self.jam.revision += 1;
+        let missing = self.jam.media.iter().filter(|m| m.error.is_some()).count();
+        self.jam.message = if missing > 0 {
+            format!("Session opened with {missing} unavailable sounds. Repair paths using Import.")
+        } else {
+            "Content ready. Destination parts are stopped.".into()
+        };
+        Ok(())
+    }
     fn shutdown(&mut self) {
         if let Some(o) = &mut self.output {
             self.mapper.reset(Some(&mut o.coordinator));
@@ -577,6 +908,118 @@ mod tests {
             id,
             command: Command::Snapshot {},
         }
+    }
+    fn settle_content(w: &mut Worker) {
+        let start = Instant::now();
+        while w.jam.busy {
+            w.poll_preparation();
+            assert!(start.elapsed() < Duration::from_secs(2));
+            thread::sleep(Duration::from_millis(1));
+        }
+    }
+    #[test]
+    fn jam_authoring_rejects_bad_imports_transactionally_and_rechecks_same_path() {
+        use crate::session::Action;
+        let root = std::env::temp_dir().join(format!(
+            "dawj-jam-worker-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir(&root).unwrap();
+        let path = root.join("own.wav");
+        let mut w = Worker::new(Profile::default(), None);
+        assert!(!w.jam.demo && w.jam.project.compositions.is_empty());
+        w.session_action(Action::Create {
+            name: "My composition".into(),
+            deck: 0,
+        })
+        .unwrap();
+        settle_content(&mut w);
+        let n = w.jam.project.decks[0].unwrap();
+        let revision = w.jam.revision;
+        w.session_action(Action::Import {
+            composition: n,
+            slot: 0,
+            path: path.display().to_string(),
+        })
+        .unwrap();
+        assert!(
+            w.session_action(Action::Rename {
+                name: "Rejected during preparation".into()
+            })
+            .is_err()
+        );
+        assert!(matches!(
+            w.handle(Command::Snapshot {}),
+            Ok(Response::Snapshot(_))
+        ));
+        settle_content(&mut w);
+        assert_eq!(w.jam.revision, revision);
+        assert!(
+            w.jam.project.composition(n).unwrap().parts[0]
+                .media
+                .is_none()
+        );
+        assert!(w.jam.message.starts_with("Content unchanged:"));
+        let mut wav = b"RIFF".to_vec();
+        wav.extend(100u32.to_le_bytes());
+        wav.extend(b"WAVEfmt ");
+        wav.extend(16u32.to_le_bytes());
+        wav.extend(1u16.to_le_bytes());
+        wav.extend(1u16.to_le_bytes());
+        wav.extend(48000u32.to_le_bytes());
+        wav.extend(96000u32.to_le_bytes());
+        wav.extend(2u16.to_le_bytes());
+        wav.extend(16u16.to_le_bytes());
+        wav.extend(b"data");
+        wav.extend(64u32.to_le_bytes());
+        wav.extend([0u8; 64]);
+        std::fs::write(&path, wav).unwrap();
+        w.session_action(Action::Import {
+            composition: n,
+            slot: 0,
+            path: path.display().to_string(),
+        })
+        .unwrap();
+        settle_content(&mut w);
+        assert_eq!(w.jam.media[0].sample_rate, 48000);
+        let revision = w.jam.revision;
+        std::fs::write(&path, b"unsupported MP3 or malformed WAV").unwrap();
+        w.session_action(Action::Import {
+            composition: n,
+            slot: 0,
+            path: path.display().to_string(),
+        })
+        .unwrap();
+        settle_content(&mut w);
+        assert_eq!(w.jam.revision, revision);
+        assert!(w.jam.message.starts_with("Content unchanged:"));
+        w.shutdown();
+        assert!(root.is_absolute() && root.starts_with(std::env::temp_dir()));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn stalled_media_job_cannot_block_control_snapshots_or_shutdown() {
+        let mut w = Worker::new(Profile::default(), None);
+        let (_tx, rx) = mpsc::sync_channel(1);
+        w.preparation = Some(Preparation {
+            rx,
+            project: w.jam.project.clone(),
+            affected: [true, false],
+            path: None,
+            opened: false,
+        });
+        w.jam.busy = true;
+        let start = Instant::now();
+        let Response::Snapshot(s) = w.handle(Command::Snapshot {}).unwrap() else {
+            panic!("snapshot")
+        };
+        assert!(s.session.unwrap().busy);
+        w.shutdown();
+        assert!(start.elapsed() < Duration::from_secs(2));
     }
     #[test]
     fn full_queue_release_latches_and_invalidates_an_older_momentary_press() {

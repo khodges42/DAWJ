@@ -15,6 +15,9 @@ pub fn generated() -> String {
         profile::Action::Launch(Target::Selected),
     );
     let commands = vec![
+        Command::Session {
+            action: crate::session::Action::New {},
+        },
         Command::Devices {},
         Command::Start {
             device: 0,

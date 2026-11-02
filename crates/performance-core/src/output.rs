@@ -18,6 +18,36 @@ pub fn discover() -> Result<Vec<OutputDevice>, String> {
 }
 impl OutputSession {
     pub fn open(device: &OutputDevice, cue: bool, phrase_bars: u8) -> Result<Self, String> {
+        let (engine, control, mixer) =
+            demo::prepare_with_phrase_bars(phrase_bars).map_err(str::to_string)?;
+        Self::open_prepared(device, cue, engine, Coordinator::new(control, mixer, cue))
+    }
+    pub fn open_project(
+        device: &OutputDevice,
+        cue: bool,
+        project: &crate::session::Project,
+    ) -> Result<(Self, Vec<crate::session::MediaInfo>), String> {
+        let prepared = crate::session::prepare(project, [true; 2], false)?;
+        let (engine, control, mixer) = crate::session::engine(project)?;
+        let mut coordinator = Coordinator::new(control, mixer, cue);
+        let media = crate::session::install(&mut coordinator, project, prepared, [true; 2])?;
+        crate::session::configure(&mut coordinator, &project.settings)?;
+        // Queue initial targets before device enumeration/open can stall. At most
+        // sixteen parameter commands fit the existing 32-entry engine queue.
+        for _ in 0..4 {
+            coordinator.flush_parameters();
+        }
+        Ok((
+            Self::open_prepared(device, cue, engine, coordinator)?,
+            media,
+        ))
+    }
+    fn open_prepared(
+        device: &OutputDevice,
+        cue: bool,
+        engine: audio_backend::live::LiveEngine,
+        coordinator: Coordinator,
+    ) -> Result<Self, String> {
         let channels = if cue { 4 } else { 2 };
         let configs = device
             .configurations
@@ -44,7 +74,7 @@ impl OutputSession {
             })
         })
         .ok_or(
-            "Unsupported configuration: demo requires 48 kHz, 2 or 4 channels, f32/i16/i32/u8",
+            "Unsupported configuration: DAWJ requires 48 kHz, 2 or 4 channels, f32/i16/i32/u8",
         )?;
         let fresh = discover()?;
         if fresh
@@ -56,9 +86,6 @@ impl OutputSession {
             return Err("Output enumeration changed. Rescan and select the output again.".into());
         }
         let routing = OutputRouting::new(channels, [0, 1], cue.then_some([2, 3]))?;
-        let (engine, control, mixer) = demo::prepare_with_phrase_bars(phrase_bars)
-            .map_err(|e| format!("Demo asset / engine preparation failed: {e}"))?;
-        let coordinator = Coordinator::new(control, mixer, cue);
         let mut stream = CpalPlayback::open_live(
             Some(device.ordinal),
             PlaybackConfig {

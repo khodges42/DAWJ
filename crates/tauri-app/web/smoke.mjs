@@ -7,7 +7,7 @@ export async function runSmoke({t,getState,invoke,skinManager}){
   const restoreSkinStorage=()=>{for(const[k,v]of savedSkinStorage){if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}};
   const $=id=>document.getElementById(id),assert=(yes,message)=>{if(!yes)throw Error(message)};
   const settle=async()=>{await Promise.resolve();await Promise.resolve();await t.serial;await new Promise(r=>setTimeout(r,15));await t.serial};
-  const click=async id=>{assert(!$(id).disabled,`Disabled control: ${id}`);$(id).click();await settle()};
+  const click=async id=>{assert(!$(id).disabled,`Disabled control: ${id}; ${$('error').textContent}; online=${getState().online}; demo=${getState().session?.demo}; notice=${getState().notice}`);$(id).click();await settle()};
   const wait=async(predicate,label)=>{
     const end=performance.now()+2500;while(performance.now()<end){await t.call({kind:'snapshot'});if(predicate(getState()))return;await new Promise(r=>setTimeout(r,20))}throw Error('Timeout: '+label);
   };
@@ -21,7 +21,8 @@ export async function runSmoke({t,getState,invoke,skinManager}){
     const outputs=[...$('device').options].filter(o=>o.textContent.toLowerCase().includes(options.output.toLowerCase()));
     assert(options.output.trim()&&outputs.length===1,'Required test output missing or ambiguous: '+options.output);
     $('device').value=outputs[0].value;
-    await click('start');
+    await t.call({kind:'session',action:{kind:'demo'}});
+    await click('start');await wait(s=>s.online,'first engine publication after device start');
     const essential=[...document.querySelectorAll('article button,article .context,footer input,#transport button')];
     const outside=essential.filter(e=>{const r=e.getBoundingClientRect();return r.bottom>innerHeight||r.left<0||r.right>innerWidth}).map(e=>e.id);
     assert(outside.length===0,'Essential controls outside viewport: '+outside.join(','));
@@ -62,7 +63,7 @@ export async function runSmoke({t,getState,invoke,skinManager}){
     await click('stop-0-0');await wait(s=>s.decks[0][0].active==null,'independent stop');assert(getState().decks[1][3].active!=null,'B stopped with A');
     const metrics={...skinMetrics,safe_startup:safeStartup,web2:true,controls_fit:true,viewport:[innerWidth,innerHeight],ipc_ms:summary(samples),audio_peaks:getState().peaks,saw_queued:sawQueued,cancelled_id:pendingId,keyboard:true,context_modes:true,focus_release:true,timeline:true,rules:true,midi_editor:true,independent_stop:true};
     await click('stop');assert(!getState().online,'Output still online');metrics.clean_audio_shutdown=true;
-    await click('start');assert(getState().online&&!getState().decks.flat().some(p=>p.active!=null),'Restart reused old part state');
+    await click('start');await wait(s=>s.online,'first publication after restart');assert(getState().online&&!getState().decks.flat().some(p=>p.active!=null),'Restart reused old part state');
     await click('launch-0-0');await wait(s=>s.decks[0][0].active!=null,'software output restart');
     await click('stop');assert(!getState().online,'Restarted output did not close');metrics.software_restart=true;
     restoreSkinStorage();await invoke('report',{metrics});

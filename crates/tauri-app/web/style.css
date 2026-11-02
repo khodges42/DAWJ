@@ -12,3 +12,8 @@ meter::-webkit-meter-bar{background:var(--color-raised)}meter::-webkit-meter-opt
 @media(max-height:780px){body{padding:6px}#timeline{height:84px}article{padding:4px;grid-template-rows:32px 26px 32px 24px;gap:1px}#transport{margin:5px 0}main{margin:6px 0}}
 
 small{font-size:max(11px,calc(11px * var(--font-scale)))}#inspection,#rule-status,#mode-status,#notices{font-size:max(12px,calc(12px * var(--font-scale)))}
+
+/* User content names must not displace the fixed performance controls. */
+.deck header h2{min-width:0;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#selected-name{max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#jam-media,#jam-path{overflow-wrap:anywhere}#jam-error{color:var(--color-meter-clip);white-space:pre-wrap}

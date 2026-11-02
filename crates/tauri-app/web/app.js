@@ -2,11 +2,12 @@
 import {Transport} from './transport.mjs';
 import {Keyboard,HELP} from './keyboard.mjs';
 import {address,gestureTarget,partAction,contextValue,contextAction,slotView,meterDb,timelineHits,nearestMarker} from './performance.mjs';
+import {ContentPanel} from './content.mjs';
 import {MidiPanel} from './midi.mjs';
 import {SkinManager,SkinPanel} from './skins.mjs';
 import {browserStorage} from './skin-store.mjs';
 const $=id=>document.getElementById(id),invoke=window.__TAURI__.core.invoke;
-let state={online:false},errorText='',lastMode='Volume',hits=[],markerSignature='',dragging=new Map(),midi;
+let state={online:false},errorText='',lastMode='Volume',hits=[],markerSignature='',dragging=new Map(),midi,content;
 function error(e){errorText=String(e);$('error').textContent=errorText}
 const t=new Transport(invoke,show,error),keyboard=new Keyboard();
 const run=(a,source='Gui')=>{errorText='';$('error').textContent='';return t.call(a,source).catch(e=>{error(e);throw e})};
@@ -17,7 +18,7 @@ function setValue(id,value){const e=typeof id==='string'?$(id):id;const editing=
 function continuous(id,key,action){$(id).oninput=()=>{try{const target=id.startsWith('part-')?gestureTarget(dragging.get($(id))?.target,state):null;t.coalesce(key,action(Number($(id).value),target))}catch(e){error(e)}}}
 for(let deck=0;deck<2;deck++){
   const section=document.createElement('section');section.className='deck';section.id='deck-'+deck;
-  const header=document.createElement('header'),title=document.createElement('h2');title.textContent=`${deck?'B · Glass Tide':'A · Copper Steps'}`;
+  const header=document.createElement('header'),title=document.createElement('h2');title.textContent=`${deck?'B':'A'} | Empty deck`;
   const select=button('Select',()=>fire({kind:'deck',deck}),`Select deck ${deck?'B':'A'}`);select.id='deck-select-'+deck;
   const gain=document.createElement('input');gain.id='deck-gain-'+deck;gain.type='range';gain.min=0;gain.max=1;gain.step=.005;gain.setAttribute('aria-label',`Deck ${deck?'B':'A'} gain`);gain.dataset.live='';
   gain.oninput=()=>t.coalesce('deck-'+deck,{kind:'deck_gain',deck,value:Number(gain.value)});
@@ -25,7 +26,7 @@ for(let deck=0;deck<2;deck++){
   const slots=document.createElement('div');slots.className='slots';
   for(let slot=0;slot<8;slot++){
     const card=document.createElement('article');card.id=`slot-${deck}-${slot}`;
-    const identity=button(`${deck?'B':'A'}${slot+1}`,()=>fire({kind:'select_part',deck,slot}));identity.className='identity';identity.id=`select-${deck}-${slot}`;identity.dataset.live='';
+    const identity=button(`${deck?'B':'A'}${slot+1}`,()=>state.online?fire({kind:'select_part',deck,slot}):content.open(deck,slot));identity.className='identity';identity.id=`select-${deck}-${slot}`;identity.dataset.live='';
     const status=document.createElement('div');status.className='state';
     const actions=document.createElement('div');actions.className='actions';
     for(const [action,glyph]of [['Launch','▶'],['Stop','■'],['Cancel','×'],['Retrigger','↻']]){
@@ -45,6 +46,14 @@ for(let deck=0;deck<2;deck++){
 }
 document.querySelectorAll('input[type=range]:not(.context)').forEach(e=>{e.addEventListener('pointerdown',()=>dragging.set(e,{target:address(state)}));for(const event of ['pointerup','pointercancel','lostpointercapture'])e.addEventListener(event,()=>dragging.delete(e))});
 midi=new MidiPanel(t,error);
+content=new ContentPanel(t,()=>state,invoke,openDialog,error);
+bind('session-open',()=>{const p=address(state);content.open(p.deck,p.slot)});
+try {
+  await window.__TAURI__.event.listen('dawj-audio-drop',event=>{
+    try {const {path,x,y}=event.payload;const card=document.elementFromPoint(x/devicePixelRatio,y/devicePixelRatio)?.closest?.('article[id^=slot-]');if(card){const [,deck,slot]=card.id.split('-');content.open(Number(deck),Number(slot));}else if(!$('content').open){const p=address(state);content.open(p.deck,p.slot)}const target=content.target();void content.import(path,target).catch(e=>content.error(e));} catch(e){content.error(e)}
+  });
+  await window.__TAURI__.event.listen('dawj-drop-error',event=>content.error(event.payload));
+} catch(e){error('Audio drag/drop unavailable: '+e)}
 async function scan(){
   const list=await run({kind:'devices'});$('device').replaceChildren();for(const device of list){const option=document.createElement('option');option.value=device.id;option.textContent=device.name;$('device').append(option)}
   if(!list.length)error('No audio output device. Connect one and Rescan.');
@@ -77,14 +86,14 @@ $('zoom').onchange=$('follow').onchange=()=>{void timelineView().catch(()=>{})};
 $('timeline').onclick=e=>{const r=$('timeline').getBoundingClientRect(),marker=nearestMarker(hits,e.clientX-r.left,e.clientY-r.top);if(marker)fire({kind:'select_part',deck:marker.deck,slot:marker.slot})};
 $('timeline').onmousemove=e=>{const r=$('timeline').getBoundingClientRect(),marker=nearestMarker(hits,e.clientX-r.left,e.clientY-r.top);$('timeline').title=marker?`${marker.deck?'B':'A'}${marker.slot+1} ${marker.kind} @ tick ${marker.tick}${marker.projected?' (conditional projection)':''}`:'Authoritative musical position; select a marker or use the scheduled part menu'};
 $('marker-list').onchange=()=>{const m=state.timeline?.markers[Number($('marker-list').value)];if(m)fire({kind:'select_part',deck:m.deck,slot:m.slot})};
-function release(){dragging.clear();for(const c of keyboard.release())void t.release(c.source)}
+function release(){dragging.clear();void t.release('Gui');for(const c of keyboard.release())void t.release(c.source)}
 window.addEventListener('blur',release);document.addEventListener('visibilitychange',()=>{if(document.hidden)release()});
 function openDialog(id){release();if(!$(id).open)$(id).showModal()}
 bind('help-open',()=>openDialog('help'));$('bindings').textContent=HELP;
 bind('midi-open',async()=>{openDialog('settings');await midi.open()});
 document.querySelectorAll('[data-close]').forEach(e=>e.onclick=()=>$(e.dataset.close).close());
 for(const type of ['keydown','keyup'])window.addEventListener(type,e=>{
-  const editing=!!e.target.isContentEditable||!!e.target.closest?.('input,textarea,select')||e.composedPath().some(n=>n?.hasAttribute?.('data-skin-ui'));
+  const editing=!!document.querySelector('dialog[open]')||!!e.target.isContentEditable||!!e.target.closest?.('input,textarea,select')||e.composedPath().some(n=>n?.hasAttribute?.('data-skin-ui'));
   if(type==='keydown'&&e.key==='Escape'&&document.querySelector('dialog[open]'))return;
   const commands=keyboard.handle(e,editing);if(commands.length)e.preventDefault();
   for(const c of commands){if(c.ui==='help'){if($('help').open)$('help').close();else openDialog('help')}else if(c.kind==='release_modes')void t.release(c.source);else{if(c.kind==='mode'||c.kind==='hold_mode')t.dropContinuous();fire(c,'Keyboard')}}
@@ -108,13 +117,15 @@ function show(s){
   $('volume').setAttribute('aria-pressed',mode==='Volume');$('filter').setAttribute('aria-pressed',mode==='Filter');
   $('mode-status').textContent=`${mode.toUpperCase()}${s.selection?.temporary?' (held; base '+s.selection.persistent_mode.toUpperCase()+')':' (persistent)'}`;
   for(let deck=0;deck<2;deck++){
+    const composition=s.session?.project.compositions.find(c=>c.id===s.session.project.decks[deck]);$('deck-'+deck).querySelector('h2').textContent=`${deck?'B':'A'} | ${s.session?.demo?(deck?'Glass Tide':'Copper Steps'):(composition?.name??'Empty deck')}`;
     $('deck-select-'+deck).setAttribute('aria-pressed',s.selection?.deck===deck);$('deck-select-'+deck).disabled=!s.online;
     setValue('deck-gain-'+deck,s.deck_gain?.[deck]??1);$('cue-'+deck).disabled=!s.online||!s.cue_available;$('cue-'+deck).setAttribute('aria-pressed',s.cue?.[deck]??false);
     for(let slot=0;slot<8;slot++){
       const p=s.decks?.[deck]?.[slot],v=slotView(s,deck,slot),card=$(`slot-${deck}-${slot}`);card.dataset.active=v.active;card.dataset.selected=v.selected;
-      card.querySelector('.identity').textContent=`${deck?'B':'A'}${slot+1} ${p?.name??['kick','snare','hats','bass','chord','arp','shaker','fill'][slot]}`;
+      card.querySelector('.identity').textContent=`${deck?'B':'A'}${slot+1} ${p?.name??composition?.parts[slot]?.name??`Part ${slot+1}`}`;
+      card.querySelector('.identity').disabled=false;card.querySelector('[data-action=Launch]').disabled=!s.online||p?.available===false;
       card.querySelector('.identity').setAttribute('aria-pressed',v.selected);
-      const label=v.state+(v.pending?` @ ${Math.floor(v.pending.tick/3840)+1}.${Math.floor(v.pending.tick/960)%4+1}`:'');card.querySelector('.state').textContent=label;card.querySelector('.state').title=label+' · '+v.feedback;
+      const unavailable=s.session?.media.find(m=>m.deck===deck&&m.slot===slot)?.error;const label=(unavailable?'UNAVAILABLE':p?.available===false?'EMPTY':v.state)+(v.pending?` @ ${Math.floor(v.pending.tick/3840)+1}.${Math.floor(v.pending.tick/960)%4+1}`:'');card.querySelector('.state').textContent=label;card.querySelector('.state').title=label+(unavailable?' | '+unavailable:'')+' · '+v.feedback;
       card.querySelector('[data-action=Cancel]').disabled=!s.online||!v.pending;card.querySelector('[data-action=Retrigger]').disabled=!s.online||!v.active;
       const control=card.querySelector('.context');if(!dragging.has(control))control.value=contextValue(p,mode);control.setAttribute('aria-label',`${deck?'B':'A'}${slot+1} ${mode}`);control.title=mode==='Volume'?`Gain ${(p?.gain??1).toFixed(2)}`:`Cutoff ${p?.cutoff_hz==null?'bypassed':Math.round(p.cutoff_hz)+' Hz'}`;
     }
@@ -122,6 +133,7 @@ function show(s){
   const selected=address(s),part=s.decks?.[selected.deck]?.[selected.slot];
   $('selected-name').textContent=`${selected.deck?'B':'A'}${selected.slot+1} ${part?.name??''}`;
   setValue('part-gain',part?.gain??1);setValue('part-cutoff',contextValue(part,'Filter'));
+  $('launch-selected').disabled=!s.online||part?.available===false;
   $('cancel-selected').disabled=!s.online||!part?.pending;$('retrigger-selected').disabled=!s.online||part?.active==null;
   $('rule-toggle').disabled=!s.online||!part?.rule||part.rule.consumed;$('rule-remove').disabled=!s.online||!part?.rule;
   $('rule-toggle').textContent=part?.rule?.next!=null?'Pause rule':'Resume rule';
@@ -130,11 +142,13 @@ function show(s){
   setValue('cross',s.crossfader??.5);setValue('trim',s.output_trim_db??36);$('trim-value').textContent=s.output_trim_db??36;
   $('cue-status').textContent=s.cue_available?'Master 1–2 / cue 3–4; physical isolation unverified':'Stereo master only · no isolated headphone cue';
   for(const [i,channel]of ['l','r'].entries()){$('meter-'+channel).value=s.peaks?.[i]??0;$('peak-'+channel).textContent=meterDb(s.peaks?.[i]??0)}
-  $('error').textContent=errorText;$('notice').textContent=s.failed?'Audio stream failed. Stop output, rescan, and start a fresh session.':s.notice??'';
+  $('error').textContent=errorText;$('notice').textContent=s.failed?'Audio stream failed. Stop output, rescan, and start a fresh session.':(s.notice??'')+(s.session?.message?' | '+s.session.message:'');
   $('midi-badge').textContent=`MIDI ${s.midi?.input??'no input'} · ${s.midi_notice??''}`;
+  for(const deck of [0,1])$('fill-'+(deck?'b':'a')).disabled=!s.online||s.decks?.[deck]?.[7]?.available===false;
   for(const deck of [0,1])$('cancel-fill-'+(deck?'b':'a')).disabled=!s.online||!s.decks?.[deck]?.[7]?.pending;
   if(s.timeline){setValue('zoom',s.timeline.zoom_bars);$('follow').checked=s.timeline.follow;$('phrase-position').textContent=s.timeline.phrase_position.map((p,i)=>`${i?'B':'A'} ${p[0]}/${p[1]}`).join(' · ')}
-  drawTimeline();midi?.update(s);
+  if(!s.decks&&s.session&&!s.session.demo){setValue('bpm',s.session.project.settings.bpm);setValue('phrase',s.session.project.settings.phrase_bars)}
+  drawTimeline();midi?.update(s);content?.update(s);
 }
 function drawTimeline(){
   const canvas=$('timeline'),r=canvas.getBoundingClientRect(),scale=devicePixelRatio||1;
@@ -154,6 +168,8 @@ window.addEventListener('resize',drawTimeline);
 setInterval(()=>{void t.flush()},20);
 try{await scan();show(await t.call({kind:'snapshot'}))}catch(e){error(e)}
 const reliability=await invoke('reliability_options');
-if(reliability.seconds){const {runReliability}=await import('./reliability.mjs');await runReliability({t,getState:()=>state,invoke,skinManager,options:reliability})}
+const jam=await invoke('jam_options');
+if(jam){const {runJamSmoke}=await import('./jam-smoke.mjs');await runJamSmoke({t,getState:()=>state,invoke,content,options:jam})}
+else if(reliability.seconds){const {runReliability}=await import('./reliability.mjs');await runReliability({t,getState:()=>state,invoke,skinManager,options:reliability})}
 else if(await invoke('smoke_enabled')){const {runSmoke}=await import('./smoke.mjs');await runSmoke({t,getState:()=>state,invoke,show,skinManager})}
 async function poll(){try{await t.call({kind:'snapshot'})}catch(e){error(e)}setTimeout(poll,33)}poll();

@@ -2218,6 +2218,17 @@
     ]
   },
   {
+    "name": "rfd",
+    "version": "0.15.4",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "license": "MIT",
+    "repository": "https://github.com/PolyMeilex/rfd",
+    "selected": "MIT",
+    "license_files": [
+      "LICENSE"
+    ]
+  },
+  {
     "name": "rustc-hash",
     "version": "1.1.0",
     "source": "registry+https://github.com/rust-lang/crates.io-index",

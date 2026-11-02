@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {contentTarget,editSound,sessionCommand} from './content.mjs';import {makeRequest} from './protocol.mjs';
+const parts=Array.from({length:8},(_,i)=>({id:10+i,name:`Original ${i+1}`,media:`C:/media/${i}.wav`,rule:{kind:'once',boundary:'Bar'},gain:.7,cutoff_hz:800}));
+const workspace={project:{decks:[1,2],compositions:[{id:1,parts},{id:2,parts:parts.map(p=>({...p,id:p.id+20}))}]}};
+test('content selection addresses both decks and all eight real parts',()=>{for(let deck=0;deck<2;deck++)for(let slot=0;slot<8;slot++){const t=contentTarget(workspace,deck,slot);assert.equal(t.composition,deck+1);assert.equal(t.part.id,10+deck*20+slot)}assert.throws(()=>contentTarget(workspace,2,0));assert.throws(()=>contentTarget({project:{compositions:[],decks:[null,null]}},0,0),/Create or load/)});
+test('editing keeps identity, media and performance settings; uses engine ticks and prepared frames',()=>{const result=editSound(parts[0],{name:'My loop',looping:true,start:240,end:'',beats:8,quantum:.5});assert.equal(result.id,10);assert.equal(result.media,parts[0].media);assert.equal(result.nominal_ticks,7680);assert.equal(result.quantum_ticks,480);assert.equal(result.loop_end,null);assert.equal(result.cutoff_hz,800);assert.equal(result.gain,.7);assert.deepEqual(result.rule,parts[0].rule)});
+test('session operations use the existing typed admission boundary',()=>{for(const action of [{kind:'new'},{kind:'open',path:'C:/me/jam.json'},{kind:'save',path:null},{kind:'import',composition:1,slot:0,path:'C:/me/own.wav'}]){assert.deepEqual(makeRequest(sessionCommand(action)).command,{kind:'session',action})}});
+
+test('independent per-deck targets override shared composition defaults without changing identities',()=>{const w=structuredClone(workspace);w.project.settings={part_targets:[[ {part:10,gain:.3,cutoff_hz:null,rule:null}],[]]};assert.equal(contentTarget(w,0,0).part.gain,.3);assert.equal(contentTarget(w,0,0).part.rule,null);assert.equal(contentTarget(w,1,0).part.gain,.7);assert.equal(w.project.compositions[0].parts[0].gain,.7)});

@@ -7,13 +7,16 @@ and SPDX headers. The complete GPL v3 text is in [LICENSE](../../LICENSE).
 The exact Windows x64 dependency review is
 [windows-dependencies.json](windows-dependencies.json). Run
 `python scripts/audio_dependencies.py` to compare its name/version/source/license
-tuples with locked Windows-filtered Cargo metadata. It currently inventories 347
+tuples with locked Windows-filtered Cargo metadata. It currently inventories 348
 external packages, including optional resolved nodes; this is not a list of only
 code linked into every executable.
 
 ## Software and native components
 
 The reviewed graph includes CPAL, eframe/egui, midir, serde/serde_json and Tauri.
+Native local file selection uses rfd 0.15.4 under MIT; retain its upstream LICENSE.
+Its Windows dependencies were already in the reviewed graph. Linux GTK system
+components still require platform packaging review.
 Exact versions and selected alternatives belong in the inventory and lockfile,
 not a manually duplicated milestone list. Apache-2.0 is selected for dual
 MIT/Apache packages where recorded. Other reviewed permissive terms include MIT,

@@ -23,6 +23,7 @@ export async function runReliability({t,getState,invoke,skinManager,options}){
   console.info('RELIABILITY_OUTPUT',matches[0].name);
   // Keep the visible selector truthful when the test starts output directly.
   document.getElementById('device').value=String(matches[0].id);
+  await call({kind:'session',action:{kind:'demo'}});
   await call({kind:'start',device:matches[0].id,cue:false,phrase_bars:8});
   await call({kind:'quantize',grid:'Immediate'});await call({kind:'launch',deck:0,slot:0});await call({kind:'launch',deck:1,slot:3});
   const startupCommand=command.summary();command.bins.fill(0);command.n=0;command.worst=0;

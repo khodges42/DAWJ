@@ -9,6 +9,7 @@ license.workspace = true
 [dependencies]
 audio-backend = { path = "../audio-backend" }
 parts.workspace = true
+event-engine.workspace = true
 timebase.workspace = true
 midir = { version = "=0.10.3", default-features = false }
 serde = { version = "=1.0.228", features = ["derive"] }

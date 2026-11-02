@@ -45,7 +45,7 @@ impl Coordinator {
                 }
                 let request = match action {
                     RuleAction::Install(rule) => Request::Rule {
-                        bank: (deck * SLOTS + slot) as u8,
+                        bank: self.banks[deck][slot].ok_or("No prepared sound assigned")?,
                         rule,
                     },
                     RuleAction::Enable(on) => Request::EnableRule(on),
@@ -146,7 +146,7 @@ impl Coordinator {
                 }
                 request = Request::Parameters(parameters);
             }
-            return self.submit_request(deck, slot, request, q);
+            return self.submit_request(deck, slot, self.mapped_request(deck, slot, request)?, q);
         }
         self.execute_intent(intent)
     }

@@ -5,7 +5,7 @@ use dawj_core::{
     service::{Client, Service},
 };
 use tauri::{
-    Manager,
+    Emitter, Manager,
     menu::{Menu, MenuItem, Submenu},
 };
 const SKIN_RESET_SCRIPT: &str = include_str!("../web/skin-recovery.js");
@@ -93,6 +93,49 @@ fn skin_test_zoom(app: tauri::AppHandle, zoom: f64) -> Result<(), String> {
         .set_zoom(zoom)
         .map_err(|e| e.to_string())
 }
+static PICKER_OPEN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+struct PickerPermit;
+impl Drop for PickerPermit {
+    fn drop(&mut self) {
+        PICKER_OPEN.store(false, std::sync::atomic::Ordering::Release);
+    }
+}
+/// Native dialogs run on a blocking pool, never the WebView or audio callback.
+#[tauri::command]
+async fn pick_local_file(kind: String) -> Result<Option<String>, String> {
+    PICKER_OPEN
+        .compare_exchange(
+            false,
+            true,
+            std::sync::atomic::Ordering::AcqRel,
+            std::sync::atomic::Ordering::Acquire,
+        )
+        .map_err(|_| "A file picker is already open")?;
+    let permit = PickerPermit;
+    tauri::async_runtime::spawn_blocking(move || {
+        let _permit = permit;
+        let dialog = rfd::FileDialog::new();
+        let path = match kind.as_str() {
+            "audio" => dialog
+                .set_title("Assign WAV sound")
+                .add_filter("WAV audio", &["wav"])
+                .pick_file(),
+            "open" => dialog
+                .set_title("Open DAWJ session")
+                .add_filter("DAWJ session", &["json"])
+                .pick_file(),
+            "save" => dialog
+                .set_title("Save DAWJ session")
+                .add_filter("DAWJ session", &["json"])
+                .set_file_name("Untitled.dawj.json")
+                .save_file(),
+            _ => return Err("Unknown file operation".to_string()),
+        };
+        Ok(path.map(|p| p.display().to_string()))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
 #[tauri::command]
 async fn request(client: tauri::State<'_, Client>, request: Request) -> Result<Reply, String> {
     let id = request.id;
@@ -135,8 +178,31 @@ fn reliability_options() -> serde_json::Value {
     serde_json::json!({"profile":std::env::var("DAWJ_TEST_PROFILE").is_ok_and(|s|s=="1"),"seconds":seconds,"output":std::env::var("DAWJ_TEST_OUTPUT").unwrap_or_else(|_| "HyperX".into())})
 }
 #[tauri::command]
+fn jam_options() -> Result<Option<serde_json::Value>, String> {
+    if !std::env::args().any(|a| a == "--jam-smoke") {
+        return Ok(None);
+    }
+    let phase = std::env::var("DAWJ_JAM_PHASE").map_err(|e| e.to_string())?;
+    if !["create", "reopen"].contains(&phase.as_str()) {
+        return Err("Unknown Jam smoke phase".into());
+    }
+    let root = std::path::PathBuf::from(std::env::var("DAWJ_JAM_ROOT").map_err(|e| e.to_string())?)
+        .canonicalize()
+        .map_err(|e| e.to_string())?;
+    let target = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target")
+        .canonicalize()
+        .map_err(|e| e.to_string())?;
+    if !root.starts_with(&target) || root == target {
+        return Err("Jam smoke fixtures must be in a fresh target subdirectory".into());
+    }
+    Ok(Some(
+        serde_json::json!({"phase":phase,"path":root.join("session.dawj.json").display().to_string(),"audio":[root.join("my-percussion.wav").display().to_string(),root.join("my-tone.wav").display().to_string()]}),
+    ))
+}
+#[tauri::command]
 fn smoke_enabled() -> bool {
-    std::env::args().any(|a| a == "--smoke" || a == "--reliability")
+    std::env::args().any(|a| a == "--smoke" || a == "--reliability" || a == "--jam-smoke")
 }
 #[tauri::command]
 fn report(app: tauri::AppHandle, metrics: serde_json::Value) -> Result<(), String> {
@@ -159,6 +225,13 @@ fn main() {
     let mut service = Service::spawn().expect("start application control worker");
     tauri::Builder::default()
         .manage(service.client())
+        .on_window_event(|window,event|{
+            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop{paths,position,..})=event {
+                // One selected slot per drop; no file I/O here.
+                if paths.len()==1 {let _=window.emit("dawj-audio-drop",serde_json::json!({"path":paths[0].display().to_string(),"x":position.x,"y":position.y}));}
+                else {let _=window.emit("dawj-drop-error","Drop one WAV sound at a time");}
+            }
+        })
         .menu(|app| {
             let reset = MenuItem::with_id(
                 app,
@@ -179,6 +252,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             request,
+            pick_local_file,
+            jam_options,
             smoke_enabled,
             report,
             skin_startup,

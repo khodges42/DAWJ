@@ -20,6 +20,7 @@ pub mod midi;
 pub mod output;
 pub mod reliability;
 pub mod service;
+pub mod session;
 pub mod timeline;
 pub mod web_contract;
 pub mod web_timeline;
@@ -194,6 +195,8 @@ struct Receipt {
 }
 
 pub struct Coordinator {
+    pub banks: [[Option<u8>; SLOTS]; 2],
+    pub names: [[String; SLOTS]; 2],
     control: LiveControl,
     mixer: MixerControl,
     pub focus: Focus,
@@ -219,6 +222,10 @@ impl Coordinator {
             .set_output_trim_db(DEMO_OUTPUT_TRIM_DB)
             .expect("demo trim is within engine bounds");
         Self {
+            banks: std::array::from_fn(|d| std::array::from_fn(|s| Some((d * SLOTS + s) as u8))),
+            names: std::array::from_fn(|_| {
+                std::array::from_fn(|s| audio_backend::demo::NAMES[s].into())
+            }),
             snapshot: control.performance_state(),
             control,
             mixer,
@@ -238,6 +245,39 @@ impl Coordinator {
             queued_parameters: [[None; SLOTS]; 2],
             parameter_cursor: 0,
         }
+    }
+    pub fn install_voices(
+        &mut self,
+        voices: Vec<audio_backend::samples::SampleVoice>,
+    ) -> Result<Vec<u8>, &'static str> {
+        self.control.install_voices(voices)
+    }
+    fn mapped_request(
+        &self,
+        deck: usize,
+        slot: usize,
+        request: Request,
+    ) -> Result<Request, &'static str> {
+        Ok(match request {
+            Request::Launch(_) => {
+                Request::Launch(self.banks[deck][slot].ok_or("No prepared sound assigned")?)
+            }
+            Request::Replace(_) => {
+                Request::Replace(self.banks[deck][slot].ok_or("No prepared sound assigned")?)
+            }
+            other => other,
+        })
+    }
+    pub fn deck_editable(&self, deck: usize) -> bool {
+        deck < 2
+            && self.available()
+            && !self.receipts.iter().any(|r| r.deck == deck && !r.parameter)
+            && self.snapshot.is_some_and(|s| {
+                s.decks[deck]
+                    .slots
+                    .iter()
+                    .all(|p| p.active.is_none() && p.pending.is_none() && p.rule.is_none())
+            })
     }
     pub fn poll(&mut self) {
         if let Some(next) = self.control.performance_state() {
@@ -336,7 +376,12 @@ impl Coordinator {
                 let state = self.snapshot.as_ref().ok_or("no engine snapshot")?;
                 let (request, q) = request_for(intent, &self.focus, state)?;
                 let (deck, slot) = self.focus.address();
-                return self.submit_request(deck, slot, request, q);
+                return self.submit_request(
+                    deck,
+                    slot,
+                    self.mapped_request(deck, slot, request)?,
+                    q,
+                );
             }
         }
         self.mixer.set(parameters)?;

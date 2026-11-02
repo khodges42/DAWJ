@@ -108,6 +108,12 @@ export const contract = {
   "capacity": 32,
   "commands": [
     {
+      "action": {
+        "kind": "new"
+      },
+      "kind": "session"
+    },
+    {
       "kind": "devices"
     },
     {

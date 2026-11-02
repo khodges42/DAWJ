@@ -18,6 +18,9 @@ pub struct Request {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    Session {
+        action: crate::session::Action,
+    },
     Devices {},
     Start {
         device: usize,
@@ -483,6 +486,7 @@ impl From<audio_backend::performance_state::TransportState> for Transport {
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Part {
+    pub available: bool,
     pub state: Lifecycle,
     pub active: Option<u64>,
     pub pending: Option<Pending>,
@@ -515,6 +519,7 @@ pub struct Selection {
 }
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Snapshot {
+    pub session: Option<crate::session::Workspace>,
     pub control_revision: u64,
     pub online: bool,
     pub failed: bool,
@@ -567,10 +572,12 @@ impl Snapshot {
                 })
             }),
             decks: s.map(|s| {
-                s.decks.map(|d| {
+                std::array::from_fn(|deck| {
+                    let d = s.decks[deck];
                     std::array::from_fn(|i| {
                         let p = d.slots[i];
                         Part {
+                            available: co.banks[deck][i].is_some(),
                             state: Lifecycle::from(&p),
                             active: p.active.map(|p| p.0),
                             pending: p.pending.map(|p| Pending {
@@ -584,7 +591,7 @@ impl Snapshot {
                                 command_id: p.command_id,
                                 part: p.part.0,
                             }),
-                            name: audio_backend::demo::NAMES[i].into(),
+                            name: co.names[deck][i].clone(),
                             position: p.position,
                             phase: p.phase.map(|p| p.0),
                             gain: p.parameters.gain,
