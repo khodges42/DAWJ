@@ -12,7 +12,7 @@ export async function runJamSmoke({t,getState,invoke,content,options}){
    for(let deck=0;deck<2;deck++){
     content.open(deck,0);$('jam-composition-name').value=`User jam ${deck+1}`;await click('jam-create');
     await content.import(options.audio[deck]);await ready();
-    $('jam-part-name').value=`My sound ${deck+1}`;$('jam-loop').checked=true;$('jam-length').value=8;$('jam-quantum').value=1;await click('jam-apply');
+    $('jam-part-name').value=`My sound ${deck+1}`;$('jam-loop').checked=true;$('jam-length').value=8;await click('jam-apply');
     assert(getState().session.media.find(m=>m.deck===deck&&m.slot===0)?.sample_rate===(deck?48000:44100),'Source metadata');
    }
    await session({kind:'rename',name:'My original local jam'});

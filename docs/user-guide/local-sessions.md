@@ -43,8 +43,10 @@ no mastering-quality anti-aliasing guarantee; prepare important material at
 or automatic length matching. MP3 is unsupported and reports an import error.
 
 Loop start/end are frames of the **prepared 48 kHz** sound; blank end means EOF.
-Musical length and part quantum use quarter-note beats, stored as ticks at 960
-per beat. They map to the existing Part/TimingPolicy and do not change PCM speed.
+Musical length uses quarter-note beats (960 ticks per beat) and changes the
+engine-reported part phase, without changing PCM speed. The existing
+`TimingPolicy.quantum` is preserved as validated session metadata; the scheduler
+does not use it to select live boundaries, so no authoring control advertises it.
 Global Beat/Bar/Phrase quantization still governs performance commands. Gain and
 cutoff are operated on the performance surface and saved from accepted targets.
 A part in slot 8 can be configured one-shot for the existing Fill buttons.

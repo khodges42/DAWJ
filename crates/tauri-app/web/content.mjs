@@ -9,7 +9,7 @@ export function contentTarget(workspace,deck,slot){
   return {deck,slot,composition:composition.id,part};
 }
 export function editSound(part,values){
-  return {...part,name:values.name,looping:values.looping,loop_start:Number(values.start),loop_end:values.end===''?null:Number(values.end),nominal_ticks:Math.round(Number(values.beats)*960),quantum_ticks:Math.round(Number(values.quantum)*960)};
+  return {...part,name:values.name,looping:values.looping,loop_start:Number(values.start),loop_end:values.end===''?null:Number(values.end),nominal_ticks:Math.round(Number(values.beats)*960)};
 }
 export function sessionCommand(action){return {kind:'session',action}}
 export class ContentPanel {
@@ -31,7 +31,7 @@ export class ContentPanel {
     bind('jam-assign',()=>this.send({kind:'assign',deck:this.deck,composition:$('jam-composition').value===''?null:Number($('jam-composition').value)}));
     bind('jam-import',async()=>{const target=this.target();const path=await invoke('pick_local_file',{kind:'audio'});if(path)return this.import(path,target)});
     bind('jam-remove',()=>{const a=this.target();return this.send({kind:'remove',composition:a.composition,slot:a.slot})});
-    bind('jam-apply',()=>{const a=this.target();const part=editSound(a.part,{name:$('jam-part-name').value,looping:$('jam-loop').checked,start:$('jam-loop-start').value,end:$('jam-loop-end').value,beats:$('jam-length').value,quantum:$('jam-quantum').value});return this.send({kind:'edit',composition:a.composition,slot:a.slot,part})});
+    bind('jam-apply',()=>{const a=this.target();const part=editSound(a.part,{name:$('jam-part-name').value,looping:$('jam-loop').checked,start:$('jam-loop-start').value,end:$('jam-loop-end').value,beats:$('jam-length').value});return this.send({kind:'edit',composition:a.composition,slot:a.slot,part})});
     bind('jam-restore-rule',()=>{const a=this.target();if(!a.part.rule)throw Error('No saved rule');return t.call({kind:'rule_install',deck:a.deck,slot:a.slot,rule:a.part.rule})});
     $('jam-deck').onchange=()=>{this.deck=Number($('jam-deck').value);this.signature='';this.update(this.getState())};
     $('jam-slot').onchange=()=>{this.slot=Number($('jam-slot').value);this.signature='';this.update(this.getState())};
@@ -55,7 +55,7 @@ export class ContentPanel {
     for(const c of w.project.compositions)$('jam-composition').add(new Option(c.name,String(c.id)));
     $('jam-composition').value=w.project.decks[this.deck]??'';
     const c=w.project.compositions.find(c=>c.id===w.project.decks[this.deck]);$('jam-composition-name').value=c?.name??'';
-    const p=c?contentTarget(w,this.deck,this.slot).part:null;$('jam-part-name').value=p?.name??'';$('jam-loop').checked=p?.looping??true;$('jam-loop-start').value=p?.loop_start??0;$('jam-loop-end').value=p?.loop_end??'';$('jam-length').value=(p?.nominal_ticks??3840)/960;$('jam-quantum').value=(p?.quantum_ticks??960)/960;
+    const p=c?contentTarget(w,this.deck,this.slot).part:null;$('jam-part-name').value=p?.name??'';$('jam-loop').checked=p?.looping??true;$('jam-loop-start').value=p?.loop_start??0;$('jam-loop-end').value=p?.loop_end??'';$('jam-length').value=(p?.nominal_ticks??3840)/960;
     const info=w.media.find(m=>m.deck===this.deck&&m.slot===this.slot);
     $('jam-media').textContent=info?(info.error?`${info.path}: ${info.error}`:`${info.filename} | ${info.duration.toFixed(3)} s | ${info.sample_rate} Hz | ${info.channels} ch | ${info.prepared_frames} prepared frames | ${info.path}`):(p?.media??'No sound assigned');
     $('jam-restore-rule').disabled=w.busy||!s.online||!p?.rule;

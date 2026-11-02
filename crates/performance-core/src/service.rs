@@ -749,6 +749,7 @@ impl Worker {
                 // their current accepted targets through the semantic actions.
                 *old = crate::session::Sound {
                     gain: old.gain,
+                    quantum_ticks: old.quantum_ticks,
                     cutoff_hz: old.cutoff_hz,
                     rule: old.rule,
                     ..part
