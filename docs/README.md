@@ -1,11 +1,29 @@
-# DUET live composition design bundle
+# Documentation
 
-**Start with:** `PRODUCT_AND_TECHNICAL_DESIGN.md` (v0.1 design and technical architecture).
+Start with the [project introduction](../README.md) and [vision/roadmap](design/vision.md).
 
-**Companion artifacts:**
-- `track.schema.json`: Draft 2020-12 JSON Schema for a bounded track manifest.
-- `example.duettrack.manifest.json`: Schema-valid *illustrative* track with eight parts and one synth patch. **The audio/MIDI assets are intentionally not included, and the checksums are placeholders. This example is not a playable importable package.**
+## Use DAWJ
 
-Important: JSON Schema validates basic shape, bounds and syntax, **not** reference identity, unique part slots, referenced asset presence, actual SHA-256 matches, whether a MIDI variant points to a synth part, tempo range ordering, duration matching, DSP CPU budget, legal rights, or peak safety. A production importer requires these additional semantic/resource checks before marking a package READY.
+- [Performance guide](user-guide/performance.md): two decks, keyboard, timeline and cue.
+- [MIDI controllers](user-guide/controllers.md): learn, profiles, pickup and feedback.
+- [Skin authoring](skins/authoring.md) and [CSS reference](skins/reference.md).
 
-Research date: 2026-10-28. License and product details should be rechecked before commercialization.
+## Build and contribute
+
+- [Development guide and documentation policy](development/README.md).
+- [Architecture overview](architecture/overview.md), [engine contracts](architecture/engine.md),
+  and [performance-state contract](architecture/performance-state.md).
+- [Performance validation](development/performance-validation.md) and
+  [controlled frontend latency study](M3_WEB4_1_LATENCY.md).
+- [Licensing and release review](development/licensing.md).
+
+## Product and formats
+
+- [Vision and roadmap](design/vision.md).
+- [Composition-package design status](design/composition-format.md).
+- [Original product specification](design/product-specification.md) and
+  [prototype plan](design/prototype-plan.md), preserved historical design inputs.
+
+Older implementation reports and run-specific logs are local development notes,
+not requirements for building the project. Useful contracts, original design
+requirements, reproducible tools and selected measurement data remain tracked.

@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 root = Path(__file__).resolve().parent.parent
-inventory = json.loads((root / 'docs/windows-dependencies.json').read_text())
+inventory = json.loads((root / 'docs/development/windows-dependencies.json').read_text())
 fields = ('name', 'version', 'source', 'license')
 expected = {tuple(p[k] for k in fields) for p in inventory}
 metadata = json.loads(subprocess.check_output([

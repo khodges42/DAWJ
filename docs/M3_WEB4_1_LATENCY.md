@@ -23,8 +23,8 @@ systems and longer memory/driver soaks remain gates. The two decisions are separ
 
 ## Conditions and reproducibility
 
-Measured evidence is in [the result file](validation/web4_1-results.json), with
-[prior Web4 results](validation/web4-results.json) retained for comparison.
+Measured evidence is in [the result file](development/validation/web4_1-results.json), with
+[prior Web4 results](development/validation/web4-results.json) retained for comparison.
 Hardware/software: AMD Ryzen 9 9950X, Windows 26200.9711 / 25H2, pinned
 Rust 1.93.0 x64 MSVC and locked Tauri/eframe dependencies. Final inspection found
 WebView2 Evergreen 156.0.4314.50 and .58 installed, with .58 selected in the runtime

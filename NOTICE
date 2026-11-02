@@ -1,0 +1,27 @@
+DAWJ
+Original implementation: Copyright (C) 2026 DAWJ contributors
+SPDX-License-Identifier: GPL-3.0-or-later
+
+Original application source is licensed under the GNU General Public License,
+version 3 or (at your option) any later version. See LICENSE for full terms.
+This software comes WITHOUT ANY WARRANTY, including MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU GPL for details.
+
+Third-party software and fonts retain their own licenses and notices; they are
+not relicensed by this application notice. The reviewed Windows dependency graph
+and selected alternatives are recorded in docs/development/windows-dependencies.json.
+See docs/development/licensing.md for font terms, source/notice obligations and
+remaining release review. Release distributors must gather and preserve upstream
+license texts, notices, corresponding source and build instructions as applicable.
+Rust's standard library/compiler runtime also retains its upstream licenses.
+
+Egui's bundled unmodified fonts retain their OFL, Ubuntu Font Licence, MIT and
+Bitstream Vera notices. No proprietary MIDI driver/firmware is bundled. WebView2
+is a runtime prerequisite, not redistributed here.
+
+The user-supplied original design documents, schema and illustrative manifest are
+preserved as design inputs. No separate redistribution license accompanied that
+bundle; this notice does not assert ownership of or relicense those supplied
+artifacts. Referenced example media are absent and checksums are illustrative;
+the manifest is not a playable package. Resolve these rights before distributing
+those inputs in a release artifact.
