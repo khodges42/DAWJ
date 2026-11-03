@@ -26,13 +26,35 @@ pub struct Event {
     pub action: Applied,
     pub frame: SampleFrame,
     pub origin: EventOrigin,
+    pub velocity: u8,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EventOrigin {
     Manual,
     Rule,
+    Pattern,
+}
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PatternStatus {
+    pub running: bool,
+    pub revision: u64,
+    pub pending_revision: Option<u64>,
+    pub pending_at: Option<BeatTicks>,
+    pub bars: Option<u8>,
+    pub step: Option<u8>,
+    pub last_trigger: Option<BeatTicks>,
+    pub triggers: u64,
+}
+#[derive(Clone, Copy, Default)]
+struct PatternSlot {
+    definition: Option<parts::pattern::Pattern>,
+    pending: Option<(Option<parts::pattern::Pattern>, u64, BeatTicks)>,
+    status: PatternStatus,
+    anchor: Option<BeatTicks>,
+    next: u64,
 }
 pub struct MusicalScheduler {
+    patterns: [[PatternSlot; SLOTS]; 2],
     map: TempoMap,
     decks: [Deck; 2],
     epochs: [BeatTicks; 2],
@@ -57,6 +79,7 @@ impl MusicalScheduler {
         }
         map.reserve_changes(64);
         Ok(Self {
+            patterns: [[PatternSlot::default(); SLOTS]; 2],
             map,
             decks: [
                 Deck::new(epochs[0], phrases[0])?,
@@ -160,6 +183,14 @@ impl MusicalScheduler {
         if slot >= SLOTS {
             return Err("slot out of range");
         }
+        if self
+            .patterns
+            .get(deck)
+            .and_then(|d| d.get(slot))
+            .is_some_and(|p| p.definition.is_some() || p.pending.is_some())
+        {
+            return Err("Remove the pattern before installing a periodic rule");
+        }
         let compiled = self.compile_rule(deck, part, rule)?;
         self.rules[deck][slot] = Some(compiled);
         Ok(())
@@ -260,6 +291,7 @@ impl MusicalScheduler {
                     rule.status.fired = rule.status.fired.saturating_add(1);
                     rule.status.last_fired = Some(at);
                     apply(Event {
+                        velocity: 127,
                         deck,
                         slot,
                         action,
@@ -268,6 +300,133 @@ impl MusicalScheduler {
                     });
                 }
                 self.rules[deck][slot] = Some(rule);
+            }
+        }
+        Ok(())
+    }
+    pub fn pattern_status(&self, deck: usize, slot: usize) -> Option<PatternStatus> {
+        Some(self.patterns.get(deck)?.get(slot)?.status)
+    }
+    pub fn pattern_running(&self, deck: usize, slot: usize) -> bool {
+        self.patterns
+            .get(deck)
+            .and_then(|d| d.get(slot))
+            .is_some_and(|p| p.definition.is_some() && p.anchor.is_some())
+    }
+    pub fn queue_pattern(
+        &mut self,
+        deck: usize,
+        slot: usize,
+        definition: Option<parts::pattern::Pattern>,
+        revision: u64,
+    ) -> Result<(), &'static str> {
+        if deck >= 2 || slot >= SLOTS || revision == 0 {
+            return Err("Invalid pattern address/revision");
+        }
+        if let Some(p) = definition {
+            p.validate()?;
+        }
+        if self.rule_status(deck, slot).is_some() {
+            return Err("Remove periodic rule before editing a pattern");
+        }
+        let active = self.state(deck, slot).and_then(State::active).is_some();
+        if definition.is_none() && active {
+            return Err("Stop the part before disabling its pattern");
+        }
+        let at = self.boundary(
+            deck,
+            if active {
+                Quantization::Bar
+            } else {
+                Quantization::Immediate
+            },
+        )?;
+        let p = &mut self.patterns[deck][slot];
+        p.pending = Some((definition, revision, at));
+        p.status.pending_revision = Some(revision);
+        p.status.pending_at = Some(at);
+        Ok(())
+    }
+    fn apply_pattern_edits(&mut self) -> Result<(), &'static str> {
+        for d in 0..2 {
+            for s in 0..SLOTS {
+                let mut p = self.patterns[d][s];
+                if let Some((definition, revision, at)) = p.pending
+                    && self
+                        .map
+                        .frame_at(at)
+                        .map_err(|_| "Pattern horizon exhausted")?
+                        <= self.frame
+                {
+                    p.definition = definition;
+                    p.pending = None;
+                    p.status.revision = revision;
+                    p.status.pending_revision = None;
+                    p.status.pending_at = None;
+                    p.status.bars = definition.map(|p| p.bars);
+                    p.status.step = None;
+                    p.anchor = if definition.is_some()
+                        && self.state(d, s).and_then(State::active).is_some()
+                    {
+                        Some(at)
+                    } else {
+                        None
+                    };
+                    p.next = 0;
+                }
+                self.patterns[d][s] = p;
+            }
+        }
+        Ok(())
+    }
+    fn patterns_due(&mut self, apply: &mut impl FnMut(Event)) -> Result<(), &'static str> {
+        for d in 0..2 {
+            for s in 0..SLOTS {
+                let mut p = self.patterns[d][s];
+                if let (Some(definition), Some(anchor)) = (p.definition, p.anchor) {
+                    let tick = BeatTicks(
+                        anchor
+                            .0
+                            .checked_add(
+                                (p.next as i64)
+                                    .checked_mul(240)
+                                    .ok_or("Pattern tick overflow")?,
+                            )
+                            .ok_or("Pattern tick overflow")?,
+                    );
+                    if self
+                        .map
+                        .frame_at(tick)
+                        .map_err(|_| "Pattern horizon exhausted")?
+                        <= self.frame
+                    {
+                        let step = (p.next % (u64::from(definition.bars) * 16)) as usize;
+                        p.status.step = Some(step as u8);
+                        p.next = p.next.checked_add(1).ok_or("Pattern step overflow")?;
+                        let velocity = definition.velocity(step);
+                        // Manual launch establishes the pattern clock. Manual stops win.
+                        if velocity > 0
+                            && let Some(part) = self.state(d, s).and_then(State::active)
+                        {
+                            p.status.last_trigger = Some(tick);
+                            p.status.triggers = p.status.triggers.saturating_add(1);
+                            apply(Event {
+                                deck: d,
+                                slot: s,
+                                action: Applied::Start {
+                                    part,
+                                    at: tick,
+                                    retrigger: true,
+                                },
+                                frame: self.frame,
+                                origin: EventOrigin::Pattern,
+                                velocity,
+                            });
+                        }
+                    }
+                }
+                p.status.running = p.anchor.is_some();
+                self.patterns[d][s] = p;
             }
         }
         Ok(())
@@ -393,6 +552,7 @@ impl MusicalScheduler {
     }
     /// Apply every event due before rendering this frame; callback partitions are irrelevant.
     pub fn due(&mut self, mut apply: impl FnMut(Event)) -> Result<(), &'static str> {
+        self.apply_pattern_edits()?;
         for _ in 0..2 * SLOTS {
             let mut earliest = None;
             for deck in 0..2 {
@@ -423,8 +583,18 @@ impl MusicalScheduler {
                     Applied::Stop { .. } => None,
                 };
                 self.manual_frame[deck][slot] = Some(self.frame);
+                let pattern = &mut self.patterns[deck][slot];
+                pattern.anchor =
+                    if matches!(action, Applied::Start { .. }) && pattern.definition.is_some() {
+                        Some(at)
+                    } else {
+                        None
+                    };
+                pattern.next = 0;
+                pattern.status.step = None;
                 apply(Event {
                     origin: EventOrigin::Manual,
+                    velocity: if pattern.definition.is_some() { 0 } else { 127 },
                     deck,
                     slot,
                     action,
@@ -433,6 +603,7 @@ impl MusicalScheduler {
             }
         }
         self.rules_due(&mut apply)?;
+        self.patterns_due(&mut apply)?;
         Ok(())
     }
     pub fn complete(&mut self, deck: usize, slot: usize) -> Result<(), &'static str> {

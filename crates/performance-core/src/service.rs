@@ -157,7 +157,12 @@ pub struct Service {
 }
 impl Service {
     pub fn spawn() -> std::io::Result<Self> {
-        Self::spawn_inner(|| {
+        Self::spawn_factory(vec![
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../resources/samples"),
+        ])
+    }
+    pub fn spawn_factory(roots: Vec<PathBuf>) -> std::io::Result<Self> {
+        Self::spawn_inner(move || {
             let path = default_path();
             let name = profiles::selected(&path);
             let selected = profiles::path(&path, &name).unwrap_or_else(|_| path.clone());
@@ -172,6 +177,8 @@ impl Service {
                 worker.mapper.dirty = true;
             }
             worker.profile_name = name;
+            worker.factory_roots = roots;
+            worker.start_index();
             worker
         })
     }
@@ -266,7 +273,20 @@ struct Preparation {
     path: Option<String>,
     opened: bool,
 }
+struct PreviewJob {
+    velocity: u8,
+    rx: Receiver<Result<audio_backend::samples::SampleVoice, String>>,
+    key: String,
+}
 struct Worker {
+    catalog: crate::factory::Catalog,
+    factory_roots: Vec<PathBuf>,
+    indexing: Option<Receiver<Result<crate::factory::Catalog, String>>>,
+    preview_job: Option<PreviewJob>,
+    preview_cache: std::collections::BTreeMap<String, u8>,
+    undo: std::collections::VecDeque<crate::session::Project>,
+    redo: std::collections::VecDeque<crate::session::Project>,
+    history_pending: Option<(crate::session::Project, i8)>,
     jam: crate::session::Workspace,
     preparation: Option<Preparation>,
     control_revision: u64,
@@ -287,6 +307,14 @@ impl Worker {
     fn new(profile: Profile, path: Option<PathBuf>) -> Self {
         let midi = Devices::new(profile.input.clone(), profile.output.clone());
         Self {
+            catalog: Default::default(),
+            factory_roots: Vec::new(),
+            indexing: None,
+            preview_job: None,
+            preview_cache: Default::default(),
+            undo: Default::default(),
+            redo: Default::default(),
+            history_pending: None,
             jam: crate::session::Workspace::default(),
             preparation: None,
             control_revision: 0,
@@ -320,6 +348,8 @@ impl Worker {
         self.output.as_mut().map(|o| &mut o.coordinator)
     }
     fn poll(&mut self) {
+        self.poll_index();
+        self.poll_preview();
         self.poll_preparation();
         if let Some(o) = &mut self.output {
             o.coordinator.poll();
@@ -355,6 +385,9 @@ impl Worker {
             s.deck_gain = c.deck_gain;
             s.output_trim_db = c.output_trim_db;
         }
+        s.catalog_loading = self.catalog.loading;
+        s.undo = self.undo.len();
+        s.redo = self.redo.len();
         s.session = Some(self.jam.clone());
         s.midi_revision = self.mapper.revision;
         s.midi_dirty = self.mapper.dirty;
@@ -376,6 +409,21 @@ impl Worker {
         use ErrorCode::*;
         let revision = self.mapper.revision;
         match command {
+            Command::Catalog { rescan } => {
+                if rescan {
+                    self.start_index();
+                }
+                return Ok(Response::Catalog(self.catalog.clone()));
+            }
+            Command::Audition {
+                velocity,
+                reference,
+                deck,
+                slot,
+                stop,
+            } => self
+                .audition(reference, deck, slot, stop, velocity)
+                .map_err(|e| Fault::new(Invalid, e))?,
             Command::Session { action } => self
                 .session_action(action)
                 .map_err(|e| Fault::new(Invalid, e))?,
@@ -414,9 +462,13 @@ impl Worker {
                     );
                 } else {
                     self.jam.project.settings.phrase_bars = phrase_bars;
-                    let (output, media) =
-                        OutputSession::open_project(device, cue, &self.jam.project)
-                            .map_err(|e| Fault::new(Failed, e))?;
+                    let (output, media) = OutputSession::open_project_catalog(
+                        device,
+                        cue,
+                        &self.jam.project,
+                        Some(&self.catalog),
+                    )
+                    .map_err(|e| Fault::new(Failed, e))?;
                     self.jam.media = media;
                     self.output = Some(output);
                     self.jam.message =
@@ -427,6 +479,7 @@ impl Worker {
                     .reset(self.output.as_mut().map(|o| &mut o.coordinator));
             }
             Command::Stop {} => {
+                self.preview_cache.clear();
                 if let Some(mut o) = self.output.take() {
                     if !self.jam.demo {
                         self.jam.capture(&o.coordinator);
@@ -608,6 +661,51 @@ impl Worker {
         Ok(Response::Snapshot(Box::new(self.snapshot())))
     }
     fn session_action(&mut self, action: crate::session::Action) -> Result<(), String> {
+        use crate::session::Action;
+        if self.jam.busy {
+            return Err("Media preparation in progress".into());
+        }
+        let direction = match action {
+            Action::Undo {} => 1,
+            Action::Redo {} => 2,
+            Action::New {}
+            | Action::Demo {}
+            | Action::Open { .. }
+            | Action::Save { .. }
+            | Action::ExportComposition { .. } => -1,
+            _ => 0,
+        };
+        let before = self.jam.project.clone();
+        let revision = self.jam.revision;
+        self.session_inner(action)?;
+        if direction >= 0 {
+            if self.preparation.is_some() {
+                self.history_pending = Some((before, direction));
+            } else if self.jam.revision != revision {
+                self.commit_history(before, direction);
+            }
+        }
+        Ok(())
+    }
+    fn commit_history(&mut self, before: crate::session::Project, direction: i8) {
+        if direction == 1 {
+            self.undo.pop_back();
+            self.redo.push_back(before);
+        } else if direction == 2 {
+            self.redo.pop_back();
+            self.undo.push_back(before);
+        } else {
+            self.undo.push_back(before);
+            self.redo.clear();
+        }
+        while self.undo.len() > 32 {
+            self.undo.pop_front();
+        }
+        while self.redo.len() > 32 {
+            self.redo.pop_front();
+        }
+    }
+    fn session_inner(&mut self, action: crate::session::Action) -> Result<(), String> {
         use crate::session::{self, Action::*};
         if self.jam.busy {
             return Err(
@@ -625,6 +723,9 @@ impl Worker {
                     return Err("Stop output before replacing the whole session".into());
                 }
                 let demo = matches!(action, Demo {});
+                self.undo.clear();
+                self.redo.clear();
+                self.preview_cache.clear();
                 self.jam = session::Workspace {
                     demo,
                     message: if demo {
@@ -671,6 +772,25 @@ impl Worker {
         if self.jam.demo {
             return Err("Stop output and choose New session before editing user content".into());
         }
+        if let Undo {} | Redo {} = action {
+            let candidate = if matches!(action, Undo {}) {
+                self.undo.back()
+            } else {
+                self.redo.back()
+            }
+            .ok_or("No edit to undo/redo")?
+            .clone();
+            return self.apply_project(candidate, None);
+        }
+        if let ExportComposition { composition, path } = action {
+            let c = self.jam.project.composition(composition)?.clone();
+            let mut p = self.jam.project.clone();
+            p.compositions = vec![c];
+            p.decks = [Some(composition), None];
+            p.save(std::path::Path::new(&path))?;
+            self.jam.message = "Composition saved separately".into();
+            return Ok(());
+        }
         let mut project = self.jam.project.clone();
         let force = if let Import {
             composition, slot, ..
@@ -681,6 +801,123 @@ impl Worker {
             None
         };
         match action {
+            Variation {
+                composition,
+                slot,
+                index,
+                store,
+            } => {
+                project
+                    .composition_mut(composition)?
+                    .parts
+                    .get_mut(slot)
+                    .ok_or("Invalid slot")?
+                    .variation(index, store)?;
+            }
+            Pattern {
+                composition,
+                slot,
+                pattern,
+            } => {
+                let p = project
+                    .composition_mut(composition)?
+                    .parts
+                    .get_mut(slot)
+                    .ok_or("Invalid slot")?;
+                p.pattern = pattern;
+                p.variation = None;
+                if pattern.is_some() {
+                    p.rule = None;
+                }
+            }
+            Factory {
+                composition,
+                slot,
+                reference,
+            } => {
+                reference.validate()?;
+                let entry = self
+                    .catalog
+                    .entries
+                    .iter()
+                    .find(|e| e.reference == reference)
+                    .ok_or("Rescan factory catalog")?;
+                let hints = project
+                    .sample_overrides
+                    .get(&reference.key())
+                    .unwrap_or(&entry.hints)
+                    .clone();
+                let p = project
+                    .composition_mut(composition)?
+                    .parts
+                    .get_mut(slot)
+                    .ok_or("Invalid slot")?;
+                p.factory = Some(reference);
+                p.media = None;
+                p.looping = hints.kind == "Loop";
+                p.name = hints.display_name.clone();
+                p.hints = Some(hints);
+                p.sample_start = 0;
+                p.sample_end = None;
+                p.loop_start = 0;
+                p.loop_end = None;
+                p.pattern = None;
+                p.variation = None;
+                p.variations = [None; 4];
+                p.rule = None;
+            }
+            Correct { reference, hints } => {
+                reference.validate()?;
+                hints.validate()?;
+                project
+                    .sample_overrides
+                    .insert(reference.key(), hints.clone());
+                for c in &mut project.compositions {
+                    for p in &mut c.parts {
+                        if p.factory.as_ref() == Some(&reference) {
+                            p.hints = Some(hints.clone());
+                        }
+                    }
+                }
+            }
+            Duplicate {
+                composition,
+                deck,
+                name,
+            } => {
+                if deck >= 2 || project.compositions.len() >= 8 {
+                    return Err("Invalid deck or full session".into());
+                }
+                let mut c = project.composition(composition)?.clone();
+                c.id = session::id();
+                c.name = name;
+                for p in &mut c.parts {
+                    p.id = session::id();
+                }
+                project.decks[deck] = Some(c.id);
+                project.compositions.push(c);
+            }
+            OpenComposition { deck, path } => {
+                if deck >= 2 || project.compositions.len() >= 8 {
+                    return Err("Invalid deck or full session".into());
+                }
+                let imported = session::Project::load(std::path::Path::new(&path))?;
+                if imported.compositions.len() != 1 {
+                    return Err(
+                        "Open a single-composition export here; use Open session for full projects"
+                            .into(),
+                    );
+                }
+                let c = imported.compositions[0].clone();
+                if project.compositions.iter().any(|old| old.id == c.id) {
+                    return Err("Composition is already present; select it or use Duplicate".into());
+                }
+                project.decks[deck] = Some(c.id);
+                project.compositions.push(c);
+                for (k, v) in imported.sample_overrides {
+                    project.sample_overrides.entry(k).or_insert(v);
+                }
+            }
             Rename { name } => project.name = name,
             Create { name, deck } => {
                 project.create(name, deck)?;
@@ -716,6 +953,20 @@ impl Worker {
                     .take(80)
                     .collect();
                 part.media = Some(path.display().to_string());
+                part.factory = None;
+                part.pattern = None;
+                part.variation = None;
+                part.variations = [None; 4];
+                part.looping = false;
+                part.sample_start = 0;
+                part.sample_end = None;
+                part.hints = Some(crate::factory::hints(
+                    path.file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .as_ref(),
+                    "",
+                ));
                 part.loop_start = 0;
                 part.loop_end = None;
             }
@@ -726,6 +977,11 @@ impl Worker {
                     .get_mut(slot)
                     .ok_or("Invalid part slot")?;
                 p.media = None;
+                p.factory = None;
+                p.pattern = None;
+                p.variation = None;
+                p.variations = [None; 4];
+                p.hints = None;
                 p.rule = None;
                 p.loop_start = 0;
                 p.loop_end = None;
@@ -740,7 +996,11 @@ impl Worker {
                     .parts
                     .get_mut(slot)
                     .ok_or("Invalid part slot")?;
-                if old.id != part.id || old.media != part.media {
+                if old.id != part.id
+                    || old.media != part.media
+                    || old.factory != part.factory
+                    || old.pattern != part.pattern
+                {
                     return Err(
                         "Use Import/Remove to change media; identities cannot be edited".into(),
                     );
@@ -752,11 +1012,18 @@ impl Worker {
                     quantum_ticks: old.quantum_ticks,
                     cutoff_hz: old.cutoff_hz,
                     rule: old.rule,
-                    ..part
+                    ..*part
                 };
             }
             _ => return Err("Unsupported session operation".into()),
         }
+        self.apply_project(project, force)
+    }
+    fn apply_project(
+        &mut self,
+        project: crate::session::Project,
+        force: Option<(u64, usize)>,
+    ) -> Result<(), String> {
         project.validate()?;
         let affected = std::array::from_fn(|d| {
             let before =
@@ -769,6 +1036,38 @@ impl Worker {
             self.jam.project = project;
             self.jam.dirty = true;
             self.jam.revision += 1;
+            return Ok(());
+        }
+        let voice_changes = crate::session::change_mask(&project, &self.jam.project, affected);
+        if force.is_none() && !voice_changes.iter().flatten().any(|b| *b) {
+            if let Some(o) = &mut self.output {
+                let mut patterns = Vec::new();
+                for (d, affected) in affected.into_iter().enumerate() {
+                    if affected {
+                        let next = project.decks[d].and_then(|n| project.composition(n).ok());
+                        let old = self.jam.project.decks[d]
+                            .and_then(|n| self.jam.project.composition(n).ok());
+                        for s in 0..parts::SLOTS {
+                            let p = next.and_then(|c| c.parts[s].pattern);
+                            if p != old.and_then(|c| c.parts[s].pattern) {
+                                patterns.push((d, s, p));
+                            }
+                            o.coordinator.names[d][s] = next.map_or_else(
+                                || format!("Part {}", s + 1),
+                                |c| c.parts[s].name.clone(),
+                            );
+                        }
+                    }
+                }
+                o.coordinator
+                    .set_patterns(&patterns)
+                    .map_err(str::to_string)?;
+            }
+            self.jam.project = project;
+            self.jam.dirty = true;
+            self.jam.revision += 1;
+            self.jam.message =
+                "Edit accepted; pattern execution follows the engine's published boundary".into();
             return Ok(());
         }
         self.begin_preparation(project, affected, true, self.jam.path.clone(), false, force)
@@ -799,13 +1098,20 @@ impl Worker {
         if let Some((n, s)) = force {
             before.composition_mut(n)?.parts[s].media = None;
         }
+        let catalog = self.catalog.clone();
         thread::Builder::new()
             .name("dawj-media-prepare".into())
             .spawn(move || {
                 let result = if opened {
-                    crate::session::prepare(&candidate, affected, strict)
+                    crate::session::prepare_catalog(&candidate, None, affected, strict, &catalog)
                 } else {
-                    crate::session::prepare_changes(&candidate, &before, affected, strict)
+                    crate::session::prepare_catalog(
+                        &candidate,
+                        Some(&before),
+                        affected,
+                        strict,
+                        &catalog,
+                    )
                 };
                 let _ = tx.send(result);
             })
@@ -831,6 +1137,7 @@ impl Worker {
         let job = self.preparation.take().expect("preparation exists");
         self.jam.busy = false;
         if let Err(e) = result.and_then(|prepared| self.commit_preparation(job, prepared)) {
+            self.history_pending = None;
             self.jam.message = format!("Content unchanged: {e}");
         }
     }
@@ -862,7 +1169,7 @@ impl Worker {
                 for s in 0..parts::SLOTS {
                     if project.decks[d]
                         .and_then(|n| project.composition(n).ok())
-                        .is_none_or(|c| c.parts[s].media.is_none())
+                        .is_none_or(|c| c.parts[s].media.is_none() && c.parts[s].factory.is_none())
                     {
                         project.settings.part_targets[d][s] = None;
                     }
@@ -877,6 +1184,12 @@ impl Worker {
         };
         self.jam.media.retain(|m| !changed[m.deck][m.slot]);
         self.jam.media.extend(media);
+        if job.opened {
+            self.undo.clear();
+            self.redo.clear();
+        } else if let Some((before, direction)) = self.history_pending.take() {
+            self.commit_history(before, direction);
+        }
         self.jam.project = project;
         self.jam.path = job.path;
         self.jam.dirty = !job.opened;
@@ -889,6 +1202,175 @@ impl Worker {
             "Content ready. Destination parts are stopped.".into()
         };
         Ok(())
+    }
+    fn start_index(&mut self) {
+        if self.indexing.is_some() {
+            return;
+        }
+        let roots = self.factory_roots.clone();
+        let (tx, rx) = mpsc::sync_channel(1);
+        self.catalog.loading = true;
+        self.preview_cache.clear();
+        match thread::Builder::new()
+            .name("dawj-factory-index".into())
+            .spawn(move || {
+                let root = roots
+                    .iter()
+                    .find(|p| p.is_dir())
+                    .cloned()
+                    .or_else(|| roots.first().cloned())
+                    .unwrap_or_default();
+                let _ = tx.send(crate::factory::Catalog::discover(&root));
+            }) {
+            Ok(_) => self.indexing = Some(rx),
+            Err(e) => {
+                self.catalog.loading = false;
+                self.catalog.warnings.push(e.to_string());
+            }
+        }
+    }
+    fn poll_index(&mut self) {
+        let Some(rx) = &self.indexing else { return };
+        match rx.try_recv() {
+            Ok(Ok(c)) => {
+                self.catalog = c;
+                self.indexing = None;
+            }
+            Ok(Err(e)) => {
+                self.catalog = crate::factory::Catalog {
+                    warnings: vec![e],
+                    ..Default::default()
+                };
+                self.indexing = None;
+            }
+            Err(mpsc::TryRecvError::Disconnected) => {
+                self.catalog.loading = false;
+                self.catalog.warnings.push("Index worker closed".into());
+                self.indexing = None;
+            }
+            Err(_) => {}
+        }
+    }
+    fn audition(
+        &mut self,
+        reference: Option<crate::factory::Reference>,
+        deck: Option<usize>,
+        slot: Option<usize>,
+        stop: bool,
+        velocity: u8,
+    ) -> Result<(), String> {
+        if stop {
+            return self
+                .co()
+                .ok_or("Start output for audition")?
+                .preview(None)
+                .map_err(str::to_string);
+        }
+        if self.jam.busy {
+            return Err("Media preparation in progress".into());
+        }
+        let mut sound = if let Some(r) = reference {
+            r.validate()?;
+            let mut s = crate::session::Sound::empty(0);
+            s.factory = Some(r);
+            s
+        } else {
+            let (d, s) = (deck.ok_or("Choose a sound")?, slot.ok_or("Choose a part")?);
+            if d >= 2 || s >= parts::SLOTS {
+                return Err("Invalid audition address".into());
+            }
+            self.jam
+                .project
+                .composition(self.jam.project.decks[d].ok_or("Empty deck")?)?
+                .parts[s]
+                .clone()
+        };
+        if self.output.is_none() {
+            return Err("Select/start an audio output for audition".into());
+        }
+        let key = format!(
+            "{}|{}|{:?}",
+            sound.factory.as_ref().map_or_else(
+                || sound.media.clone().unwrap_or_default(),
+                crate::factory::Reference::key
+            ),
+            sound.sample_start,
+            sound.sample_end
+        );
+        if let Some(bank) = self.preview_cache.get(&key).copied() {
+            return self
+                .co()
+                .ok_or("Output offline")?
+                .preview_velocity(Some(bank), velocity)
+                .map_err(str::to_string);
+        }
+        let catalog = self.catalog.clone();
+        let (tx, rx) = mpsc::sync_channel(1);
+        sound.id = crate::session::id();
+        thread::Builder::new()
+            .name("dawj-audition-prepare".into())
+            .spawn(move || {
+                let result = (|| {
+                    let path = if let Some(r) = &sound.factory {
+                        catalog.resolve(r)?
+                    } else {
+                        PathBuf::from(sound.media.as_ref().ok_or("No sound assigned")?)
+                    };
+                    let asset = parts::AssetId(crate::session::id());
+                    let (sample, _) =
+                        audio_backend::samples::LoadedSample::prepare_file(asset, &path, 48000)?;
+                    let part = parts::Part {
+                        id: parts::PartId(sound.id),
+                        playback: parts::PlaybackConfiguration {
+                            asset,
+                            mode: parts::PlaybackMode::OneShot,
+                        },
+                        timing: parts::TimingPolicy {
+                            nominal_length: timebase::BeatTicks(3840),
+                            quantum: timebase::BeatTicks(960),
+                        },
+                    };
+                    audio_backend::samples::SampleVoice::prepare_region(
+                        part,
+                        sample,
+                        48000,
+                        audio_backend::samples::BoundaryPolicy::Fade { frames: 64 },
+                        sound.sample_start,
+                        sound.sample_end,
+                    )
+                    .map_err(str::to_string)
+                })();
+                let _ = tx.send(result);
+            })
+            .map_err(|e| e.to_string())?;
+        self.preview_job = Some(PreviewJob { rx, key, velocity });
+        self.jam.busy = true;
+        self.jam.message = "Preparing audition; playback not yet acknowledged".into();
+        Ok(())
+    }
+    fn poll_preview(&mut self) {
+        let Some(job) = &self.preview_job else { return };
+        let result = match job.rx.try_recv() {
+            Ok(r) => r,
+            Err(mpsc::TryRecvError::Empty) => return,
+            Err(_) => Err("Audition preparation closed".into()),
+        };
+        let job = self.preview_job.take().expect("preview exists");
+        self.jam.busy = false;
+        let result = result.and_then(|voice| {
+            let co = self.co().ok_or("Output closed while preparing audition")?;
+            let bank = co.install_voices(vec![voice]).map_err(str::to_string)?[0];
+            co.preview_velocity(Some(bank), job.velocity)
+                .map_err(str::to_string)?;
+            self.preview_cache.insert(job.key, bank);
+            Ok(())
+        });
+        if let Err(e) = result {
+            self.jam.message = format!("Audition unavailable: {e}");
+        } else {
+            self.jam.message =
+                "Audition submitted to shared MASTER; no isolated headphone preview".into();
+        }
     }
     fn shutdown(&mut self) {
         if let Some(o) = &mut self.output {

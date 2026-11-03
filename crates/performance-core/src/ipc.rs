@@ -18,6 +18,17 @@ pub struct Request {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    Catalog {
+        rescan: bool,
+    },
+    Audition {
+        #[serde(default = "full_velocity")]
+        velocity: u8,
+        reference: Option<crate::factory::Reference>,
+        deck: Option<usize>,
+        slot: Option<usize>,
+        stop: bool,
+    },
     Session {
         action: crate::session::Action,
     },
@@ -70,6 +81,9 @@ pub enum Command {
         name: String,
     },
     MidiFactory {},
+}
+fn full_velocity() -> u8 {
+    127
 }
 fn eight() -> u8 {
     8
@@ -387,6 +401,7 @@ impl Reply {
 #[serde(tag = "kind", content = "data", rename_all = "snake_case")]
 pub enum Response {
     Snapshot(Box<Snapshot>),
+    Catalog(crate::factory::Catalog),
     Devices(Vec<Device>),
     MidiProfile(crate::midi::profile::Profile),
     MidiProfiles(Vec<String>),
@@ -485,7 +500,19 @@ impl From<audio_backend::performance_state::TransportState> for Transport {
     }
 }
 #[derive(Debug, Serialize, Deserialize)]
+pub struct PatternView {
+    pub revision: u64,
+    pub target_revision: u64,
+    pub pending_revision: Option<u64>,
+    pub pending_at: Option<i64>,
+    pub bars: Option<u8>,
+    pub step: Option<u8>,
+    pub running: bool,
+    pub triggers: u64,
+}
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Part {
+    pub pattern: PatternView,
     pub available: bool,
     pub state: Lifecycle,
     pub active: Option<u64>,
@@ -519,6 +546,10 @@ pub struct Selection {
 }
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Snapshot {
+    pub audition: Option<u64>,
+    pub catalog_loading: bool,
+    pub undo: usize,
+    pub redo: usize,
     pub session: Option<crate::session::Workspace>,
     pub control_revision: u64,
     pub online: bool,
@@ -538,6 +569,7 @@ pub struct Snapshot {
     pub cue_available: bool,
     pub output_trim_db: f32,
     pub peaks: [f32; 2],
+    pub deck_peaks: [f32; 2],
     pub notice: String,
     /// Coordinator receipts are control feedback, separate from authoritative part lifecycle.
     pub feedback: [[String; 8]; 2],
@@ -556,6 +588,7 @@ impl Snapshot {
         // Copy exactly one engine publication before projecting any clock/part fields.
         let s = co.snapshot;
         Self {
+            audition: s.and_then(|s| s.preview).map(|p| p.part.0),
             online: co.available() && !failed,
             failed: failed || s.is_some_and(|s| s.failed),
             generation: s.map(|s| s.generation),
@@ -577,6 +610,16 @@ impl Snapshot {
                     std::array::from_fn(|i| {
                         let p = d.slots[i];
                         Part {
+                            pattern: PatternView {
+                                revision: p.pattern.revision,
+                                target_revision: co.pattern_targets[deck][i],
+                                pending_revision: p.pattern.pending_revision,
+                                pending_at: p.pattern.pending_at.map(|t| t.0),
+                                bars: p.pattern.bars,
+                                step: p.pattern.step,
+                                running: p.pattern.running,
+                                triggers: p.pattern.triggers,
+                            },
                             available: co.banks[deck][i].is_some(),
                             state: Lifecycle::from(&p),
                             active: p.active.map(|p| p.0),
@@ -630,6 +673,7 @@ impl Snapshot {
             cue_available: co.cue_available,
             output_trim_db: co.output_trim_db,
             peaks: co.peaks(),
+            deck_peaks: co.deck_peaks(),
             notice: co.notice.clone(),
             feedback: co.feedback.clone(),
             ..Self::default()

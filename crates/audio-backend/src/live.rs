@@ -30,6 +30,9 @@ pub enum Request {
     Rule { bank: u8, rule: TriggerRule },
     EnableRule(bool),
     CancelRule,
+    Pattern(Option<parts::pattern::Pattern>),
+    Preview(u8, u8),
+    StopPreview,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
@@ -44,7 +47,7 @@ pub enum Outcome {
     Closed = 7,
 }
 struct Cell {
-    data: [AtomicU64; 2],
+    data: [AtomicU64; 10],
     stamp: AtomicU64,
 }
 struct SlotMeter {
@@ -226,6 +229,14 @@ impl LiveControl {
         })
     }
 
+    pub fn remaining_capacity(&self) -> usize {
+        CAPACITY.saturating_sub(
+            self.queue
+                .write
+                .load(Ordering::Relaxed)
+                .wrapping_sub(self.queue.read.load(Ordering::Acquire)),
+        )
+    }
     /// One producer, nonblocking admission. Full means rejected before publication.
     pub fn submit(
         &mut self,
@@ -268,6 +279,19 @@ impl LiveControl {
             Request::Rule { bank, rule } => (7, encode_rule(bank, rule)),
             Request::EnableRule(enabled) => (8, enabled as u64),
             Request::CancelRule => (9, 0),
+            Request::Pattern(definition) => {
+                if let Some(p) = definition {
+                    p.validate()?;
+                }
+                (10, definition.map_or(0, |p| u64::from(p.bars)))
+            }
+            Request::Preview(bank, velocity) => {
+                if !(1..=127).contains(&velocity) {
+                    return Err("Audition velocity outside 1..127");
+                };
+                (11, u64::from(bank) | (u64::from(velocity) << 8))
+            }
+            Request::StopPreview => (12, 0),
         };
         let quant = match q {
             Quantization::Immediate => 0,
@@ -279,6 +303,18 @@ impl LiveControl {
         let id = self.next;
         self.next += 1;
         self.queue.cells[row].data[1].store(arg, Ordering::Relaxed);
+        if let Request::Pattern(definition) = request {
+            let p = definition.unwrap_or_default();
+            for word in 0..8 {
+                let mut bytes = [0; 8];
+                for (i, b) in bytes.iter_mut().enumerate() {
+                    *b = p.velocity(word * 8 + i);
+                }
+                self.queue.cells[row].data[word + 2]
+                    .store(u64::from_le_bytes(bytes), Ordering::Relaxed);
+            }
+        }
+
         // Fixed Copy payload, published through the write index.
         self.queue.cells[row].data[0].store(
             (id << 16) | ((slot as u64) << 8) | (kind << 4) | (quant << 2) | deck as u64,
@@ -306,6 +342,7 @@ struct Receipt {
 struct Active {
     bank: usize,
     elapsed: u64,
+    velocity: f32,
 }
 struct ResidentBank {
     rate: u32,
@@ -348,6 +385,8 @@ impl std::ops::Index<usize> for ResidentBank {
     }
 }
 pub struct LiveEngine {
+    preview: Option<Active>,
+    pattern_receipts: [[Option<Receipt>; SLOTS]; 2],
     scheduler: MusicalScheduler,
     bank: Arc<ResidentBank>,
     mixer: StereoMixer,
@@ -448,6 +487,8 @@ impl LiveEngine {
         };
         let result = (
             Self {
+                preview: None,
+                pattern_receipts: [[None; SLOTS]; 2],
                 scheduler,
                 bank: resident,
                 mixer,
@@ -508,7 +549,40 @@ impl LiveEngine {
                 _ => Quantization::Phrase,
             };
             let kind = (word >> 4) & 15;
-            let result = if kind == 7 {
+            let result = if kind == 10 {
+                let definition = if arg == 0 {
+                    None
+                } else {
+                    let mut p = parts::pattern::Pattern {
+                        bars: arg as u8,
+                        ..Default::default()
+                    };
+                    for word in 0..8 {
+                        let bytes = self.queue.cells[row].data[word + 2]
+                            .load(Ordering::Relaxed)
+                            .to_le_bytes();
+                        for (i, b) in bytes.into_iter().enumerate() {
+                            p.steps[(word * 8 + i) / 16][(word * 8 + i) % 16] = b;
+                        }
+                    }
+                    Some(p)
+                };
+                self.scheduler.queue_pattern(deck, slot, definition, id)
+            } else if kind == 11 {
+                self.bank
+                    .get((arg & 255) as usize)
+                    .ok_or("Invalid preview bank")
+                    .map(|_| {
+                        self.preview = Some(Active {
+                            bank: (arg & 255) as usize,
+                            elapsed: 0,
+                            velocity: ((arg >> 8) & 127) as f32 / 127.0,
+                        });
+                    })
+            } else if kind == 12 {
+                self.preview = None;
+                Ok(())
+            } else if kind == 7 {
                 let (bank, rule) = decode_rule(arg);
                 self.bank
                     .get(bank as usize)
@@ -551,6 +625,11 @@ impl LiveEngine {
             };
             if result.is_err() {
                 publish(&self.queue, row, id, Outcome::Rejected);
+            } else if kind == 10 {
+                if let Some(old) = self.pattern_receipts[deck][slot].replace(Receipt { id, row }) {
+                    publish(&self.queue, old.row, old.id, Outcome::Superseded);
+                }
+                publish(&self.queue, row, id, Outcome::Queued);
             } else if kind >= 5 {
                 // Applied means tempo intent installed in the map, not that its boundary passed.
                 publish(&self.queue, row, id, Outcome::Applied);
@@ -629,13 +708,20 @@ impl LiveEngine {
                         dsp[event.deck][event.slot].start(active[event.deck][event.slot].is_some());
                     }
                     active[event.deck][event.slot] = match event.action {
+                        Applied::Start { .. } if event.velocity == 0 => None,
                         Applied::Start { part, .. } => bank
                             .iter()
                             .position(|v| v.part() == part)
-                            .map(|bank| Active { bank, elapsed: 0 }),
+                            .map(|bank| Active {
+                                bank,
+                                elapsed: 0,
+                                velocity: f32::from(event.velocity) / 127.0,
+                            }),
                         Applied::Stop { .. } => None,
                     };
-                    if let Some(receipt) = pending[event.deck][event.slot].take() {
+                    if event.origin != event_engine::live::EventOrigin::Pattern
+                        && let Some(receipt) = pending[event.deck][event.slot].take()
+                    {
                         publish(queue, receipt.row, receipt.id, Outcome::Applied);
                     }
                     if *event_count < events.len() {
@@ -655,7 +741,8 @@ impl LiveEngine {
                 for slot in 0..SLOTS {
                     if let Some(voice) = &mut self.active[deck][slot] {
                         let asset = &self.bank[voice.bank];
-                        let sample = self.dsp[deck][slot].process(asset.at_elapsed(voice.elapsed));
+                        let raw = asset.at_elapsed(voice.elapsed);
+                        let sample = self.dsp[deck][slot].process(raw.map(|s| s * voice.velocity));
                         let sample = self.transitions[deck][slot].process(sample);
                         for ch in 0..2 {
                             source[ch] += sample[ch] / SLOTS as f32;
@@ -665,7 +752,9 @@ impl LiveEngine {
                             self.active[deck][slot] = None;
                             self.transitions[deck][slot]
                                 .begin((self.scheduler.rate() / 500).max(1));
-                            if self.scheduler.complete(deck, slot).is_err() {
+                            if !self.scheduler.pattern_running(deck, slot)
+                                && self.scheduler.complete(deck, slot).is_err()
+                            {
                                 self.failed = true;
                             }
                             if matches!(self.scheduler.state(deck, slot), Some(State::Stopped))
@@ -685,7 +774,18 @@ impl LiveEngine {
                     }
                 }
             }
-            let buses = self.mixer.mix_external(sources, [1.0; 2]);
+            let preview = if let Some(v) = &mut self.preview {
+                let sound = &self.bank[v.bank];
+                let sample = sound.at_elapsed(v.elapsed).map(|s| s * v.velocity);
+                v.elapsed += 1;
+                if v.elapsed >= sound.length().min(u64::from(self.scheduler.rate()) * 8) {
+                    self.preview = None;
+                }
+                sample
+            } else {
+                [0.0; 2]
+            };
+            let buses = self.mixer.mix_external_preview(sources, [1.0; 2], preview);
             for (ch, sample) in routing.master().into_iter().zip(buses.master) {
                 frame[usize::from(ch)] = convert(sample);
             }
@@ -697,6 +797,19 @@ impl LiveEngine {
             if self.scheduler.step().is_err() {
                 self.failed = true;
                 break;
+            }
+        }
+        for d in 0..2 {
+            for s in 0..SLOTS {
+                if let Some(r) = self.pattern_receipts[d][s]
+                    && self
+                        .scheduler
+                        .pattern_status(d, s)
+                        .is_some_and(|p| p.revision == r.id)
+                {
+                    publish(&self.queue, r.row, r.id, Outcome::Applied);
+                    self.pattern_receipts[d][s] = None;
+                }
             }
         }
         self.publish_state();
@@ -793,9 +906,10 @@ impl LiveEngine {
                     phase: self.scheduler.part_phase(d, s),
                     parameters: self.dsp[d][s].parameters,
                     release_frames: self.transitions[d][s].remaining,
-                    active_one_shot: state
-                        .active()
-                        .is_some_and(|p| matches!(p.playback.mode, parts::PlaybackMode::OneShot)),
+                    active_one_shot: !self.scheduler.pattern_running(d, s)
+                        && state.active().is_some_and(|p| {
+                            matches!(p.playback.mode, parts::PlaybackMode::OneShot)
+                        }),
                     pending_one_shot: match state {
                         State::QueuedStart(p) | State::QueuedReplace { pending: p, .. } => {
                             matches!(p.part.playback.mode, parts::PlaybackMode::OneShot)
@@ -807,10 +921,15 @@ impl LiveEngine {
                     },
                     nominal_length: state.active().map(|p| p.timing.nominal_length),
                     rule: self.scheduler.rule_status(d, s),
+                    pattern: self.scheduler.pattern_status(d, s).unwrap_or_default(),
                 }
             }),
         });
         self.queue.snapshot.publish(PerformanceState {
+            preview: self.preview.map(|v| PreviewState {
+                part: self.bank[v.bank].part().id,
+                position: v.elapsed,
+            }),
             transport: if self.failed {
                 TransportState::Failed
             } else if self.frame().0 == 0 {

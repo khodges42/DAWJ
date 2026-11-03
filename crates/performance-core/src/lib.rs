@@ -15,6 +15,7 @@ use std::{
 };
 use timebase::BeatTicks;
 pub mod controls;
+pub mod factory;
 pub mod ipc;
 pub mod midi;
 pub mod output;
@@ -195,6 +196,7 @@ struct Receipt {
 }
 
 pub struct Coordinator {
+    pub pattern_targets: [[u64; SLOTS]; 2],
     pub banks: [[Option<u8>; SLOTS]; 2],
     pub names: [[String; SLOTS]; 2],
     control: LiveControl,
@@ -222,6 +224,7 @@ impl Coordinator {
             .set_output_trim_db(DEMO_OUTPUT_TRIM_DB)
             .expect("demo trim is within engine bounds");
         Self {
+            pattern_targets: [[0; SLOTS]; 2],
             banks: std::array::from_fn(|d| std::array::from_fn(|s| Some((d * SLOTS + s) as u8))),
             names: std::array::from_fn(|_| {
                 std::array::from_fn(|s| audio_backend::demo::NAMES[s].into())
@@ -245,6 +248,81 @@ impl Coordinator {
             queued_parameters: [[None; SLOTS]; 2],
             parameter_cursor: 0,
         }
+    }
+    pub fn check_pattern_capacity(&self, count: usize) -> Result<(), &'static str> {
+        if !self.available() {
+            return Err("Engine unavailable");
+        };
+        if self.receipts.len() + count > 32 || self.control.remaining_capacity() < count {
+            return Err("Pattern command admission full; retry");
+        };
+        Ok(())
+    }
+    pub fn set_patterns(
+        &mut self,
+        changes: &[(usize, usize, Option<parts::pattern::Pattern>)],
+    ) -> Result<(), &'static str> {
+        self.check_pattern_capacity(changes.len())?;
+        for (d, s, p) in changes {
+            if *d >= 2 || *s >= SLOTS {
+                return Err("Invalid pattern address");
+            };
+            if let Some(p) = p {
+                p.validate()?;
+            }
+            if self
+                .snapshot
+                .is_some_and(|state| state.decks[*d].slots[*s].rule.is_some())
+            {
+                return Err("Remove live periodic rule before editing pattern");
+            };
+            if p.is_none()
+                && self
+                    .snapshot
+                    .is_some_and(|state| state.decks[*d].slots[*s].active.is_some())
+            {
+                return Err("Stop part before disabling a pattern");
+            };
+        }
+        for (d, s, p) in changes {
+            let ticket = self
+                .control
+                .submit(*d, *s, Request::Pattern(*p), Quantize::Immediate)?;
+            self.pattern_targets[*d][*s] = ticket.id();
+            self.feedback[*d][*s] = format!("Pattern #{} submitted; awaiting engine", ticket.id());
+            self.receipts.push_back(Receipt {
+                ticket,
+                deck: *d,
+                slot: *s,
+                parameter: false,
+                parameters: None,
+            });
+        }
+        Ok(())
+    }
+    pub fn preview(&mut self, bank: Option<u8>) -> Result<(), &'static str> {
+        self.preview_velocity(bank, 127)
+    }
+    pub fn preview_velocity(&mut self, bank: Option<u8>, velocity: u8) -> Result<(), &'static str> {
+        self.check_pattern_capacity(1)?;
+        let ticket = self.control.submit(
+            0,
+            0,
+            bank.map_or(Request::StopPreview, |b| Request::Preview(b, velocity)),
+            Quantize::Immediate,
+        )?;
+        self.notice = format!("Audition #{} submitted to shared master", ticket.id());
+        Ok(())
+    }
+    pub fn initial_parameters(&mut self) -> Result<(), &'static str> {
+        for d in 0..2 {
+            for s in 0..SLOTS {
+                if let Some(p) = self.queued_parameters[d][s].take() {
+                    self.submit_request(d, s, Request::Parameters(p), Quantize::Immediate)?;
+                }
+            }
+        }
+        Ok(())
     }
     pub fn install_voices(
         &mut self,
@@ -323,6 +401,9 @@ impl Coordinator {
             && self.snapshot.is_some_and(|s| {
                 !matches!(s.transport, TransportState::Closed | TransportState::Failed)
             })
+    }
+    pub fn deck_peaks(&self) -> [f32; 2] {
+        self.mixer.deck_peaks()
     }
     pub fn peaks(&self) -> [f32; 2] {
         self.mixer.peaks()

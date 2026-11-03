@@ -2,6 +2,7 @@
 //! Pure domain reducer. No audio, assets, hardware, clocks or command queues.
 use timebase::BeatTicks;
 pub const SLOTS: usize = 8;
+pub mod pattern;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PartId(pub u64);
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

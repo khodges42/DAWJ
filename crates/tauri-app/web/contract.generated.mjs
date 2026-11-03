@@ -114,6 +114,18 @@ export const contract = {
       "kind": "session"
     },
     {
+      "kind": "catalog",
+      "rescan": false
+    },
+    {
+      "deck": 0,
+      "kind": "audition",
+      "reference": null,
+      "slot": 0,
+      "stop": true,
+      "velocity": 127
+    },
+    {
       "kind": "devices"
     },
     {

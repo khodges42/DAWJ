@@ -18,6 +18,14 @@ pub fn generated() -> String {
         Command::Session {
             action: crate::session::Action::New {},
         },
+        Command::Catalog { rescan: false },
+        Command::Audition {
+            velocity: 127,
+            reference: None,
+            deck: Some(0),
+            slot: Some(0),
+            stop: true,
+        },
         Command::Devices {},
         Command::Start {
             device: 0,

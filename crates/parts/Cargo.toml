@@ -6,5 +6,6 @@ rust-version.workspace = true
 license.workspace = true
 [dependencies]
 timebase.workspace = true
+serde = { version = "=1.0.228", features = ["derive"] }
 [lints]
 workspace = true

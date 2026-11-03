@@ -231,18 +231,37 @@ impl SampleVoice {
         rate: u32,
         policy: BoundaryPolicy,
     ) -> Result<Self, &'static str> {
+        Self::prepare_region(part, sample, rate, policy, 0, None)
+    }
+    pub fn prepare_region(
+        part: Part,
+        sample: LoadedSample,
+        rate: u32,
+        policy: BoundaryPolicy,
+        sample_start: u64,
+        sample_end: Option<u64>,
+    ) -> Result<Self, &'static str> {
         part.validate()?;
         if sample.id != part.playback.asset || sample.rate != rate {
             return Err("part asset identity or rate mismatch");
         }
         let (start, end) = match part.playback.mode {
-            PlaybackMode::OneShot => (0, sample.frames()),
+            PlaybackMode::OneShot => (
+                usize::try_from(sample_start).map_err(|_| "Sample start overflow")?,
+                usize::try_from(sample_end.unwrap_or(sample.frames() as u64))
+                    .map_err(|_| "Sample end overflow")?,
+            ),
             PlaybackMode::Loop { start, end } => (
                 usize::try_from(start).map_err(|_| "loop overflow")?,
                 usize::try_from(end).map_err(|_| "loop overflow")?,
             ),
         };
-        if start >= end || end > sample.frames() {
+        if sample_start >= sample_end.unwrap_or(sample.frames() as u64)
+            || start >= end
+            || end > sample.frames()
+            || start < (sample_start as usize)
+            || end as u64 > sample_end.unwrap_or(sample.frames() as u64)
+        {
             return Err("loop outside sample");
         }
         let mut pcm = sample.pcm;

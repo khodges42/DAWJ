@@ -74,6 +74,7 @@ fn pack(p: MixerParameters) -> Result<u64, &'static str> {
 }
 
 struct Controls {
+    deck_peaks: [AtomicU32; 2],
     parameters: AtomicU64,
     output_trim: AtomicU32,
     peak_l: AtomicU32,
@@ -119,6 +120,10 @@ impl MixerControl {
         self.0
             .cue_selection
             .store(selection as u32, Ordering::Release);
+    }
+    /// Decaying pre-fader/pre-crossfader deck peaks, independently observed diagnostics.
+    pub fn deck_peaks(&self) -> [f32; 2] {
+        std::array::from_fn(|d| f32::from_bits(self.0.deck_peaks[d].load(Ordering::Relaxed)))
     }
     pub fn cue_peaks(&self) -> [f32; 2] {
         [
@@ -166,6 +171,7 @@ impl Ramp {
 }
 
 pub struct StereoMixer {
+    deck_peaks: [f32; 2],
     decks: [Renderer; 2],
     controls: MixerControl,
     ramps: [Ramp; 2],
@@ -190,6 +196,7 @@ impl StereoMixer {
             Renderer::new(b, rate, 2, Arc::new(Shared::default()))?,
         ];
         let controls = MixerControl(Arc::new(Controls {
+            deck_peaks: std::array::from_fn(|_| AtomicU32::new(0)),
             parameters: AtomicU64::new(pack(MixerParameters::default())?),
             output_trim: AtomicU32::new(1.0_f32.to_bits()),
             peak_l: AtomicU32::new(0),
@@ -200,6 +207,7 @@ impl StereoMixer {
         }));
         Ok((
             Self {
+                deck_peaks: [0.; 2],
                 decks,
                 controls: controls.clone(),
                 ramps: [Ramp::default(), Ramp::default()],
@@ -296,6 +304,14 @@ impl StereoMixer {
         sources: [[f32; 2]; 2],
         envelopes: [f32; 2],
     ) -> StereoBuses {
+        self.mix_external_preview(sources, envelopes, [0.0; 2])
+    }
+    pub(crate) fn mix_external_preview(
+        &mut self,
+        sources: [[f32; 2]; 2],
+        envelopes: [f32; 2],
+        preview: [f32; 2],
+    ) -> StereoBuses {
         let bits = self.controls.0.parameters.load(Ordering::Acquire);
         let cue = self.controls.0.cue_selection.load(Ordering::Acquire);
         let x = ((bits >> 32) & 65535) as f32 / 65535.0;
@@ -322,10 +338,16 @@ impl StereoMixer {
             };
             let cue_gain = self.cue_ramps[deck].next(selected, self.ramp_frames) * envelope;
             let source = sources[deck];
+            self.deck_peaks[deck] = (source[0].abs().max(source[1].abs()) * envelope)
+                .max(self.deck_peaks[deck] * self.release);
             for (ch, sample) in source.into_iter().enumerate() {
                 buses.master[ch] += sample * master_gain * MASTER_HEADROOM;
                 buses.cue[ch] += sample * cue_gain * MASTER_HEADROOM;
             }
+        }
+        // Audition is explicitly shared master monitoring, independent of deck mixing.
+        for (ch, sample) in preview.into_iter().enumerate() {
+            buses.master[ch] += sample * MASTER_HEADROOM / 8.0;
         }
         let trim = self.output_trim.next(
             f32::from_bits(self.controls.0.output_trim.load(Ordering::Acquire)),
@@ -350,6 +372,9 @@ impl StereoMixer {
     }
 
     pub(crate) fn publish_peaks(&self) {
+        for d in 0..2 {
+            self.controls.0.deck_peaks[d].store(self.deck_peaks[d].to_bits(), Ordering::Relaxed);
+        }
         self.controls
             .0
             .peak_l
@@ -599,6 +624,30 @@ mod tests {
         }
         assert_eq!(run(1), run(1024));
         assert_eq!(run(31), run(8192));
+    }
+
+    #[test]
+    fn deck_meters_are_independent_of_faders_cue_trim_and_decay() {
+        let (mut mixer, control) =
+            StereoMixer::new(source([0.0; 2], 1), source([0.0; 2], 1), 48000).unwrap();
+        control
+            .set(MixerParameters {
+                gain_a: 0.0,
+                gain_b: 1.0,
+                crossfader: 1.0,
+                curve: CrossfadeCurve::EqualPower,
+            })
+            .unwrap();
+        control.set_output_trim_db(36.0).unwrap();
+        mixer.mix_external([[0.4, -0.2], [0.1, 0.05]], [1.0; 2]);
+        mixer.publish_peaks();
+        assert_eq!(control.deck_peaks(), [0.4, 0.1]);
+        for _ in 0..48000 {
+            mixer.mix_external([[0.; 2]; 2], [1.; 2]);
+        }
+        mixer.publish_peaks();
+        assert!(control.deck_peaks().iter().all(|v| *v < 0.0001));
+        assert_eq!(control.cue_peaks(), [0.; 2]);
     }
 
     #[test]

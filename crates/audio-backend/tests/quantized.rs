@@ -1401,3 +1401,114 @@ fn resident_publication_is_bounded_transactional_and_available_to_the_same_callb
         Some(PartId(100))
     );
 }
+
+#[test]
+fn pattern_payload_rests_velocity_pending_revision_and_eof_use_the_real_scheduler() {
+    let (mut e, mut c) = engine(8000);
+    let mut p = parts::pattern::Pattern::default();
+    p.steps[0][1] = 64;
+    p.steps[0][4] = 127;
+    let edit = c
+        .submit(0, 0, Request::Pattern(Some(p)), Quantize::Immediate)
+        .unwrap();
+    c.submit(0, 0, Request::Launch(0), Quantize::Immediate)
+        .unwrap();
+    render(&mut e, 1, 1);
+    assert_eq!(edit.outcome(), Outcome::Applied);
+    assert_eq!(
+        c.performance_state().unwrap().decks[0].slots[0]
+            .pattern
+            .revision,
+        edit.id()
+    );
+    assert!(
+        e.source_position(0, 0).is_none(),
+        "Step zero is a rest, not an extra manual sample"
+    );
+    let mut hits = Vec::new();
+    for _ in 0..3000 {
+        render(&mut e, 1, 1);
+        hits.extend(
+            e.events()
+                .filter(|e| e.origin == event_engine::live::EventOrigin::Pattern)
+                .map(|e| (e.frame.0, e.velocity)),
+        );
+    }
+    assert_eq!(hits, vec![(1000, 64)]);
+    assert!(
+        c.performance_state().unwrap().decks[0].slots[0]
+            .pattern
+            .running
+    );
+    p.steps[0][0] = 100;
+    let next = c
+        .submit(0, 0, Request::Pattern(Some(p)), Quantize::Immediate)
+        .unwrap();
+    render(&mut e, 1, 1);
+    let actual = c.performance_state().unwrap().decks[0].slots[0].pattern;
+    assert_eq!(next.outcome(), Outcome::Queued);
+    assert_eq!(actual.pending_at, Some(BeatTicks(3840)));
+    assert_ne!(actual.revision, next.id());
+    while e.frame().0 <= 16000 {
+        render(&mut e, 53, 53);
+    }
+    let actual = c.performance_state().unwrap().decks[0].slots[0].pattern;
+    assert_eq!(actual.revision, next.id());
+    assert_eq!(next.outcome(), Outcome::Applied);
+    assert_eq!(actual.pending_at, None);
+}
+#[test]
+fn pattern_render_is_partition_invariant_across_tempo_edits_and_stop() {
+    fn run(block: usize) -> (Vec<f32>, Vec<(i64, u8)>) {
+        let (mut e, mut c) = engine(8000);
+        let mut p = parts::pattern::Pattern {
+            bars: 4,
+            ..Default::default()
+        };
+        for bar in &mut p.steps {
+            for (i, v) in bar.iter_mut().enumerate() {
+                if i % 3 == 0 {
+                    *v = 64 + i as u8;
+                }
+            }
+        }
+        c.submit(0, 0, Request::Pattern(Some(p)), Quantize::Immediate)
+            .unwrap();
+        c.submit(0, 0, Request::Launch(0), Quantize::Immediate)
+            .unwrap();
+        let mut samples = Vec::new();
+        let mut events = Vec::new();
+        let mut render_to = |e: &mut LiveEngine, frames: usize| {
+            let mut remaining = frames;
+            while remaining > 0 {
+                let n = remaining.min(block);
+                let mut out = vec![0.0; n * 2];
+                e.render(&mut out, OutputRouting::stereo_master_only());
+                samples.extend(out);
+                events.extend(
+                    e.events()
+                        .filter(|e| e.origin == event_engine::live::EventOrigin::Pattern)
+                        .map(|e| (e.frame.0, e.velocity)),
+                );
+                remaining -= n;
+            }
+        };
+        render_to(&mut e, 8);
+        c.submit(0, 0, Request::Tempo(60.0), Quantize::Beat)
+            .unwrap();
+        render_to(&mut e, 150000);
+        c.submit(0, 0, Request::Stop, Quantize::Immediate).unwrap();
+        render_to(&mut e, 400);
+        assert!(
+            !c.performance_state().unwrap().decks[0].slots[0]
+                .pattern
+                .running
+        );
+        (samples, events)
+    }
+    let a = run(1);
+    let b = run(127);
+    assert_eq!(a.0, b.0);
+    assert_eq!(a.1, b.1);
+    assert!(a.1.len() > 10);
+}

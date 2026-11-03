@@ -18,9 +18,9 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 use timebase::{BeatTicks, TempoChange, TempoMap};
-pub const VERSION: u16 = 1;
+pub const VERSION: u16 = 2;
 pub const MAX_DOCUMENT: usize = 512 * 1024;
-fn id() -> u64 {
+pub(crate) fn id() -> u64 {
     static NEXT: AtomicU64 = AtomicU64::new(0);
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -37,6 +37,22 @@ fn id() -> u64 {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Sound {
+    #[serde(default)]
+    pub variations: [Option<parts::pattern::Pattern>; 4],
+    #[serde(default)]
+    pub variation: Option<u8>,
+    #[serde(default)]
+    pub factory: Option<crate::factory::Reference>,
+    #[serde(default)]
+    pub hints: Option<crate::factory::Hints>,
+    #[serde(default)]
+    pub pattern: Option<parts::pattern::Pattern>,
+    #[serde(default)]
+    pub color: Option<String>,
+    #[serde(default)]
+    pub sample_start: u64,
+    #[serde(default)]
+    pub sample_end: Option<u64>,
     pub id: u64,
     pub name: String,
     pub media: Option<String>,
@@ -50,8 +66,29 @@ pub struct Sound {
     pub rule: Option<Rule>,
 }
 impl Sound {
-    fn empty(slot: usize) -> Self {
+    pub fn variation(&mut self, index: usize, store: bool) -> Result<(), String> {
+        if index >= 4 {
+            return Err("Variation must be 1..4".into());
+        }
+        if store {
+            self.variations[index] = Some(self.pattern.ok_or("Create a pattern first")?);
+        } else {
+            self.pattern =
+                Some(self.variations[index].ok_or("Store a pattern in this variation first")?);
+        }
+        self.variation = Some(index as u8);
+        Ok(())
+    }
+    pub(crate) fn empty(slot: usize) -> Self {
         Self {
+            variations: [None; 4],
+            variation: None,
+            factory: None,
+            hints: None,
+            pattern: None,
+            color: None,
+            sample_start: 0,
+            sample_end: None,
             id: id(),
             name: format!("Part {}", slot + 1),
             media: None,
@@ -114,6 +151,8 @@ impl Default for Settings {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Project {
+    #[serde(default)]
+    pub sample_overrides: std::collections::BTreeMap<String, crate::factory::Hints>,
     pub version: u16,
     pub id: u64,
     pub name: String,
@@ -124,6 +163,7 @@ pub struct Project {
 impl Default for Project {
     fn default() -> Self {
         Self {
+            sample_overrides: Default::default(),
             version: VERSION,
             id: id(),
             name: "Untitled jam".into(),
@@ -169,6 +209,15 @@ impl Project {
         if !name(&self.name) || self.compositions.len() > 8 {
             return Err("Invalid session name or more than eight compositions".into());
         }
+        if self.sample_overrides.len() > 128 {
+            return Err("At most 128 metadata corrections per session".into());
+        };
+        for (k, v) in &self.sample_overrides {
+            if k.len() > 1200 {
+                return Err("Metadata reference too long".into());
+            }
+            v.validate()?;
+        }
         let mut ids = std::collections::HashSet::new();
         for n in std::iter::once(self.id).chain(
             self.compositions
@@ -184,6 +233,37 @@ impl Project {
                 return Err("Invalid composition name".into());
             }
             for p in &c.parts {
+                for variation in p.variations.iter().flatten() {
+                    variation.validate().map_err(str::to_string)?;
+                }
+                if p.variation
+                    .is_some_and(|i| i >= 4 || p.variations[usize::from(i)] != p.pattern)
+                {
+                    return Err("Invalid selected pattern variation".into());
+                }
+                if let Some(r) = &p.factory {
+                    r.validate()?;
+                    if p.media.is_some() {
+                        return Err("Factory and user media references must stay distinct".into());
+                    }
+                }
+                if let Some(h) = &p.hints {
+                    h.validate()?;
+                }
+                if let Some(pattern) = p.pattern {
+                    pattern.validate().map_err(str::to_string)?;
+                    if p.looping {
+                        return Err("Step patterns trigger one-shots; turn Loop off first".into());
+                    }
+                }
+                if p.color.as_ref().is_some_and(|c| {
+                    c.len() != 7
+                        || !c.starts_with('#')
+                        || !c[1..].chars().all(|x| x.is_ascii_hexdigit())
+                }) || p.sample_end.is_some_and(|e| e <= p.sample_start)
+                {
+                    return Err("Invalid color or sample region".into());
+                }
                 if !name(&p.name)
                     || p.media
                         .as_ref()
@@ -261,6 +341,9 @@ impl Project {
         }
         let mut p: Self =
             serde_json::from_slice(&b).map_err(|e| format!("Invalid session JSON: {e}"))?;
+        if p.version == 1 {
+            p.version = VERSION;
+        }
         p.validate()?;
         let base = absolute(path)?
             .parent()
@@ -359,6 +442,41 @@ pub struct Workspace {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
+    Variation {
+        composition: u64,
+        slot: usize,
+        index: usize,
+        store: bool,
+    },
+    Pattern {
+        composition: u64,
+        slot: usize,
+        pattern: Option<parts::pattern::Pattern>,
+    },
+    Factory {
+        composition: u64,
+        slot: usize,
+        reference: crate::factory::Reference,
+    },
+    Correct {
+        reference: crate::factory::Reference,
+        hints: crate::factory::Hints,
+    },
+    Duplicate {
+        composition: u64,
+        deck: usize,
+        name: String,
+    },
+    ExportComposition {
+        composition: u64,
+        path: String,
+    },
+    OpenComposition {
+        deck: usize,
+        path: String,
+    },
+    Undo {},
+    Redo {},
     New {},
     Open {
         path: String,
@@ -393,7 +511,7 @@ pub enum Action {
     Edit {
         composition: u64,
         slot: usize,
-        part: Sound,
+        part: Box<Sound>,
     },
     Demo {},
 }
@@ -404,7 +522,12 @@ pub struct Prepared {
     pub media: Vec<MediaInfo>,
 }
 pub fn prepare(project: &Project, decks: [bool; 2], strict: bool) -> Result<Prepared, String> {
-    prepare_mask(project, std::array::from_fn(|d| [decks[d]; SLOTS]), strict)
+    prepare_mask(
+        project,
+        std::array::from_fn(|d| [decks[d]; SLOTS]),
+        strict,
+        None,
+    )
 }
 /// Decode only new voice definitions. Names/knobs/rules never duplicate resident PCM.
 pub fn prepare_changes(
@@ -413,7 +536,10 @@ pub fn prepare_changes(
     decks: [bool; 2],
     strict: bool,
 ) -> Result<Prepared, String> {
-    let changed = std::array::from_fn(|d| {
+    prepare_mask(project, change_mask(project, before, decks), strict, None)
+}
+pub fn change_mask(project: &Project, before: &Project, decks: [bool; 2]) -> [[bool; SLOTS]; 2] {
+    std::array::from_fn(|d| {
         std::array::from_fn(|s| {
             if !decks[d] {
                 return false;
@@ -427,6 +553,9 @@ pub fn prepare_changes(
                 (Some(a), Some(b)) => {
                     a.id != b.id
                         || a.media != b.media
+                        || a.factory != b.factory
+                        || a.sample_start != b.sample_start
+                        || a.sample_end != b.sample_end
                         || a.looping != b.looping
                         || a.loop_start != b.loop_start
                         || a.loop_end != b.loop_end
@@ -437,13 +566,30 @@ pub fn prepare_changes(
                 _ => true,
             }
         })
-    });
-    prepare_mask(project, changed, strict)
+    })
+}
+pub fn prepare_catalog(
+    project: &Project,
+    before: Option<&Project>,
+    decks: [bool; 2],
+    strict: bool,
+    catalog: &crate::factory::Catalog,
+) -> Result<Prepared, String> {
+    prepare_mask(
+        project,
+        before.map_or_else(
+            || std::array::from_fn(|d| [decks[d]; SLOTS]),
+            |b| change_mask(project, b, decks),
+        ),
+        strict,
+        Some(catalog),
+    )
 }
 fn prepare_mask(
     project: &Project,
     changed: [[bool; SLOTS]; 2],
     strict: bool,
+    catalog: Option<&crate::factory::Catalog>,
 ) -> Result<Prepared, String> {
     project.validate()?;
     let mut result = Prepared {
@@ -466,12 +612,29 @@ fn prepare_mask(
             if !mask[slot] {
                 continue;
             }
-            let Some(path) = &p.media else { continue };
+            if p.media.is_none() && p.factory.is_none() {
+                continue;
+            }
+            let source = if let Some(r) = &p.factory {
+                catalog
+                    .ok_or_else(|| format!("Factory resources unavailable: {}", r.key()))
+                    .and_then(|c| c.resolve(r))
+            } else {
+                Ok(PathBuf::from(p.media.as_deref().unwrap_or_default()))
+            };
+            let path = source.as_ref().map_or_else(
+                |_| {
+                    p.factory
+                        .as_ref()
+                        .map_or(String::new(), |r| format!("factory:{}", r.key()))
+                },
+                |p| p.display().to_string(),
+            );
             let mut info = MediaInfo {
                 deck: d,
                 slot,
                 path: path.clone(),
-                filename: Path::new(path)
+                filename: Path::new(&path)
                     .file_name()
                     .unwrap_or_default()
                     .to_string_lossy()
@@ -484,7 +647,8 @@ fn prepare_mask(
             };
             let prepared = (|| {
                 let asset = AssetId(id());
-                let (sample, metadata) = LoadedSample::prepare_file(asset, Path::new(path), 48000)?;
+                let resolved = source.map_err(|e| e.to_string())?;
+                let (sample, metadata) = LoadedSample::prepare_file(asset, &resolved, 48000)?;
                 info.duration = metadata.frames as f64 / f64::from(metadata.sample_rate);
                 info.sample_rate = metadata.sample_rate;
                 info.channels = metadata.channels;
@@ -496,7 +660,10 @@ fn prepare_mask(
                         mode: if p.looping {
                             PlaybackMode::Loop {
                                 start: p.loop_start,
-                                end: p.loop_end.unwrap_or(metadata.prepared_frames as u64),
+                                end: p
+                                    .loop_end
+                                    .or(p.sample_end)
+                                    .unwrap_or(metadata.prepared_frames as u64),
                             }
                         } else {
                             PlaybackMode::OneShot
@@ -507,8 +674,15 @@ fn prepare_mask(
                         quantum: BeatTicks(p.quantum_ticks),
                     },
                 };
-                SampleVoice::prepare(part, sample, 48000, BoundaryPolicy::Fade { frames: 64 })
-                    .map_err(str::to_string)
+                SampleVoice::prepare_region(
+                    part,
+                    sample,
+                    48000,
+                    BoundaryPolicy::Fade { frames: 64 },
+                    p.sample_start,
+                    p.sample_end,
+                )
+                .map_err(str::to_string)
             })();
             match prepared {
                 Ok(v) => {
@@ -567,6 +741,25 @@ pub fn install(
     {
         return Err("Destination deck is active, pending or has installed rules".into());
     }
+    let mut patterns = Vec::new();
+    for (d, affected) in decks.into_iter().enumerate() {
+        if affected {
+            for slot in 0..SLOTS {
+                let next = project.decks[d]
+                    .and_then(|n| project.composition(n).ok())
+                    .and_then(|c| c.parts[slot].pattern);
+                if next.is_some()
+                    || co
+                        .snapshot
+                        .is_some_and(|s| s.decks[d].slots[slot].pattern.bars.is_some())
+                {
+                    patterns.push((d, slot, next));
+                }
+            }
+        }
+    }
+    co.check_pattern_capacity(patterns.len())
+        .map_err(str::to_string)?;
     let indices = co.install_voices(prepared.voices).map_err(str::to_string)?;
     for (d, affected) in decks.into_iter().enumerate() {
         if affected {
@@ -602,6 +795,7 @@ pub fn install(
             });
         }
     }
+    co.set_patterns(&patterns).map_err(str::to_string)?;
     Ok(prepared.media)
 }
 pub fn configure(co: &mut Coordinator, s: &Settings) -> Result<(), String> {

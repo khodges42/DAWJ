@@ -34,6 +34,7 @@ pub struct PendingAction {
 }
 #[derive(Clone, Copy, Debug)]
 pub struct PartState {
+    pub pattern: event_engine::live::PatternStatus,
     pub lifecycle: SlotState,
     pub active: Option<PartId>,
     pub pending: Option<PendingAction>,
@@ -55,6 +56,7 @@ pub struct DeckState {
 }
 #[derive(Clone, Copy, Debug)]
 pub struct PerformanceState {
+    pub preview: Option<PreviewState>,
     pub transport: TransportState,
     pub generation: u64,
     /// Next unrendered frame. Snapshot describes state after the preceding block.
@@ -66,8 +68,13 @@ pub struct PerformanceState {
     pub failed: bool,
     pub decks: [DeckState; 2],
 }
-const HEADER: usize = 11;
-const SLOT_WORDS: usize = 18;
+#[derive(Clone, Copy, Debug)]
+pub struct PreviewState {
+    pub part: PartId,
+    pub position: u64,
+}
+const HEADER: usize = 13;
+const SLOT_WORDS: usize = 25;
 const WORDS: usize = HEADER + 2 * SLOTS * SLOT_WORDS;
 pub(crate) struct Publication {
     generation: AtomicU64,
@@ -94,6 +101,8 @@ impl Publication {
             s.decks[1].epoch.0 as u64,
             s.decks[0].phrase_length.0 as u64,
             s.decks[1].phrase_length.0 as u64,
+            s.preview.map_or(0, |p| p.part.0),
+            s.preview.map_or(u64::MAX, |p| p.position),
         ]);
         for d in 0..2 {
             for i in 0..SLOTS {
@@ -139,6 +148,16 @@ impl Publication {
                     ]);
                 }
                 w[n + 17] = p.nominal_length.map_or(0, |t| t.0 as u64);
+                let q = p.pattern;
+                w[n + 18..n + 25].copy_from_slice(&[
+                    q.revision,
+                    q.pending_revision.unwrap_or(0),
+                    q.pending_at.map_or(u64::MAX, |t| t.0 as u64),
+                    u64::from(q.bars.unwrap_or(0)) | ((q.running as u64) << 8),
+                    u64::from(q.step.unwrap_or(255)),
+                    q.last_trigger.map_or(u64::MAX, |t| t.0 as u64),
+                    q.triggers,
+                ]);
             }
         }
         // All accesses are SC: a reader accepting equal even generations cannot
@@ -159,6 +178,10 @@ impl Publication {
             return None;
         }
         Some(PerformanceState {
+            preview: (w[12] != u64::MAX).then_some(PreviewState {
+                part: PartId(w[11]),
+                position: w[12],
+            }),
             transport: if w[3] != 0 {
                 TransportState::Failed
             } else if w[0] == 0 {
@@ -181,6 +204,18 @@ impl Publication {
                 slots: std::array::from_fn(|i| {
                     let n = HEADER + (d * SLOTS + i) * SLOT_WORDS;
                     PartState {
+                        pattern: event_engine::live::PatternStatus {
+                            revision: w[n + 18],
+                            pending_revision: (w[n + 19] != 0).then_some(w[n + 19]),
+                            pending_at: (w[n + 20] != u64::MAX)
+                                .then_some(BeatTicks(w[n + 20] as i64)),
+                            bars: ((w[n + 21] & 255) != 0).then_some((w[n + 21] & 255) as u8),
+                            running: w[n + 21] & 256 != 0,
+                            step: (w[n + 22] != 255).then_some(w[n + 22] as u8),
+                            last_trigger: (w[n + 23] != u64::MAX)
+                                .then_some(BeatTicks(w[n + 23] as i64)),
+                            triggers: w[n + 24],
+                        },
                         lifecycle: match w[n] & 255 {
                             0 => SlotState::Stopped,
                             1 => SlotState::QueuedStart,

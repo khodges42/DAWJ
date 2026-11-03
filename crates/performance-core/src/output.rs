@@ -27,16 +27,24 @@ impl OutputSession {
         cue: bool,
         project: &crate::session::Project,
     ) -> Result<(Self, Vec<crate::session::MediaInfo>), String> {
-        let prepared = crate::session::prepare(project, [true; 2], false)?;
+        Self::open_project_catalog(device, cue, project, None)
+    }
+    pub fn open_project_catalog(
+        device: &OutputDevice,
+        cue: bool,
+        project: &crate::session::Project,
+        catalog: Option<&crate::factory::Catalog>,
+    ) -> Result<(Self, Vec<crate::session::MediaInfo>), String> {
+        let prepared = if let Some(c) = catalog {
+            crate::session::prepare_catalog(project, None, [true; 2], false, c)?
+        } else {
+            crate::session::prepare(project, [true; 2], false)?
+        };
         let (engine, control, mixer) = crate::session::engine(project)?;
         let mut coordinator = Coordinator::new(control, mixer, cue);
         let media = crate::session::install(&mut coordinator, project, prepared, [true; 2])?;
         crate::session::configure(&mut coordinator, &project.settings)?;
-        // Queue initial targets before device enumeration/open can stall. At most
-        // sixteen parameter commands fit the existing 32-entry engine queue.
-        for _ in 0..4 {
-            coordinator.flush_parameters();
-        }
+        coordinator.initial_parameters().map_err(str::to_string)?;
         Ok((
             Self::open_prepared(device, cue, engine, coordinator)?,
             media,
