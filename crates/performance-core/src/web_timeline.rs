@@ -80,7 +80,9 @@ impl Projection {
             phrase_start: w.phrase_start.0,
             phrase_length: w.phrase_length.0,
             playhead: (s.beat >= w.start && s.beat <= w.end).then(|| w.fraction(s.beat)),
-            zoom_bars: view.zoom_bars,
+            // The window is capped by the actual engine phrase. Report what is
+            // displayed, rather than an eight-bar request over a four-bar phrase.
+            zoom_bars: ((w.end.0 - w.start.0) / timeline::BAR) as u8,
             follow: view.follow,
             grid: (w.start.0..=w.end.0)
                 .step_by(960)

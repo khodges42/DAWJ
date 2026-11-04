@@ -42,7 +42,7 @@ export class ContentPanel {
   open(deck=this.deck,slot=this.slot){this.deck=deck;this.slot=slot;this.signature='';this.openDialog('content');this.update(this.getState())}
   update(s){
     const w=s.session;if(!w)return;const $=this.$;
-    $('session-open').textContent='Session / sounds'+(w.dirty?' *':'');$('session-open').title=w.demo?'Supplied demo':w.project.name;
+    $('session-open').textContent='Session'+(w.dirty?' *':'');$('session-open').title=w.demo?'Supplied demo':w.project.name;
     if(!$('content').open)return;
     $('jam-path').textContent=w.demo?'Supplied demonstration':w.path??'Not saved yet';$('jam-status').textContent=(w.busy?'Preparing... ':'')+w.message;
     $('jam-deck').value=this.deck;$('jam-slot').value=this.slot;

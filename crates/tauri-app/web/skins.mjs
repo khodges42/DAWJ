@@ -48,9 +48,14 @@ export class SkinManager{
       this.timer=this.scheduleExpiry(()=>this.cancel());this.status('Live preview; not saved until Keep.');
     };this.serial=this.serial.catch(()=>{}).then(task);return this.serial;
   }
+  setWorkspace(workspace){
+    if(!['browse','performance','extended'].includes(workspace))throw Error('Unknown workspace');
+    const next={...this.committed,workspace};
+    this.store.savePreferences(next);this.committed=next;this.prefs={...this.prefs,workspace};
+  }
   keep(){
     if(!this.previewing)return;
-    try{const users=[...this.skins].filter(([id])=>id.startsWith('user:')).map(([,s])=>s);this.store.saveLibrary(users);this.store.savePreferences(this.prefs);this.committed={...this.prefs};this.hidePreview();this.status('Skin and accessibility settings saved.')}
+    try{this.prefs={...this.prefs,workspace:this.committed.workspace};const users=[...this.skins].filter(([id])=>id.startsWith('user:')).map(([,s])=>s);this.store.saveLibrary(users);this.store.savePreferences(this.prefs);this.committed={...this.prefs};this.hidePreview();this.status('Skin and accessibility settings saved.')}
     catch(e){const message='Skin was not saved: '+e.message;void this.cancel().finally(()=>this.status(message))}
   }
   async restore(){try{await this.paint(this.committed?.selected??'bundled:dark',this.committed??DEFAULT_PREFERENCES)}catch{this.style.textContent='';this.prefs={...DEFAULT_PREFERENCES};this.committed={...this.prefs};await this.paint('bundled:dark',this.prefs)}}
@@ -95,5 +100,5 @@ export class SkinPanel{
   refresh(selected=this.manager.current){const $=this.$;$('skin-select').replaceChildren();for(const[id,skin]of this.manager.skins){const option=document.createElement('option');option.value=id;option.textContent=skin.metadata.name+(id.startsWith('user:')?' (user)':'');$('skin-select').append(option)}$('skin-select').value=selected;
     const skin=this.manager.skins.get(selected);$('skin-css').value=skin?.css??'';$('skin-name').value=skin?.metadata.name??'';$('skin-font-scale').value=this.manager.prefs.fontScale;$('skin-contrast').checked=this.manager.prefs.enhancedContrast;$('skin-motion').checked=this.manager.prefs.reducedMotion;
   }
-  async preview(){try{const $=this.$;await this.manager.preview($('skin-select').value,{version:1,selected:$('skin-select').value,fontScale:Number($('skin-font-scale').value),enhancedContrast:$('skin-contrast').checked,reducedMotion:$('skin-motion').checked});$('skins').close()}catch(e){this.message(e.message)}}
+  async preview(){try{const $=this.$;await this.manager.preview($('skin-select').value,{version:1,workspace:this.manager.committed.workspace,selected:$('skin-select').value,fontScale:Number($('skin-font-scale').value),enhancedContrast:$('skin-contrast').checked,reducedMotion:$('skin-motion').checked});$('skins').close()}catch(e){this.message(e.message)}}
 }

@@ -197,8 +197,51 @@ fn jam_options() -> Result<Option<serde_json::Value>, String> {
         return Err("Jam smoke fixtures must be in a fresh target subdirectory".into());
     }
     Ok(Some(
-        serde_json::json!({"phase":phase,"path":root.join("session.dawj.json").display().to_string(),"audio":[root.join("my-percussion.wav").display().to_string(),root.join("my-tone.wav").display().to_string()]}),
+        serde_json::json!({"milestone":std::env::var("DAWJ_JAM_MILESTONE").unwrap_or_else(|_|"1".into()),"phase":phase,"path":root.join("session.dawj.json").display().to_string(),"audio":[root.join("my-percussion.wav").display().to_string(),root.join("my-tone.wav").display().to_string()]}),
     ))
+}
+/// Explicit native test capture of this application's own window only.
+#[tauri::command]
+async fn jam_capture(app: tauri::AppHandle, name: String) -> Result<(), String> {
+    if !smoke_enabled()
+        || name.len() > 48
+        || name.is_empty()
+        || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
+    {
+        return Err("Invalid native smoke capture".into());
+    }
+    jam_options()?.ok_or("Jam smoke is not active")?;
+    let root = std::path::PathBuf::from(std::env::var("DAWJ_JAM_ROOT").map_err(|e| e.to_string())?);
+    let destination = root.join(format!("{name}.png"));
+    let script =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts/capture_window.ps1");
+    let window = app
+        .get_webview_window("main")
+        .ok_or("Main window unavailable")?;
+    window.show().map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut command = std::process::Command::new("powershell");
+        command
+            .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
+            .arg(script)
+            .arg("-ProcessId")
+            .arg(std::process::id().to_string())
+            .arg("-Destination")
+            .arg(destination);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(0x08000000);
+        }
+        let output = command.output().map_err(|e| e.to_string())?;
+        if output.status.success() {
+            Ok(())
+        } else {
+            Err(String::from_utf8_lossy(&output.stderr).into_owned())
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 #[tauri::command]
 fn smoke_enabled() -> bool {
@@ -222,9 +265,21 @@ fn report(app: tauri::AppHandle, metrics: serde_json::Value) -> Result<(), Strin
     Ok(())
 }
 fn main() {
-    let mut service = Service::spawn().expect("start application control worker");
     tauri::Builder::default()
-        .manage(service.client())
+        .setup(|app|{
+            // Scripted DOM gestures remain testable without a visible capture
+            // window stealing focus or accepting incidental desktop input.
+            if std::env::args().any(|a| a == "--jam-smoke") {
+                let window=app.get_webview_window("main").ok_or("Main window unavailable")?;
+                window.set_focusable(false)?;
+                window.set_ignore_cursor_events(true)?;
+            }
+            let mut roots=vec![app.path().resource_dir()?.join("resources/samples")];
+            // Developer checkout fallback is compile-time rooted, never CWD dependent.
+            roots.push(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../resources/samples"));
+            let service=Service::spawn_factory(roots)?;
+            app.manage(service.client());app.manage(std::sync::Mutex::new(service));Ok(())
+        })
         .on_window_event(|window,event|{
             if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop{paths,position,..})=event {
                 // One selected slot per drop; no file I/O here.
@@ -254,6 +309,7 @@ fn main() {
             request,
             pick_local_file,
             jam_options,
+            jam_capture,
             smoke_enabled,
             report,
             skin_startup,
@@ -265,9 +321,7 @@ fn main() {
         ])
         .build(tauri::generate_context!())
         .expect("Tauri runtime")
-        .run(move |_, event| {
-            if matches!(event, tauri::RunEvent::Exit) {
-                service.shutdown();
-            }
+        .run(move |app, event| {
+            if matches!(event, tauri::RunEvent::Exit) && let Ok(mut service)=app.state::<std::sync::Mutex<Service>>().lock(){service.shutdown();}
         });
 }

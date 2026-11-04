@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
    Product safety boundary. Imported CSS rejects !important and cannot override these minima. */
 body{position:static!important;transform:none!important;visibility:visible!important;opacity:1!important;overflow-x:hidden!important;overflow-y:auto!important}
-#decks{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}
+#decks{display:grid!important;grid-template-columns:minmax(0,1fr) 236px minmax(0,1fr)!important}
 .deck,.slots,article,.actions,#transport,#inspector,footer,body>header{position:static!important;transform:none!important;visibility:visible!important;opacity:1!important;overflow:visible!important}
-.deck{min-width:0!important}article{grid-template-rows:minmax(var(--control-height),auto) minmax(calc(27px * var(--font-scale)),auto) minmax(var(--control-height),auto) minmax(24px,auto)!important}
+.deck{min-width:0!important}article{min-width:0!important}
 .deck button,.deck input,#transport button,#transport input,#transport select,#inspector button,#inspector input,#inspector select,#phrase-panel button,#phrase-panel input,#phrase-panel select,footer input,body>header button,body>header select{
  visibility:visible!important;position:static!important;transform:none!important;clip-path:none!important;pointer-events:auto!important;min-width:28px!important;min-height:var(--control-height)!important;font-size:max(12px,var(--ui-font-size))!important;line-height:1.2!important;color:var(--color-text)!important;background-color:var(--color-raised)!important
 }
@@ -17,3 +17,9 @@ html[data-enhanced-contrast=true] small{color:var(--color-text)!important;opacit
 html[data-reduced-motion=true] *,html[data-reduced-motion=true] *::before,html[data-reduced-motion=true] *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 body[data-theme=light]{color-scheme:light}body[data-theme=dark],body[data-theme=high-contrast]{color-scheme:dark}
 @media(max-width:1179px){.slots{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+[hidden]{display:none!important}
+#mixer button,#mixer input,#workspace-bar button,#application-menu summary{min-height:32px!important;min-width:28px!important}
+#mixer input[type=range]{width:100%!important;min-height:28px!important}
+@media(max-width:1100px){#decks{grid-template-columns:minmax(0,1fr) 208px minmax(0,1fr)!important}}
+@media(max-width:850px){#decks{grid-template-columns:minmax(0,1fr) 184px minmax(0,1fr)!important}.slots{grid-template-columns:1fr!important}}

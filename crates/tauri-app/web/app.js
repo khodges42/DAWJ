@@ -2,12 +2,15 @@
 import {Transport} from './transport.mjs';
 import {Keyboard,HELP} from './keyboard.mjs';
 import {address,gestureTarget,partAction,contextValue,contextAction,slotView,meterDb,timelineHits,nearestMarker} from './performance.mjs';
+import {Workspace,shortcutCommand} from './workspace.mjs';
+import {Sketch} from './sketch.mjs';
 import {ContentPanel} from './content.mjs';
 import {MidiPanel} from './midi.mjs';
 import {SkinManager,SkinPanel} from './skins.mjs';
 import {browserStorage} from './skin-store.mjs';
 const $=id=>document.getElementById(id),invoke=window.__TAURI__.core.invoke;
-let state={online:false},errorText='',lastMode='Volume',hits=[],markerSignature='',dragging=new Map(),midi,content;
+let state={online:false},errorText='',lastMode='Volume',hits=[],markerSignature='',dragging=new Map(),midi,content,sketch,workspace;
+let canAutoStart=false;
 function error(e){errorText=String(e);$('error').textContent=errorText}
 const t=new Transport(invoke,show,error),keyboard=new Keyboard();
 const run=(a,source='Gui')=>{errorText='';$('error').textContent='';return t.call(a,source).catch(e=>{error(e);throw e})};
@@ -26,7 +29,8 @@ for(let deck=0;deck<2;deck++){
   const slots=document.createElement('div');slots.className='slots';
   for(let slot=0;slot<8;slot++){
     const card=document.createElement('article');card.id=`slot-${deck}-${slot}`;
-    const identity=button(`${deck?'B':'A'}${slot+1}`,()=>state.online?fire({kind:'select_part',deck,slot}):content.open(deck,slot));identity.className='identity';identity.id=`select-${deck}-${slot}`;identity.dataset.live='';
+    const identity=button(`${deck?'B':'A'}${slot+1}`,()=>{workspace?.select(deck,slot);if(sketch?.visible){sketch.select(deck,slot);if(state.online)fire({kind:'select_part',deck,slot})}else if(state.online)fire({kind:'select_part',deck,slot});else {void workspace?.edit(deck,slot).catch(error)}});identity.className='identity';identity.id=`select-${deck}-${slot}`;identity.dataset.live='';
+    const swatch=document.createElementNS('http://www.w3.org/2000/svg','svg');swatch.setAttribute('width','10');swatch.setAttribute('height','10');swatch.setAttribute('aria-hidden','true');const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');dot.setAttribute('cx','5');dot.setAttribute('cy','5');dot.setAttribute('r','4');swatch.append(dot);const partLabel=document.createElement('span');partLabel.className='part-label';partLabel.textContent=identity.textContent;identity.replaceChildren(swatch,partLabel);
     const status=document.createElement('div');status.className='state';
     const actions=document.createElement('div');actions.className='actions';
     for(const [action,glyph]of [['Launch','▶'],['Stop','■'],['Cancel','×'],['Retrigger','↻']]){
@@ -44,9 +48,16 @@ for(let deck=0;deck<2;deck++){
   }
   section.append(slots);$('decks').append(section);
 }
+$('decks').replaceChildren($('deck-0'),$('mixer'),$('deck-1'),$('sketch'));
+
 document.querySelectorAll('input[type=range]:not(.context)').forEach(e=>{e.addEventListener('pointerdown',()=>dragging.set(e,{target:address(state)}));for(const event of ['pointerup','pointercancel','lostpointercapture'])e.addEventListener(event,()=>dragging.delete(e))});
 midi=new MidiPanel(t,error);
 content=new ContentPanel(t,()=>state,invoke,openDialog,error);
+async function ensureOutput(){if(state.online)return;if(state.decks)throw Error('Output failed or starting; stop/restart it first');if(!canAutoStart)throw Error('Select and start an intended audio output before audition');await run({kind:'start',device:Number($('device').value),cue:$('routing').value==='cue',phrase_bars:Number($('phrase').value)});const end=performance.now()+7000;while(performance.now()<end){await t.call({kind:'snapshot'});if(state.online)return;await new Promise(r=>setTimeout(r,20))}throw Error('Audio output did not publish a fresh state')}
+sketch=new Sketch({t,getState:()=>state,invoke,ensureOutput,onError:error,openSession:()=>openDialog('content')});
+bind('view-toggle',()=>workspace.toggleSketch());
+$('device').onchange=()=>{canAutoStart=true};
+
 bind('session-open',()=>{const p=address(state);content.open(p.deck,p.slot)});
 try {
   await window.__TAURI__.event.listen('dawj-audio-drop',event=>{
@@ -56,6 +67,7 @@ try {
 } catch(e){error('Audio drag/drop unavailable: '+e)}
 async function scan(){
   const list=await run({kind:'devices'});$('device').replaceChildren();for(const device of list){const option=document.createElement('option');option.value=device.id;option.textContent=device.name;$('device').append(option)}
+  const preferred=list.filter(d=>d.name.toLowerCase().includes('hyperx'));canAutoStart=preferred.length===1;if(canAutoStart)$('device').value=preferred[0].id;
   if(!list.length)error('No audio output device. Connect one and Rescan.');
 }
 bind('rescan',scan);
@@ -93,8 +105,11 @@ bind('help-open',()=>openDialog('help'));$('bindings').textContent=HELP;
 bind('midi-open',async()=>{openDialog('settings');await midi.open()});
 document.querySelectorAll('[data-close]').forEach(e=>e.onclick=()=>$(e.dataset.close).close());
 for(const type of ['keydown','keyup'])window.addEventListener(type,e=>{
-  const editing=!!document.querySelector('dialog[open]')||!!e.target.isContentEditable||!!e.target.closest?.('input,textarea,select')||e.composedPath().some(n=>n?.hasAttribute?.('data-skin-ui'));
+  const shortcut=shortcutCommand(e);
+  if(shortcut&&!(document.querySelector('dialog[open]')&&!['palette','file.save','file.save-as'].includes(shortcut))){if(['edit.undo','edit.redo'].includes(shortcut)&&e.target.closest?.('input,textarea,[contenteditable=true]'))return;e.preventDefault();void workspace.execute(shortcut).catch(error);return}
+  const editing=!!document.querySelector('dialog[open]')||!!e.target.isContentEditable||!!e.target.closest?.('input,textarea,select,#sketch')||e.composedPath().some(n=>n?.hasAttribute?.('data-skin-ui'));
   if(type==='keydown'&&e.key==='Escape'&&document.querySelector('dialog[open]'))return;
+  if(type==='keydown'&&sketch?.visible&&(e.ctrlKey||e.metaKey)&&!e.target.closest?.('input,textarea,[contenteditable=true]')&&['z','y'].includes(e.key.toLowerCase())){e.preventDefault();void sketch.send({kind:e.key.toLowerCase()==='y'||e.shiftKey?'redo':'undo'}).catch(error);return}
   const commands=keyboard.handle(e,editing);if(commands.length)e.preventDefault();
   for(const c of commands){if(c.ui==='help'){if($('help').open)$('help').close();else openDialog('help')}else if(c.kind==='release_modes')void t.release(c.source);else{if(c.kind==='mode'||c.kind==='hold_mode')t.dropContinuous();fire(c,'Keyboard')}}
 });
@@ -102,6 +117,7 @@ for(const type of ['keydown','keyup'])window.addEventListener(type,e=>{
 const skinManager=new SkinManager(browserStorage(),message=>{$('skin-status').textContent=message;$('skin-status').title=message;if(/rejected|unsafe|not saved|unavailable/i.test(message))error(message)});
 try{await skinManager.initialize(await invoke('skin_startup'))}catch(e){error('Skin fallback: '+e.message);skinManager.reset()}
 const skinPanel=new SkinPanel(skinManager);
+workspace=new Workspace({getState:()=>state,run,release,sketch,skinManager,onError:error,openDialog});
 bind('skins-open',()=>{$('settings').close();skinPanel.refresh();openDialog('skins')});
 document.addEventListener('dawj-skin-applied',drawTimeline);
 function show(s){
@@ -121,11 +137,12 @@ function show(s){
     $('deck-select-'+deck).setAttribute('aria-pressed',s.selection?.deck===deck);$('deck-select-'+deck).disabled=!s.online;
     setValue('deck-gain-'+deck,s.deck_gain?.[deck]??1);$('cue-'+deck).disabled=!s.online||!s.cue_available;$('cue-'+deck).setAttribute('aria-pressed',s.cue?.[deck]??false);
     for(let slot=0;slot<8;slot++){
-      const p=s.decks?.[deck]?.[slot],v=slotView(s,deck,slot),card=$(`slot-${deck}-${slot}`);card.dataset.active=v.active;card.dataset.selected=v.selected;
-      card.querySelector('.identity').textContent=`${deck?'B':'A'}${slot+1} ${p?.name??composition?.parts[slot]?.name??`Part ${slot+1}`}`;
+      const p=s.decks?.[deck]?.[slot],v=slotView(s,deck,slot),card=$(`slot-${deck}-${slot}`);card.dataset.active=v.active;card.dataset.selected=v.selected;card.dataset.queued=!!v.pending;
+      card.querySelector('.part-label').textContent=`${deck?'B':'A'}${slot+1} ${p?.name??composition?.parts[slot]?.name??`Part ${slot+1}`}`;
+      card.querySelector('circle').setAttribute('fill',composition?.parts[slot]?.color??'currentColor');card.dataset.sketchEditing=!!sketch?.visible&&sketch.deck===deck&&sketch.slot===slot;
       card.querySelector('.identity').disabled=false;card.querySelector('[data-action=Launch]').disabled=!s.online||p?.available===false;
       card.querySelector('.identity').setAttribute('aria-pressed',v.selected);
-      const unavailable=s.session?.media.find(m=>m.deck===deck&&m.slot===slot)?.error;const label=(unavailable?'UNAVAILABLE':p?.available===false?'EMPTY':v.state)+(v.pending?` @ ${Math.floor(v.pending.tick/3840)+1}.${Math.floor(v.pending.tick/960)%4+1}`:'');card.querySelector('.state').textContent=label;card.querySelector('.state').title=label+(unavailable?' | '+unavailable:'')+' · '+v.feedback;
+      const unavailable=s.session?.media.find(m=>m.deck===deck&&m.slot===slot)?.error;const label=(unavailable?'UNAVAILABLE':!p?(composition?.parts[slot]?.factory||composition?.parts[slot]?.media?'LOADED | output closed':'EMPTY'):p.available===false?'EMPTY':v.state)+(v.pending?` @ ${Math.floor(v.pending.tick/3840)+1}.${Math.floor(v.pending.tick/960)%4+1}`:'');card.querySelector('.state').textContent=label;card.querySelector('.state').title=label+(unavailable?' | '+unavailable:'')+' · '+v.feedback;
       card.querySelector('[data-action=Cancel]').disabled=!s.online||!v.pending;card.querySelector('[data-action=Retrigger]').disabled=!s.online||!v.active;
       const control=card.querySelector('.context');if(!dragging.has(control))control.value=contextValue(p,mode);control.setAttribute('aria-label',`${deck?'B':'A'}${slot+1} ${mode}`);control.title=mode==='Volume'?`Gain ${(p?.gain??1).toFixed(2)}`:`Cutoff ${p?.cutoff_hz==null?'bypassed':Math.round(p.cutoff_hz)+' Hz'}`;
     }
@@ -142,21 +159,26 @@ function show(s){
   setValue('cross',s.crossfader??.5);setValue('trim',s.output_trim_db??36);$('trim-value').textContent=s.output_trim_db??36;
   $('cue-status').textContent=s.cue_available?'Master 1–2 / cue 3–4; physical isolation unverified':'Stereo master only · no isolated headphone cue';
   for(const [i,channel]of ['l','r'].entries()){$('meter-'+channel).value=s.peaks?.[i]??0;$('peak-'+channel).textContent=meterDb(s.peaks?.[i]??0)}
-  $('error').textContent=errorText;$('notice').textContent=s.failed?'Audio stream failed. Stop output, rescan, and start a fresh session.':(s.notice??'')+(s.session?.message?' | '+s.session.message:'');
+  $('error').textContent=errorText;
+  const diagnostic=workspace?.layout==='extended'&&!sketch?.visible,contentMessage=s.session?.message??'';
+  $('notice').textContent=s.failed?'Audio stream failed. Close output, rescan, and start again.':diagnostic?(s.notice??'')+(contentMessage?' | '+contentMessage:''):s.session?.busy?'Preparing sounds...':contentMessage.startsWith('Content unchanged:')?contentMessage:(s.notice&&!/^Command #/.test(s.notice)?s.notice+' | ':'')+(s.session?.dirty?'Unsaved session changes.':'Ready.');
   $('midi-badge').textContent=`MIDI ${s.midi?.input??'no input'} · ${s.midi_notice??''}`;
   for(const deck of [0,1])$('fill-'+(deck?'b':'a')).disabled=!s.online||s.decks?.[deck]?.[7]?.available===false;
   for(const deck of [0,1])$('cancel-fill-'+(deck?'b':'a')).disabled=!s.online||!s.decks?.[deck]?.[7]?.pending;
   if(s.timeline){setValue('zoom',s.timeline.zoom_bars);$('follow').checked=s.timeline.follow;$('phrase-position').textContent=s.timeline.phrase_position.map((p,i)=>`${i?'B':'A'} ${p[0]}/${p[1]}`).join(' · ')}
   if(!s.decks&&s.session&&!s.session.demo){setValue('bpm',s.session.project.settings.bpm);setValue('phrase',s.session.project.settings.phrase_bars)}
-  drawTimeline();midi?.update(s);content?.update(s);
+  workspace?.update(s);drawTimeline();midi?.update(s);content?.update(s);sketch?.update(s);
 }
 function drawTimeline(){
+  if($('phrase-panel').hidden)return;
   const canvas=$('timeline'),r=canvas.getBoundingClientRect(),scale=devicePixelRatio||1;
   if(canvas.width!==Math.round(r.width*scale)||canvas.height!==Math.round(r.height*scale)){canvas.width=Math.round(r.width*scale);canvas.height=Math.round(r.height*scale)}
   const ctx=canvas.getContext('2d');ctx.setTransform(scale,0,0,scale,0,0);ctx.clearRect(0,0,r.width,r.height);
   const colors=getComputedStyle(document.body),fg=colors.color,a=colors.getPropertyValue('--accent'),b=colors.getPropertyValue('--b');ctx.font=`${Math.max(11,12*parseFloat(colors.getPropertyValue('--font-scale')||'1'))}px ${colors.fontFamily}`;ctx.fillStyle=fg;
   const projection=state.timeline,left=116,right=r.width-12,laneHeight=(r.height-28)/3;hits=timelineHits(projection,r.width,r.height,address(state));
-  if(!projection){ctx.fillText('Start output for the repeating musical timeline',12,36);return}
+  if(!projection){ctx.fillText('Loaded material | start output for musical position',12,16);for(let d=0;d<2;d++){const c=state.session?.project.compositions.find(c=>c.id===state.session.project.decks[d]);ctx.fillStyle=d?b:a;ctx.fillText(`${d?'B':'A'} | ${c?.name??'Empty deck'}`,12,42+d*24)}return}
+  // Loaded-material bands are metadata, never invented waveforms or scheduled events.
+  for(let d=0;d<2;d++){const c=state.session?.project.compositions.find(c=>c.id===state.session.project.decks[d]);const parts=c?.parts.filter(p=>p.factory||p.media)??[];if(parts.length){ctx.fillStyle=d?b:a;ctx.globalAlpha=.12;ctx.fillRect(left,28+d*laneHeight,right-left,laneHeight-2);ctx.globalAlpha=1;ctx.fillStyle=fg;ctx.fillText(`${parts.length} loaded | ${parts.filter(p=>p.pattern).length} patterns`,left+5,28+d*laneHeight+12)}}
   for(const line of projection.grid){const x=left+line.fraction*(right-left);ctx.strokeStyle=colors.getPropertyValue('--color-grid');ctx.globalAlpha=line.bar!=null?1:.35;ctx.beginPath();ctx.moveTo(x,20);ctx.lineTo(x,r.height);ctx.stroke();ctx.globalAlpha=1;if(line.bar!=null){ctx.fillStyle=fg;ctx.fillText(String(line.bar),x+2,13)}}
   for(let lane=0;lane<3;lane++){ctx.fillStyle=lane===0?a:lane===1?b:fg;ctx.fillText(lane<2?`${lane?'B':'A'} · ${projection.activity[lane]} playing`:`${address(state).deck?'B':'A'}${address(state).slot+1} selected`,3,28+(lane+.5)*laneHeight+4)}
   for(const m of hits){const width=m.width??24;ctx.fillStyle=m.deck===0?a:b;ctx.globalAlpha=m.projected?.55:1;ctx.fillRect(m.x-width/2,m.y-9,width,18);ctx.fillStyle=colors.getPropertyValue('--color-on-primary');ctx.fillText(m.label,m.x-width/2+2,m.y+4);ctx.globalAlpha=1}
@@ -169,7 +191,9 @@ setInterval(()=>{void t.flush()},20);
 try{await scan();show(await t.call({kind:'snapshot'}))}catch(e){error(e)}
 const reliability=await invoke('reliability_options');
 const jam=await invoke('jam_options');
-if(jam){const {runJamSmoke}=await import('./jam-smoke.mjs');await runJamSmoke({t,getState:()=>state,invoke,content,options:jam})}
+if(jam?.milestone==='3'){const {runJam3Smoke}=await import('./jam3-smoke.mjs');await runJam3Smoke({t,getState:()=>state,invoke,sketch,workspace,skinManager,options:jam})}
+else if(jam?.milestone==='2'){const {runJam2Smoke}=await import('./jam2-smoke.mjs');await runJam2Smoke({t,getState:()=>state,invoke,sketch,options:jam})}
+else if(jam){const {runJamSmoke}=await import('./jam-smoke.mjs');await runJamSmoke({t,getState:()=>state,invoke,content,options:jam})}
 else if(reliability.seconds){const {runReliability}=await import('./reliability.mjs');await runReliability({t,getState:()=>state,invoke,skinManager,options:reliability})}
-else if(await invoke('smoke_enabled')){const {runSmoke}=await import('./smoke.mjs');await runSmoke({t,getState:()=>state,invoke,show,skinManager})}
+else if(await invoke('smoke_enabled')){const {runSmoke}=await import('./smoke.mjs');await runSmoke({t,getState:()=>state,invoke,show,skinManager,workspace})}
 async function poll(){try{await t.call({kind:'snapshot'})}catch(e){error(e)}setTimeout(poll,33)}poll();

@@ -13,6 +13,24 @@ fn setup(bars: u8) -> (LiveEngine, Coordinator) {
     let (e, c, m) = demo::prepare_with_phrase_bars(bars).unwrap();
     (e, Coordinator::new(c, m, false))
 }
+#[test]
+fn web_zoom_reports_the_actual_phrase_capped_window() {
+    for phrase_bars in [4, 8] {
+        let (mut engine, mut coordinator) = setup(phrase_bars);
+        render(&mut engine, &mut coordinator, 1);
+        let mut view = View::default();
+        for requested in [2, 4, 8] {
+            view.zoom_bars = requested;
+            let projection =
+                dawj_core::web_timeline::Projection::from_coordinator(&coordinator, &view).unwrap();
+            assert_eq!(projection.zoom_bars, requested.min(phrase_bars));
+            assert_eq!(
+                projection.end - projection.start,
+                i64::from(projection.zoom_bars) * BAR
+            );
+        }
+    }
+}
 fn render(e: &mut LiveEngine, c: &mut Coordinator, frames: usize) {
     let mut buffer = [0.0; 1024];
     let mut left = frames;

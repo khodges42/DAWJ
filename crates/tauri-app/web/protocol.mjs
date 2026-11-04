@@ -18,7 +18,7 @@ export function readReply(reply,expectedId) {
   if(reply.id!==expectedId)throw Error('Mismatched frontend reply ID');
   if(reply.result?.Err)throw Error(`${reply.result.Err.code}: ${reply.result.Err.message}`);
   const response=reply.result?.Ok;
-  if(!response||!['snapshot','devices','midi_profile','midi_profiles'].includes(response.kind))throw Error('Invalid frontend reply');
+  if(!response||!['snapshot','devices','midi_profile','midi_profiles','catalog'].includes(response.kind))throw Error('Invalid frontend reply');
   return response.data;
 }
 export async function invokeRequest(invoke,action,source='Gui') {

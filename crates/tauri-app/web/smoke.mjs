@@ -2,7 +2,7 @@
 // Opt-in actual WebView/CPAL integration. No physical MIDI messages or profile files are written.
 import {invokeRequest} from './protocol.mjs';
 import {summary} from './model.mjs';
-export async function runSmoke({t,getState,invoke,skinManager}){
+export async function runSmoke({t,getState,invoke,skinManager,workspace}){
   const skinKeys=['dawj.skins.v1','dawj.skin-preferences.v1','customCSS','theme','accent'],savedSkinStorage=new Map(skinKeys.map(k=>[k,localStorage.getItem(k)]));
   const restoreSkinStorage=()=>{for(const[k,v]of savedSkinStorage){if(v===null)localStorage.removeItem(k);else localStorage.setItem(k,v)}};
   const $=id=>document.getElementById(id),assert=(yes,message)=>{if(!yes)throw Error(message)};
@@ -17,6 +17,7 @@ export async function runSmoke({t,getState,invoke,skinManager}){
   try{
     const safeStartup=(await invoke('skin_startup'))==='safe';if(safeStartup)assert(skinManager.current==='bundled:dark','Safe startup did not ignore persisted skin');
     const {skinSmoke}=await import('./skin-smoke.mjs');const skinMetrics=await skinSmoke(skinManager,invoke);
+    await workspace.setLayout('extended');
     const options=await invoke('reliability_options');
     const outputs=[...$('device').options].filter(o=>o.textContent.toLowerCase().includes(options.output.toLowerCase()));
     assert(options.output.trim()&&outputs.length===1,'Required test output missing or ambiguous: '+options.output);
@@ -24,7 +25,7 @@ export async function runSmoke({t,getState,invoke,skinManager}){
     await t.call({kind:'session',action:{kind:'demo'}});
     await click('start');await wait(s=>s.online,'first engine publication after device start');
     const essential=[...document.querySelectorAll('article button,article .context,footer input,#transport button')];
-    const outside=essential.filter(e=>{const r=e.getBoundingClientRect();return r.bottom>innerHeight||r.left<0||r.right>innerWidth}).map(e=>e.id);
+    const outside=essential.filter(e=>{if(e.closest('[hidden]'))return false;const r=e.getBoundingClientRect();return r.left<0||r.right>innerWidth}).map(e=>e.id);
     assert(outside.length===0,'Essential controls outside viewport: '+outside.join(','));
     await click('launch-0-0');await click('launch-1-3');
     let sawQueued=false;await wait(s=>{sawQueued ||= !!s.decks[0][0].pending;return s.decks[0][0].active!=null&&s.decks[1][3].active!=null},'two-deck playback');

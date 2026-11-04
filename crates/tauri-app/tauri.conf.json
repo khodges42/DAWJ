@@ -20,6 +20,9 @@
     }
   },
   "bundle": {
-    "active": false
+    "active": false,
+    "resources": {
+      "../../resources/samples/": "resources/samples/"
+    }
   }
 }
