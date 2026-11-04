@@ -121,7 +121,29 @@ explicit ordinary engine arm command. The native file dialog adapter uses rfd on
 a blocking pool; native drop emits only one path/position into the existing local
 frontend. CSP and skin execution restrictions remain intact.
 
-See [the user workflow and limits](../user-guide/local-sessions.md). The engine
-currently has no pattern-note data type: Jam2 must extend the actual domain and
-scheduler before exposing pattern editing. The exploratory portable package
+See [the user workflow and limits](../user-guide/local-sessions.md). The engine owns fixed-size `parts::pattern::Pattern` definitions and schedules
+velocity-bearing sixteenth-note triggers. Live edits activate at the next global
+bar, with accepted/pending/executed revisions kept distinct. Four stored pattern
+variations per Sound reuse the same pattern submission path; they are not a
+second scheduler. The exploratory portable package
 schema remains a distinct future design, not the local document schema.
+
+## Tauri workspace and mixer presentation
+
+`workspace.mjs` rearranges existing fixed deck controls around a permanent mixer
+and routes menus/palette through shared semantic actions. It holds presentation
+layout and offline focus only. Workspace choice is an additive field in the
+existing interface preferences; no second content/settings database exists.
+Views release momentary modes and never issue transport restarts. Sketch/browse
+reuse one browser instance and the same session model. Loaded-material bands and
+progress derive from session metadata plus coherent Rust publication, without
+waveform synthesis or wall-clock musical extrapolation.
+
+Mixer `deck_peaks` are independent pre-fader/pre-crossfader decaying diagnostics,
+published once per render block through two atomic words. They are not lifecycle
+or execution acknowledgments. Master held peaks, limiter, output trim, cue routing
+and existing gain smoothing are unchanged. Three-band deck EQ remains deferred.
+
+Timeline wire zoom reports the actual displayed bar count after the window is
+capped to the engine phrase length; it does not label a four-bar phrase as an
+eight-bar display merely because the view requested eight.

@@ -1,36 +1,68 @@
 # Your own two-deck jam
 
 DAWJ opens with an empty local session in Tauri. No bundled composition is
-selected. Open **Session / sounds** to create, load and save your own material.
+selected. Open **Session** to create, load and save your own material.
 The egui fallback retains its supplied performance demo; authoring is in Tauri.
 
 ## Create and perform
 
-1. In **Session / sounds**, select Deck A, enter a composition name, and press
-   **Create & load**. Choose a slot (1-8).
-2. Press **Assign / replace WAV...** and select your sound. Alternatively, drop
-   one WAV on a part card. Drops elsewhere use the editor's selected deck/slot;
-   when the editor is closed they use the performance selection. Multiple files
-   in one drop are rejected. Picker cancellation leaves content untouched.
-3. Check the filename, duration, original sample rate, channels and prepared
-   frame count. Set the part name and choose **Loop** or one-shot playback.
-   Press **Apply part settings** after changing playback fields.
-4. Repeat for Deck B with a second composition. Each composition has eight
-   stable slots; an empty slot cannot launch. Select **Return to performance**.
-5. Choose your intended audio output, routing and phrase length, then
-   **Start output**. Launch parts, change gain/filter, queue/cancel actions,
-   operate the crossfader and stop each part using the existing surface,
-   keyboard or MIDI controls. The engine determines all musical boundaries.
-6. Use **Save As...** to choose a `.dawj.json` session file, then **Save** for
-   subsequent updates. Rename the session or composition in the same panel.
-7. After closing DAWJ, choose **Open...** in a fresh application. Inspect any
-   missing-media messages before starting output. Playback never auto-resumes.
+1. Press **Sketch** on Deck A. Enter a composition name and press **New**.
+2. Select a fixed part slot. Choose a pack/category, search, **Listen**, then
+   **Assign**. Use **External WAV...** for your own file. Read the source details;
+   filename pitch/key/BPM are optional hints, not audio analysis.
+3. Turn on **Pattern** for a one-shot sound, then press steps to add hits. Select
+   a step and set velocity (1-127; zero is rest). Velocity 115+ shows an accent.
+   Choose 1, 2 or 4 bars, then Page to edit each bar. Rotate, Clear and Duplicate
+   operate on the actual pattern. A looping sample must have Loop turned off
+   before using a pattern; use the Sample region section to change it.
+4. Repeat on Deck B with a distinct composition. Parts keep their eight stable
+   addresses on each deck. Select names/colors and assign more sounds as needed.
+5. Open **Audio output**, choose your intended output, routing and phrase length,
+   then **Start output**. Audition explicitly plays through the shared master,
+   including on stereo hardware; stop it with **Stop listen** in Sketch.
+6. Select **Performance** and launch parts. Mix A/B from the central strip, shape
+   the focused part with Gain/Filter, or use Extended for every part's contextual
+   control and scheduling details. Switching workspaces or Sketch keeps audio running.
+7. **File > Save As...** chooses a `.dawj.json` file; **Ctrl+S** saves subsequent
+   changes. Close DAWJ, reopen it and choose **File > Open...** to restore the session.
+   Playback never auto-resumes. Select and start your intended output again.
 
-**New empty** and **Supplied demo** require output stopped, as does Open.
-The optional demo remains useful for the [performance walkthrough](performance.md).
-Unsaved changes are marked with `*`; New/Open/Demo asks before discarding them.
-Save explicitly before closing the application; there is no autosave or crash
-recovery in this version.
+**New empty**, **Supplied demo** and Open require output closed. Stop individual
+parts for musical stops; **Close output** shuts down the audio stream and clock.
+Unsaved changes appear beside the session name and in Session/Sketch. New/Open/Demo
+ask before discarding them. Save before closing; there is no autosave/crash recovery.
+
+## Factory packs and patterns
+
+Every immediate child folder in `resources/samples/` is discovered generically.
+Nested folders become categories. An optional `pack.json` supplies stable ID,
+display name, license and provenance; missing release metadata is reported.
+The checkout's user-supplied WAVs may be local and Git-ignored: a fresh clone can
+always import external WAVs or add its own packs. Do not redistribute samples
+without checking their actual license. No pack name is required by the workflow.
+
+The browser filters pack, category, name, type, pitch/key and source BPM range.
+Metadata corrections are saved in the session; they do not rename source files.
+Unsupported/broken sounds report errors. Source BPM never changes playback speed.
+Sample regions use prepared 48 kHz frames. **Listen step** auditions its velocity.
+
+The Rust engine schedules sixteenth-note hits (240 ticks at 960 PPQ). Pattern
+steps loop over 1/2/4 bars and follow musical tempo. Editing a running pattern
+activates at the **next global bar**, resets its pattern phase at that boundary,
+and shows a separate pending-edit message until the engine confirms execution.
+Stopped-pattern edits activate at the next admitted frame. New edits replace the
+pending edit for that part. Stop the part before disabling its pattern. Patterns
+and periodic rules cannot occupy the same slot simultaneously.
+
+Select **Variation 1-4** and **Store pattern** to remember the current grid. Recall
+uses the same safe activation boundary as a pattern edit. An edited grid is
+labelled separately from a stored variation; pending targets are not confirmed
+playing state. Variations retain pattern data, not another sound or part identity.
+
+**Edit > Undo/Redo** and Sketch's buttons cover composition/content edits, sound
+assignment, grids, metadata and variation storage/recall (32 history entries).
+Live gain, filter, fader, transport and MIDI gestures are not content undo steps;
+Save captures their current accepted targets. Redo clears after another content edit.
 
 ## Audio and playback controls
 
@@ -72,9 +104,11 @@ New/Open replaces the complete document and therefore requires output closed.
 
 ## What is saved
 
-Version 1 JSON stores session/composition/part identities and names, up to eight
+Version 2 JSON (with older local documents accepted) stores session/composition/part identities and names, up to eight
 compositions with eight slots each, deck assignments, local media references,
-loop bounds, nominal length, quantum, gain, cutoff and periodic definitions.
+sample regions, loop bounds, names/colors, factory-relative references, metadata
+corrections, full velocity patterns, stored variations, nominal length, quantum,
+gain, cutoff and periodic definitions.
 It also stores BPM, 4/8-bar phrase length, deck gains, crossfader, output trim,
 cue selections, quantization and persistent VOLUME/FILTER mode. Per-deck targets
 retain independent shaping when both decks reference one composition.
@@ -85,7 +119,8 @@ part in the editor and use **Arm saved rule** after output starts. Arming is an
 existing semantic engine action and can start musical activity. Paused/spent
 execution history, playback cursors, pending launches/stops, held modes and meter
 values are not resumed. The audio device must be selected each run. MIDI profiles
-and skins retain their separate existing persistence.
+and skins retain their existing persistence. Workspace choice extends the existing
+interface preferences and survives restart independently of the opened session.
 
 Media remain at their local paths; they are not copied or embedded. Paths beneath
 the session directory save relatively, other paths absolutely. Save As rebases
@@ -103,9 +138,9 @@ exhaustion rejects the edit with instructions to stop/restart output and retry.
 Only changed voice definitions consume versions; name, gain and filter changes
 do not. At most one media job runs; performance commands continue independently.
 
-The current engine has no pattern-note model or sequencer. Jam1 exposes its real
-sample/loop/timing data operations; pattern creation/editing and corresponding
-serialization belong to Jam2. Unsupported JSON fields and versions are rejected,
+The engine sequences sample-trigger patterns; pitched note synthesis is not
+implemented. Pattern creation, velocity edits and variations are persisted with
+the composition. Unsupported JSON fields and versions are rejected,
 not silently discarded. Streaming long tracks, library/catalog infrastructure,
 portable media packages and proprietary import are outside this workflow.
 

@@ -101,3 +101,20 @@ User content uses the same engine with an initially empty resident bank. Its
 share a 256 MiB PCM cap until output closes. See the [ownership contract](overview.md#local-content-and-resident-publication).
 Loading/replacing content requires the affected deck(s) stopped with no pending
 actions or rules. Another deck can continue on the same sample-frame clock.
+
+## Step patterns and live editing
+
+Each fixed slot can hold a bounded 1/2/4-bar pattern (four fixed arrays of sixteen
+velocities, 0 = rest, 1-127 = hit). The Rust frame clock dispatches sixteenth-note
+sample retriggers at 240 ticks; callback partitioning does not change event frames
+or rendered audio. Launch anchors pattern phase; one-shot sample EOF does not stop
+the pattern clock. Manual Stop does. Patterns and periodic rules are exclusive.
+
+A running pattern edit activates at the next global bar and resets the anchor;
+a stopped edit activates at the next admitted frame. The publication reports
+current revision, pending revision/boundary, running step and trigger count. The
+application reports accepted target revision separately. Recall of a stored
+variation submits through this same bounded path. Disabling a running pattern
+requires stopping its slot. All file inspection, indexing, decoding and audition
+preparation run outside the callback. Preview playback is an explicitly shared
+master audition, never an isolated headphone substitute.

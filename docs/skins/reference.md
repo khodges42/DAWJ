@@ -102,3 +102,19 @@ use valid values for the declared property. Test narrow/tall windows and text
 scaling before keeping a layout. Below 1180 logical pixels, the default puts
 slots in two columns per deck; both decks remain side by side and vertical
 scrolling is available. Larger text can also increase vertical scrolling.
+
+## Jam3 layout compatibility
+
+The semantic palette, typography, spacing and existing part/control IDs remain
+compatible. Deck A/B still use the same fixed slot IDs. Deck gains, cue, crossfader,
+output trim and master meters now live in the central mixer instead of deck
+headers/footer. Packages targeting `footer input` should use semantic control IDs;
+palette-only packages require no change. All nine bundled palettes remain available.
+The deck grid is protected as three columns (A, mixer, B); narrow screens stack
+parts within each deck rather than move the mixer out of the instrument.
+
+Browse and Sketch move one browser instance; authoring state is independent of
+CSS. Intentional hidden advanced controls have `hidden` attributes and are excluded
+from surface audits. Workspace choice extends the existing interface preferences;
+restoring the default interface resets it along with appearance settings. No bitmap
+control framework or tracker workspace is introduced by this change.

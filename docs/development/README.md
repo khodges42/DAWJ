@@ -31,7 +31,7 @@ cargo fmt --all -- --check
 cargo check --workspace --locked --offline
 cargo clippy --workspace --all-targets --locked --offline -- -D warnings
 cargo test --workspace --locked --offline
-node --test crates/tauri-app/web/model.test.mjs crates/tauri-app/web/protocol.test.mjs crates/tauri-app/web/performance.test.mjs crates/tauri-app/web/skins.test.mjs crates/tauri-app/web/reliability.test.mjs crates/tauri-app/web/content.test.mjs
+node --test crates/tauri-app/web/model.test.mjs crates/tauri-app/web/protocol.test.mjs crates/tauri-app/web/performance.test.mjs crates/tauri-app/web/skins.test.mjs crates/tauri-app/web/reliability.test.mjs crates/tauri-app/web/content.test.mjs crates/tauri-app/web/sketch.test.mjs crates/tauri-app/web/workspace.test.mjs
 python scripts/audio_dependencies.py
 python scripts/test_web4_report.py
 python scripts/test_alpha_layout.py
@@ -45,7 +45,18 @@ fixtures are checked against Rust types. Do not weaken tests to make a build pas
 The Windows dependency inventory check is not a vulnerability or final release audit.
 
 The [Jam1 end-to-end script](../../scripts/jam1_smoke.ps1) tests real session
-authoring, save/close and reopen in two application processes. Native smoke and
+authoring, save/close and reopen in two application processes. Add `-Milestone 2`
+for real local factory-pattern authoring, audition, undo/redo and reopen. Add
+`-Milestone 3` for sixteen original parts, simultaneous patterns, central mixer,
+view changes during audio, variation recall, focus release, seven native window
+captures (three layouts at 1280x900 and 1024x768 plus 125% WebView zoom), and fresh
+process restore. Native-content scenarios require actual WAVs under
+`resources/samples/<pack-name>/`; these may be supplied locally and Git-ignored.
+The explicit offline asset check is:
+`cargo test -p dawj-core --test jam2 --locked --offline -- --include-ignored`.
+Jam smoke windows ignore incidental desktop input and do not take keyboard
+focus; the script drives the real DOM and shared IPC. Normal interactive launches
+are unaffected. No native smoke substitutes another device when HyperX is absent/ambiguous. Native smoke and
 release tests open real audio. Frontend automation requires a
 unique **HyperX** output by default and fails if missing/ambiguous; it never falls
 back to the default endpoint. Set `DAWJ_TEST_OUTPUT` or the runner's `-Output`

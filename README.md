@@ -8,7 +8,7 @@ The vision is to combine performable compositions and conventional DJ tracks in
 one instrument. **The current alpha performs your own WAV-based compositions and saves local
 two-deck sessions. Ordinary DJ-track playback remains planned.**
 
-![Actual DAWJ Tauri performance interface with both demo decks](docs/images/tauri-performance.png)
+![Actual DAWJ Tauri performance interface with two original factory-sample compositions](docs/images/jam3-performance.png)
 
 ## Two decks, sixteen parts
 
@@ -19,7 +19,11 @@ position and upcoming activity without becoming a DAW arrangement editor.
 
 What works today:
 
-- Create compositions, assign WAV sounds, edit loops, and save/reopen local JSON sessions.
+- Author independent compositions on A/B, browse local sample packs, audition and assign WAV sounds.
+- Program real 16-step patterns with velocity/accent, 1/2/4-bar loops and four stored variations.
+- Switch Simple / Browse, Performance, Extended and Sketch views while audio continues.
+- Mix from a central strip with deck volumes, real deck meters, crossfader and cue routing.
+- Save/reopen both compositions, patterns, sound references and mixer settings as local JSON sessions.
 
 - Real sample/loop/one-shot playback with quantized launch, stop, cancel and retrigger.
 - Shared BPM/transport, periodic triggers and fills, and truthful queued/playing states.
@@ -30,7 +34,8 @@ What works today:
 
 Stereo output is master-only. Independent logical cue needs four output channels;
 physical headphone isolation and controller behavior require hardware validation.
-WAV is supported; MP3, pattern editing and time stretching are not implemented.
+WAV is supported; MP3 and time stretching are not implemented. Deck EQ is deferred;
+part gain and low-pass filters have real DSP support.
 There is no arbitrary plugin host, synth engine or song library.
 
 ## Build and run on Windows
@@ -45,11 +50,17 @@ cargo run --release --locked
 cargo run --release -p dawj-egui --locked
 ```
 
-Start with **Session / sounds** to create a composition on each deck and assign
-your WAV files. Save/reopen the jam with **Save As** / **Open**. Choose your intended
-audio output and press **Start output**. **Supplied demo** is also available; no
-controller or npm server is needed. See [your first local jam](docs/user-guide/local-sessions.md). Open **Help** for shortcuts and **MIDI / settings** for controllers
-and skins. See the [performance guide](docs/user-guide/performance.md).
+Choose **Sketch** on either deck, create a composition, select a part, then
+browse, listen, assign a sound and program its steps. Repeat on the other deck.
+Open **Audio output**, choose the intended device, and **Start output**. Switch to
+**Performance** and launch parts independently; use the central mixer to combine
+them. **File > Save As** saves your jam. See [your first local jam](docs/user-guide/local-sessions.md)
+and the [performance guide](docs/user-guide/performance.md).
+
+**Ctrl+K** searches commands. **Tools** contains MIDI, audio and skin settings.
+No controller or npm server is required. The explicit **Supplied demo** remains
+available through Session. Local factory packs are discovered under
+`resources/samples/<pack-name>/`; externally assigned WAV files also work.
 
 A broken skin can be reset through the native **Appearance > Restore default
 interface** menu or **Ctrl+Alt+Shift+R**. `--safe-mode` ignores saved skin selection;

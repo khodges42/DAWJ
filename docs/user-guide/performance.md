@@ -1,98 +1,108 @@
 # Performing with DAWJ
 
-Use `cargo run -p dawj --locked` on Windows with WebView2. Rust 1.93.0 and
-the existing Tauri versions are pinned. No controller or external assets are
-needed. This is a reproducible manual performance exercise, not a claim that a
-five-minute human listening or hardware session was performed during development.
+DAWJ keeps Deck A on the left, Deck B on the right and the mixer between them.
+Create your own material using [local sessions and Sketch](local-sessions.md),
+then start the intended audio output. The explicit Session demo is optional.
 
-For this optional demo walkthrough, open **Session / sounds**, choose **Supplied
-demo**, and return to performance. To use your own material instead, follow
-[local sessions](local-sessions.md). Before the clock starts, choose the intended audio device, **Stereo master**,
-**8 bars**, and **Beat** quantization. Use a comfortable system/headphone level.
-The existing demo defaults to +36 dB makeup and retains its output limiters.
-Stereo output has no isolated cue bus. Four-channel cue requires a compatible
-device and separate physical verification; do not use it to infer headphone
-isolation. A rejected configuration is shown as an error, not silent success.
+## Choose a workspace
 
-## 0:00–1:00 — start Deck A and shape it
+| Workspace | Use |
+| --- | --- |
+| Simple / Browse | Compact decks and a large sound browser for preparing the next part/composition. |
+| Performance | Eight fixed part slots on each deck, launch/stop/cancel/retrigger, fills and a compact phrase view. |
+| Extended | Part gain/filter controls, full phrase view, variations and periodic scheduling details. |
+| Sketch | Composition naming, sound assignment, velocity patterns, sample regions and metadata, beside the same mixer. |
 
-Press **Start output**. The clock should advance at 120 BPM; all sixteen parts
-start stopped. Launch **A1 kick**, **A3 hats**, and **A4 bass** using their ▶
-buttons. Observe queued labels before their engine-scheduled Playing states.
-Select A4 with its name button. VOLUME knobs and the selected Gain slider control
-the actual part gain through the engine; reduce it slightly.
+The three workspace buttons and each deck's Sketch button are always discoverable.
+Switching views does not restart output, change part identity or schedule music.
+The workspace preference survives restart through existing interface settings.
+The mixer stays in the center; narrow windows scroll vertically. At small widths,
+part cards form a single column within each deck. The minimum supported native
+smoke viewport is 1024x768; larger windows provide more room for editing.
 
-Press **F** for FILTER. The same sixteen knob positions now show cutoff; lower
-A4's cutoff, then use **Bypass filter** in the inspector to restore the bypassed
-target. Changing mode alone must not change either gain or cutoff. Watch the
-selected feedback line for receipts, and the status labels for actual execution.
-Master meters are lifetime held diagnostic peaks, not an RMS/loudness display.
+![Performance workspace with original compositions](../images/jam3-performance.png)
 
-## 1:00–2:00 — queue, cancel, retrigger and temporary modes
+![Simple / Browse workspace](../images/jam3-browse.png)
 
-Click a part's name or deck Select button to leave text-input focus before using
-shortcuts. Press **A**, **5**, then **F4** (phrase quantization) and **Space**.
-A5 should queue for the next phrase boundary, marked L on the timeline. Before
-that boundary press **Escape**; observe the queued marker disappear after the
-engine cancels it. A cancellation after execution is rejected rather than invented.
+![Extended workspace](../images/jam3-extended.png)
 
-Press **F2** for Beat, select A4 and use **Retrigger**. Its queued retrigger and
-cursor reset come from the engine. Keep persistent FILTER, hold **Shift+V** for
-temporary VOLUME, then operate A4's knob. Release V or Shift: FILTER must return.
-Do not expect a parameter change just from pressing/releasing a mode key. Click
-elsewhere to remove input focus if a shortcut is being used for typing instead.
+Additional native captures show [Browse at 1024 pixels](../images/jam3-browse-small.png),
+[Performance at 1024 pixels](../images/jam3-performance-small.png),
+[Extended at 1024 pixels](../images/jam3-extended-small.png) and
+[Performance at 125% WebView zoom](../images/jam3-performance-hidpi.png).
 
-## 2:00–3:00 — introduce Deck B and mix
+## Launch and shape parts
 
-Start **B1 kick**, **B4 bass**, and **B5 chord**. Both decks remain visible.
-Bring the crossfader from A toward B. Arrow keys adjust it by 5% and permit
-auto-repeat; other launch shortcuts ignore repeats. Adjust the deck gains and
-Output dB if needed. Their positions are accepted targets; smoothing remains
-inside the engine.
+Click a part name to focus it without launching. Launch, Stop, Cancel and Retrigger
+have their own buttons. The label distinguishes a stopped or unavailable sound
+from a queued launch, stop or retrigger. Boundary labels use actual engine bar/beat
+positions. Loaded-material indicators remain visible even when nothing is queued;
+they are metadata/activity summaries, not fabricated waveforms or analyzed sections.
+Progress follows the published pattern step or nominal musical loop phase.
+Pending pattern changes have a dashed border and a separate boundary message.
 
-Set BPM to 123 and press **Apply BPM**. Observe the published tempo change at
-the scheduler's admitted boundary, with a coherent clock and phrase view. Stop
-A3 independently; Deck B should continue. Cue buttons are disabled on stereo.
-With a separately verified four-channel setup, Q/W toggle A/B cue selections.
+The focused part's Gain and Filter sliders work in Performance and Extended.
+VOLUME/FILTER chooses what the per-part contextual sliders mean in Extended.
+Changing that mode never changes sound by itself. Filters are genuine smoothed
+part low-pass filters. Deck three-band EQ is a remaining engine dependency and
+is not presented as a working control.
 
-## 3:00–4:00 — fills, recurrence and the repeating timeline
+Fill A/B addresses fixed slot 8. Assign a one-shot fill or pattern to that slot;
+there is no automatic fill generator. In Extended, periodic rules can schedule
+sample parts on beats, bars or phrase bars. Remove a pattern before arming a rule
+on its slot. Conditional projected recurrences are marked `~`, and may be skipped
+because manual actions take precedence. Removing a rule does not stop its source.
 
-Press **Fill A** or **Fill B** for slot 8's existing one-shot. Select A8, choose
-**Every N bars**, N=2, Deck phase, and **Arm rule**. The timeline shows next and
-conditional later fill occurrences. `~` means a projection that can skip due to
-manual-command precedence. `!` identifies the last fired occurrence; F identifies
-a fill, S a pending stop, and R a retrigger.
+## Mix from the center
 
-Choose 2-bar zoom, move a page, then re-enable Follow. These controls only change
-the view. Select an event using the canvas or **Scheduled actions** menu; both
-decks stay in place and the inspector follows its part. Pause/resume the rule,
-then remove it. Removing a rule does not stop an already active source; use Stop
-for that. To exercise fill cancellation, use Phrase quantization, queue a fill,
-then Cancel fill before its boundary. Return to Beat afterward.
+Each channel has a real pre-fader/pre-crossfader decaying peak meter, deck Volume,
+and Cue selection. These deck meters show source level even when a channel is
+faded out. Cue is post deck volume and pre-crossfader. Cue is unavailable on stereo
+hardware; DAWJ never simulates headphone isolation. Four-channel logical routing
+uses master 1-2 and cue 3-4; physical isolation needs hardware verification.
 
-## 4:00–5:00 — configure MIDI or finish with keyboard
+The equal-power crossfader moves from A-only through both decks to B-only. Center
+returns to the middle. Deck volume and crossfader targets use engine smoothing.
+Output trim is pre-limiter makeup gain on both logical buses, not another deck
+volume. Master L/R meters are lifetime peak holds after the existing limiter,
+whose ceiling remains 0.125 (about -18 dBFS). They are not loudness/RMS meters.
+Audition explicitly uses the shared master independently of the deck crossfader.
 
-Open **MIDI / settings**. The audio engine continues independently. Without a
-controller, the device status should truthfully say disconnected; all main
-performance controls remain usable after closing settings.
+Choose BPM and Apply BPM to queue a musical tempo change. Sample playback speed
+is unchanged; there is no time stretching. Stop a part to stop its musical activity.
+**Close output** destroys the stream; the next Start creates a fresh clock.
 
-For configuration without hardware, choose a mapping action and inspect its
-target, behavior and range. Adding a conflicting channel/type/number is rejected
-by Rust. Learn can be armed and cancelled without a controller. **Save as**
-`rehearsal` persists a named profile and selects it for the next Tauri restart.
-Reload it to verify its contents. Default is the legacy MIDI file; if no saved
-default exists, use Factory map and Save current before trying to load it.
+## Navigation and shortcuts
 
-With a real generic controller, choose its input and optional LED output, then
-Connect/retry. Select Context with Absolute behavior for a knob, or Momentary
-FILTER for a button; use Learn to supply its actual input. Release the learn
-gesture before performing. On mode/part changes, move absolute knobs through
-the shared core's pickup target before expecting motion. Relative encoders use
-two's-complement steps. LED sent counts report successful port sends, not proof
-of a physical light. Note/CC feedback values are device-dependent. Connect/retry
-applies a loaded profile's port choices; loading alone does not switch ports.
+File / Session, Edit, View, Deck, Mixer, Sounds / Library, Tools / Settings and Help
+organize application actions. **Ctrl+K** opens a searchable command palette; type,
+press Down to move into results, use arrow keys and Enter to execute. Disabled
+actions reflect the current session/engine availability. Audio, MIDI and skins
+remain available through Tools and the top bar.
 
-Close settings, independently stop the remaining parts, then at **5:00** press
-**Stop / reset**. This closes output; restarting constructs a fresh demo clock.
-There is no pause/resume transport in the existing engine. Egui remains available
-via `cargo run -p dawj-egui --locked`.
+| Keys | Action |
+| --- | --- |
+| Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | New / Open / Save / Save As |
+| Ctrl+1 / Ctrl+2 / Ctrl+3 | Browse / Performance / Extended |
+| Ctrl+E | Sketch / Perform |
+| Ctrl+Z / Ctrl+Shift+Z or Ctrl+Y | Content Undo / Redo (typing retains native text undo) |
+| A / B, then 1-8 | Select deck and part |
+| Space / X / Esc / R | Toggle / Stop / Cancel queued / Retrigger |
+| V / F | Persistent gain / filter mode |
+| Shift+V / Shift+F | Hold temporary mode; release/focus loss restores persistent mode |
+| F1 / F2 / F3 / F4 | Immediate / Beat / Bar / Phrase quantization |
+| Left / Right | Move crossfader by 5%; key repeat supported |
+| Q / W | Cue A / B where available |
+| H | Performance help |
+
+Inputs keep typing keys; leave text focus before playing shortcuts. Focus loss,
+menus and view changes release held modes. MIDI retains the same fixed part
+addresses and shared action mappings; see [controllers](controllers.md).
+Skin/accessibility choices retain text scale, enhanced contrast and reduced
+motion. Native Appearance > Restore default interface and Ctrl+Alt+Shift+R remain
+available outside user CSS. Egui remains a runnable fallback; this new authoring
+and workspace layout is specific to Tauri.
+
+The screenshots and scripted Windows native checks show functional operation,
+not physical cue isolation, real-controller validation, latency certification or
+human usability testing.

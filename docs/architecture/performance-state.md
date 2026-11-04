@@ -42,7 +42,8 @@ further audio publication. Generations are engine-local, wrapping u64 counters
 (wrap is not a practical session horizon). Do not compare generations between
 newly created engines. Snapshot copies do not retain PCM ownership.
 
-The M3.5 publication has 299 atomic words and one atomic generation (M2.9 used
+The Jam2 publication has 413 atomic words and one atomic generation (M3.5 used
+299 words; M2.9 used
 166 words; the M3 current-tempo extension used 167). All are
 sequentially consistent: the writer marks odd, stores the words, then marks even;
 the reader accepts only an unchanged even generation. There are no non-atomic
@@ -152,3 +153,19 @@ rendered, even if the tick-rounded clock/playhead has reached that boundary.
 No event scheduling, extrapolated musical clock or historical performance trace
 is reconstructed by GUI frame time. Existing diagnostic `slot()` fields remain
 separate and are not combined into timeline state.
+
+## Pattern and audition observation
+
+Each slot additionally publishes current pattern revision, pending revision and
+boundary, bar count, current step, running flag, trigger count and last-trigger
+tick. Launching a pattern preserves its logical active identity across individual
+one-shot EOFs; Stop ends that pattern clock. `position` remains the current sample
+cursor and can be absent during a pattern rest. `active_one_shot` is false for
+an active pattern even though its hits use one-shot samples. See the engine
+contract for global-bar edit activation. The application target revision is
+accepted intent, not an executed revision; Tauri labels it separately.
+
+The same coherent header carries optional audition PartId and cursor. Audition
+is a separate prepared source mixed into the shared master. It does not change
+fixed deck identities or establish private cue availability. Deck meter atomics
+are independent diagnostics and never reconstruct operational lifecycle.
