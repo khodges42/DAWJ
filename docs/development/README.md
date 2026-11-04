@@ -31,7 +31,7 @@ cargo fmt --all -- --check
 cargo check --workspace --locked --offline
 cargo clippy --workspace --all-targets --locked --offline -- -D warnings
 cargo test --workspace --locked --offline
-node --test crates/tauri-app/web/model.test.mjs crates/tauri-app/web/protocol.test.mjs crates/tauri-app/web/performance.test.mjs crates/tauri-app/web/skins.test.mjs crates/tauri-app/web/reliability.test.mjs crates/tauri-app/web/content.test.mjs crates/tauri-app/web/sketch.test.mjs crates/tauri-app/web/workspace.test.mjs
+node --test crates/tauri-app/web/model.test.mjs crates/tauri-app/web/protocol.test.mjs crates/tauri-app/web/performance.test.mjs crates/tauri-app/web/skins.test.mjs crates/tauri-app/web/reliability.test.mjs crates/tauri-app/web/content.test.mjs crates/tauri-app/web/sketch.test.mjs crates/tauri-app/web/workspace.test.mjs crates/tauri-app/web/overview.test.mjs
 python scripts/audio_dependencies.py
 python scripts/test_web4_report.py
 python scripts/test_alpha_layout.py
@@ -105,3 +105,12 @@ Ephemeral milestone reports go in `.dev-notes/codex/` by default. The focused
 [latency investigation](../M3_WEB4_1_LATENCY.md) remains tracked as engineering
 evidence explicitly requested for the frontend decision. Historical reports remain
 available in Git history; existing local copies are archived rather than destroyed.
+
+Use `scripts/jam1_smoke.ps1 -Milestone 4` for the native visualization scenario.
+It creates two original factory-sample compositions with patterns, free loops and
+one-shots; checks stopped previews, actual sample identities/frames, pending and
+confirmed edits, source/tempo timing, manual section CRUD, unchanged-geometry
+suppression, workspace transitions and fresh-process preference/session restore.
+It captures Structure, Waveform, Hybrid and stopped/small-window examples.
+Actual local WAVs and a unique HyperX output are required. All captures and reports
+are produced under a fresh target subdirectory; only DAWJ windows are captured.

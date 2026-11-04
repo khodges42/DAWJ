@@ -8,7 +8,7 @@ The vision is to combine performable compositions and conventional DJ tracks in
 one instrument. **The current alpha performs your own WAV-based compositions and saves local
 two-deck sessions. Ordinary DJ-track playback remains planned.**
 
-![Actual DAWJ Tauri performance interface with two original factory-sample compositions](docs/images/jam3-performance.png)
+![Actual DAWJ Tauri performance interface with two original factory-sample compositions and musical overviews](docs/images/jam4-hybrid.png)
 
 ## Two decks, sixteen parts
 
@@ -22,6 +22,8 @@ What works today:
 - Author independent compositions on A/B, browse local sample packs, audition and assign WAV sounds.
 - Program real 16-step patterns with velocity/accent, 1/2/4-bar loops and four stored variations.
 - Switch Simple / Browse, Performance, Extended and Sketch views while audio continues.
+- See stopped and playing material in Structure, Waveform or Hybrid overviews with real source peaks.
+- Add manual Intro/Build/Drop/custom sections in Sketch and retain them in local sessions.
 - Mix from a central strip with deck volumes, real deck meters, crossfader and cue routing.
 - Save/reopen both compositions, patterns, sound references and mixer settings as local JSON sessions.
 
@@ -55,7 +57,8 @@ browse, listen, assign a sound and program its steps. Repeat on the other deck.
 Open **Audio output**, choose the intended device, and **Start output**. Switch to
 **Performance** and launch parts independently; use the central mixer to combine
 them. **File > Save As** saves your jam. See [your first local jam](docs/user-guide/local-sessions.md)
-and the [performance guide](docs/user-guide/performance.md).
+and the [performance guide](docs/user-guide/performance.md). See [musical overviews](docs/user-guide/musical-overview.md)
+for visualization styles, source-time limits and musical sections.
 
 **Ctrl+K** searches commands. **Tools** contains MIDI, audio and skin settings.
 No controller or npm server is required. The explicit **Supplied demo** remains

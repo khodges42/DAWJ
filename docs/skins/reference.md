@@ -118,3 +118,12 @@ CSS. Intentional hidden advanced controls have `hidden` attributes and are exclu
 from surface audits. Workspace choice extends the existing interface preferences;
 restoring the default interface resets it along with appearance settings. No bitmap
 control framework or tracker workspace is introduced by this change.
+
+## Jam4 visualization colors
+
+Structure, Waveform and Hybrid are independent interface preferences. Their
+Canvas layers read semantic deck, text, muted, grid, surface, activity and warning
+colors. Existing palette packages need no new format version. Label size follows
+font scaling and backing buffers follow device-pixel ratio. Static geometry is
+repainted after a skin change without changing the visualization mode or audio.
+No bitmap-control or tracker-workspace system is introduced.

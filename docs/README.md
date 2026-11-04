@@ -7,6 +7,7 @@ Start with the [project introduction](../README.md) and [vision/roadmap](design/
 - [Local sessions and your own sounds](user-guide/local-sessions.md): create, import WAV, save and reopen.
 
 - [Performance guide](user-guide/performance.md): two decks, keyboard, timeline and cue.
+- [Musical overviews](user-guide/musical-overview.md): Structure, Waveform, Hybrid and editable sections.
 - [MIDI controllers](user-guide/controllers.md): learn, profiles, pickup and feedback.
 - [Skin authoring](skins/authoring.md) and [CSS reference](skins/reference.md).
 

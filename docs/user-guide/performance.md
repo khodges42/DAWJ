@@ -106,3 +106,11 @@ and workspace layout is specific to Tauri.
 The screenshots and scripted Windows native checks show functional operation,
 not physical cue isolation, real-controller validation, latency certification or
 human usability testing.
+
+## Musical overviews
+
+Use the **Overview** selector or View commands for Structure, Waveform and Hybrid.
+Both decks show material before launching parts. Structure is the default; the
+choice survives restart independently of the workspace and skin. Section labels
+come from manual Sketch metadata. See the [visualization guide](musical-overview.md)
+for source energy, loop timing, pending edits and source inspection.

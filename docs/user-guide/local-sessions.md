@@ -104,7 +104,7 @@ New/Open replaces the complete document and therefore requires output closed.
 
 ## What is saved
 
-Version 2 JSON (with older local documents accepted) stores session/composition/part identities and names, up to eight
+Version 3 JSON (with versions 1 and 2 migrated on Open) stores session/composition/part identities and names, up to eight
 compositions with eight slots each, deck assignments, local media references,
 sample regions, loop bounds, names/colors, factory-relative references, metadata
 corrections, full velocity patterns, stored variations, nominal length, quantum,
@@ -158,3 +158,9 @@ saves, closes the process and reopens the same document in a second process.
 It verifies restored identities, media, playback configuration and executed gain/
 filter targets before new gestures. Logs/results stay under target. It does not
 establish physical headphone isolation, physical MIDI operation or human usability.
+
+Musical section labels, positions, composition display length and manual emphasis
+are saved with each composition. Analyzed min/max and energy previews are rebuildable
+RAM caches, not essential session source data. The visualization style extends
+the existing interface preferences independently of the selected skin and workspace.
+See [musical overviews](musical-overview.md).
