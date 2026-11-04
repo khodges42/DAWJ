@@ -10,6 +10,8 @@ two-deck sessions. Ordinary DJ-track playback remains planned.**
 
 ![Actual DAWJ Tauri performance interface with two original factory-sample compositions and musical overviews](docs/images/jam4-hybrid.png)
 
+*Hybrid overview: two original compositions playing around the central mixer.*
+
 ## Two decks, sixteen parts
 
 Each deck has eight fixed-position parts: launch percussion, bass or melodic
@@ -39,6 +41,19 @@ physical headphone isolation and controller behavior require hardware validation
 WAV is supported; MP3 and time stretching are not implemented. Deck EQ is deferred;
 part gain and low-pass filters have real DSP support.
 There is no arbitrary plugin host, synth engine or song library.
+
+## Screenshots
+
+Actual Tauri captures of the same two compositions, with different musical overviews.
+
+| Structure | Waveform |
+| --- | --- |
+| [![Structure overview with named sections, step activity and repeated patterns](docs/images/jam4-structure.png)](docs/images/jam4-structure.png) | [![Waveform overview with analyzed sample peaks on both decks](docs/images/jam4-waveform.png)](docs/images/jam4-waveform.png) |
+| Section labels, rhythmic density and pattern accents. | Actual stereo sample peaks, transients and loop repetitions. |
+
+Material stays visible [before playback](docs/images/jam4-structure-stopped.png).
+The two decks and mixer also fit a [1024 × 768 window](docs/images/jam4-hybrid-small.png).
+See the [musical overview guide](docs/user-guide/musical-overview.md) for full-size captures and editing instructions.
 
 ## Build and run on Windows
 
