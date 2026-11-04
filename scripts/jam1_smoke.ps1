@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Fresh local fixtures and two actual application processes. HyperX only.
-param([ValidateSet('Debug','Release')][string]$Configuration='Debug',[ValidateSet('1','2','3')][string]$Milestone='1')
+param([ValidateSet('Debug','Release')][string]$Configuration='Debug',[ValidateSet('1','2','3','4')][string]$Milestone='1')
 $ErrorActionPreference='Stop'
 $workspacePath=Split-Path -Parent $PSScriptRoot
 $runPath=Join-Path $workspacePath ("target/jam1-"+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss-fff'))

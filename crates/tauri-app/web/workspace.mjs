@@ -26,6 +26,7 @@ export function commandIntent(id,s){
 export const COMMANDS=[
  ['file.new','File / Session','New empty session','Ctrl+N','jam-new'],['file.open','File / Session','Open session…','Ctrl+O','jam-open'],['file.save','File / Session','Save session','Ctrl+S','jam-save'],['file.save-as','File / Session','Save session as…','Ctrl+Shift+S','jam-save-as'],['file.session','File / Session','Session and composition assignments','','session-open'],
  ['edit.undo','Edit','Undo','Ctrl+Z'],['edit.redo','Edit','Redo','Ctrl+Shift+Z'],['view.browse','View','Simple / Browse','Ctrl+1'],['view.performance','View','Performance','Ctrl+2'],['view.extended','View','Extended','Ctrl+3'],['view.sketch','View','Sketch / Perform','Ctrl+E'],
+ ['view.structure','View','Structure overview'],['view.waveform','View','Waveform overview'],['view.hybrid','View','Hybrid overview'],
  ['deck.a','Deck','Focus Deck A','A'],['deck.b','Deck','Focus Deck B','B'],['deck.launch','Deck','Launch focused part','Space'],['deck.stop','Deck','Stop focused part','X'],['deck.cancel','Deck','Cancel queued action','Esc'],['deck.retrigger','Deck','Retrigger focused part','R'],
  ['mixer.center','Mixer','Center crossfader'],['mixer.audio','Mixer','Output and cue routing','','audio-open'],['sounds.browse','Sounds / Library','Browse sounds and compositions'],['sounds.edit','Sounds / Library','Edit focused part'],
  ['tools.audio','Tools / Settings','Audio settings','','audio-open'],['tools.midi','Tools / Settings','MIDI configuration','','midi-open'],['tools.skins','Tools / Settings','Skins and accessibility','','skins-open'],['help.keys','Help','Performance shortcuts','','help-open']
@@ -62,7 +63,7 @@ export class Workspace {
   this.renderLayout();if(this.layout==='browse')void this.sketch.loadCatalog(false).catch(onError);
  }
  focused(){return this.getState().selection?address(this.getState()):this.offlineFocus}
- select(deck,slot){this.offlineFocus={deck,slot};this.sketch.select(deck,slot)}
+ select(deck,slot){this.offlineFocus={deck,slot};this.sketch.select(deck,slot);this.visualization?.update(this.getState())}
  async edit(deck,slot){if(this.getState().online)await this.run({kind:'select_part',deck,slot});this.select(deck,slot);if(!this.sketch.visible)await this.toggleSketch();this.sketch.select(deck,slot);this.$('sketch-name').focus()}
  async editFocused(){const p=this.focused();return this.edit(p.deck,p.slot)}
  async setLayout(value){this.release();const next=workspace(value);this.skinManager.setWorkspace(next);this.layout=next;if(this.sketch.visible)await this.sketch.toggle();this.renderLayout();if(value==='browse')await this.sketch.loadCatalog(false);this.update(this.getState());this.$('workspace-'+value).focus()}
@@ -72,6 +73,7 @@ export class Workspace {
   for(const e of document.querySelectorAll('.extended-only,.part-detail,.context'))e.hidden=this.sketch.visible||this.layout!=='extended';
   for(const e of document.querySelectorAll('.deck .actions,.deck .part-source,.deck .part-position'))e.hidden=browse||this.sketch.visible;
   $('phrase-panel').hidden=this.sketch.visible||this.layout!=='extended';$('inspector').hidden=this.sketch.visible||this.layout==='browse';
+  this.visualization?.update(this.getState());
  }
  enabled(c){const s=this.getState();if(c.id==='edit.undo')return !!s.undo&&!s.session?.busy;if(c.id==='edit.redo')return !!s.redo&&!s.session?.busy;if(c.id.startsWith('deck.')||c.id==='mixer.center')return !!s.online;return !s.session?.busy||!c.id.startsWith('file.')}
  buildMenus(){const nav=this.$('application-menu');for(const group of [...new Set(COMMANDS.map(c=>c.group))]){const details=document.createElement('details'),summary=document.createElement('summary'),list=document.createElement('div');summary.textContent=group.split(' / ')[0];list.className='menu-actions';details.append(summary,list);details.addEventListener('toggle',()=>{if(details.open){this.release();for(const other of nav.querySelectorAll('details'))if(other!==details)other.open=false;for(const b of list.querySelectorAll('button'))b.disabled=!this.enabled(COMMANDS.find(c=>c.id===b.dataset.command))}});for(const c of COMMANDS.filter(c=>c.group===group))list.append(this.commandButton(c));nav.append(details)}}
@@ -83,6 +85,7 @@ export class Workspace {
   const intent=commandIntent(id,this.getState());if(intent)return this.run(intent);
   if(c.button){this.$(c.button).click();return}
   if(id==='view.sketch')return this.toggleSketch();
+  if(['view.structure','view.waveform','view.hybrid'].includes(id))return this.visualization.setMode(id.slice(5));
   if(id.startsWith('view.'))return this.setLayout(id.slice(5));
   if(id==='sounds.browse')return this.setLayout('browse');if(id==='sounds.edit')return this.editFocused();
  }

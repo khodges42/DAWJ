@@ -14,7 +14,7 @@ function textContrast(el){
 }
 export function inspectSurface(){
   const errors=[],width=innerWidth,height=innerHeight;
-  const essential=[...document.querySelectorAll('body > header button,body > header select,#transport button,#transport input,#transport select,.deck button,.deck input,.deck .state,#inspector button,#inspector input,#inspector select,#phrase-panel button,#phrase-panel input,#phrase-panel select,#mixer input,#mixer button,#mixer meter,#workspace-bar button,footer input,footer meter,#clock,#mode-status,#selected-name,#rule-status,#inspection,#phrase-position,footer output')];
+  const essential=[...document.querySelectorAll('body > header button,body > header select,#transport button,#transport input,#transport select,.deck button,.deck input,.deck .state,#inspector button,#inspector input,#inspector select,#phrase-panel button,#phrase-panel input,#phrase-panel select,#mixer input,#mixer button,#mixer meter,#workspace-bar button,#visualization-control select,footer input,footer meter,#clock,#mode-status,#selected-name,#rule-status,#inspection,#phrase-position,footer output')];
   const root=document.documentElement;
   if(root.scrollWidth>width+4)errors.push('Horizontal overflow hides performance controls');
   if(root.scrollHeight>Math.max(1800,height*3))errors.push('Performance surface is excessively tall');

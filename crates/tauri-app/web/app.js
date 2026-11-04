@@ -3,13 +3,14 @@ import {Transport} from './transport.mjs';
 import {Keyboard,HELP} from './keyboard.mjs';
 import {address,gestureTarget,partAction,contextValue,contextAction,slotView,meterDb,timelineHits,nearestMarker} from './performance.mjs';
 import {Workspace,shortcutCommand} from './workspace.mjs';
+import {MusicalOverview} from './overview.mjs';
 import {Sketch} from './sketch.mjs';
 import {ContentPanel} from './content.mjs';
 import {MidiPanel} from './midi.mjs';
 import {SkinManager,SkinPanel} from './skins.mjs';
 import {browserStorage} from './skin-store.mjs';
 const $=id=>document.getElementById(id),invoke=window.__TAURI__.core.invoke;
-let state={online:false},errorText='',lastMode='Volume',hits=[],markerSignature='',dragging=new Map(),midi,content,sketch,workspace;
+let state={online:false},errorText='',lastMode='Volume',hits=[],markerSignature='',dragging=new Map(),midi,content,sketch,workspace,visuals;
 let canAutoStart=false;
 function error(e){errorText=String(e);$('error').textContent=errorText}
 const t=new Transport(invoke,show,error),keyboard=new Keyboard();
@@ -118,6 +119,7 @@ const skinManager=new SkinManager(browserStorage(),message=>{$('skin-status').te
 try{await skinManager.initialize(await invoke('skin_startup'))}catch(e){error('Skin fallback: '+e.message);skinManager.reset()}
 const skinPanel=new SkinPanel(skinManager);
 workspace=new Workspace({getState:()=>state,run,release,sketch,skinManager,onError:error,openDialog});
+visuals=new MusicalOverview({t,getState:()=>state,workspace,sketch,skinManager,onError:error,run});
 bind('skins-open',()=>{$('settings').close();skinPanel.refresh();openDialog('skins')});
 document.addEventListener('dawj-skin-applied',drawTimeline);
 function show(s){
@@ -167,7 +169,7 @@ function show(s){
   for(const deck of [0,1])$('cancel-fill-'+(deck?'b':'a')).disabled=!s.online||!s.decks?.[deck]?.[7]?.pending;
   if(s.timeline){setValue('zoom',s.timeline.zoom_bars);$('follow').checked=s.timeline.follow;$('phrase-position').textContent=s.timeline.phrase_position.map((p,i)=>`${i?'B':'A'} ${p[0]}/${p[1]}`).join(' · ')}
   if(!s.decks&&s.session&&!s.session.demo){setValue('bpm',s.session.project.settings.bpm);setValue('phrase',s.session.project.settings.phrase_bars)}
-  workspace?.update(s);drawTimeline();midi?.update(s);content?.update(s);sketch?.update(s);
+  workspace?.update(s);visuals?.update(s);drawTimeline();midi?.update(s);content?.update(s);sketch?.update(s);
 }
 function drawTimeline(){
   if($('phrase-panel').hidden)return;
@@ -191,7 +193,8 @@ setInterval(()=>{void t.flush()},20);
 try{await scan();show(await t.call({kind:'snapshot'}))}catch(e){error(e)}
 const reliability=await invoke('reliability_options');
 const jam=await invoke('jam_options');
-if(jam?.milestone==='3'){const {runJam3Smoke}=await import('./jam3-smoke.mjs');await runJam3Smoke({t,getState:()=>state,invoke,sketch,workspace,skinManager,options:jam})}
+if(jam?.milestone==='4'){const {runJam4Smoke}=await import('./jam4-smoke.mjs');await runJam4Smoke({t,getState:()=>state,invoke,sketch,workspace,visuals,skinManager,options:jam})}
+else if(jam?.milestone==='3'){const {runJam3Smoke}=await import('./jam3-smoke.mjs');await runJam3Smoke({t,getState:()=>state,invoke,sketch,workspace,skinManager,options:jam})}
 else if(jam?.milestone==='2'){const {runJam2Smoke}=await import('./jam2-smoke.mjs');await runJam2Smoke({t,getState:()=>state,invoke,sketch,options:jam})}
 else if(jam){const {runJamSmoke}=await import('./jam-smoke.mjs');await runJamSmoke({t,getState:()=>state,invoke,content,options:jam})}
 else if(reliability.seconds){const {runReliability}=await import('./reliability.mjs');await runReliability({t,getState:()=>state,invoke,skinManager,options:reliability})}
