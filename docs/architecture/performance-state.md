@@ -42,7 +42,7 @@ further audio publication. Generations are engine-local, wrapping u64 counters
 (wrap is not a practical session horizon). Do not compare generations between
 newly created engines. Snapshot copies do not retain PCM ownership.
 
-The Jam2 publication has 413 atomic words and one atomic generation (M3.5 used
+The Jam4 publication has 429 atomic words (Jam2 had 413) and one atomic generation (M3.5 used
 299 words; M2.9 used
 166 words; the M3 current-tempo extension used 167). All are
 sequentially consistent: the writer marks odd, stores the words, then marks even;
@@ -169,3 +169,18 @@ The same coherent header carries optional audition PartId and cursor. Audition
 is a separate prepared source mixed into the shared master. It does not change
 fixed deck identities or establish private cue availability. Deck meter atomics
 are independent diagnostics and never reconstruct operational lifecycle.
+
+## Jam4 visual observation
+
+PatternStatus includes the actual scheduler anchor in the same coherent publication.
+This adds one fixed atomic word per slot; no waveform, file work, cache or locks
+enter the callback. Exact part-local pattern phase uses this anchor and the
+published beat, including rests and tempo changes. Sample cursors remain native
+canonical-frame positions, independent of nominal beat metadata.
+
+The control worker publishes compact composition-relative positions and deadlines
+from this same snapshot. Confirmed/manual deadlines precede conditional projections
+when the visual event budget is full. A separate revision-keyed overview command
+returns static material/peak geometry only when needed; waveform arrays never
+become part of continuous engine publications. Frontend redraws do not schedule
+or acknowledge musical execution.

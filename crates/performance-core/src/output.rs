@@ -35,7 +35,18 @@ impl OutputSession {
         project: &crate::session::Project,
         catalog: Option<&crate::factory::Catalog>,
     ) -> Result<(Self, Vec<crate::session::MediaInfo>), String> {
-        let prepared = if let Some(c) = catalog {
+        Self::open_project_cached(device, cue, project, catalog, None)
+    }
+    pub fn open_project_cached(
+        device: &OutputDevice,
+        cue: bool,
+        project: &crate::session::Project,
+        catalog: Option<&crate::factory::Catalog>,
+        cache: Option<&crate::waveform::SharedCache>,
+    ) -> Result<(Self, Vec<crate::session::MediaInfo>), String> {
+        let prepared = if let (Some(c), Some(cache)) = (catalog, cache) {
+            crate::session::prepare_catalog_cached(project, None, [true; 2], false, c, cache)?
+        } else if let Some(c) = catalog {
             crate::session::prepare_catalog(project, None, [true; 2], false, c)?
         } else {
             crate::session::prepare(project, [true; 2], false)?

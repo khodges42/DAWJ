@@ -74,7 +74,7 @@ pub struct PreviewState {
     pub position: u64,
 }
 const HEADER: usize = 13;
-const SLOT_WORDS: usize = 25;
+const SLOT_WORDS: usize = 26;
 const WORDS: usize = HEADER + 2 * SLOTS * SLOT_WORDS;
 pub(crate) struct Publication {
     generation: AtomicU64,
@@ -149,7 +149,7 @@ impl Publication {
                 }
                 w[n + 17] = p.nominal_length.map_or(0, |t| t.0 as u64);
                 let q = p.pattern;
-                w[n + 18..n + 25].copy_from_slice(&[
+                w[n + 18..n + 26].copy_from_slice(&[
                     q.revision,
                     q.pending_revision.unwrap_or(0),
                     q.pending_at.map_or(u64::MAX, |t| t.0 as u64),
@@ -157,6 +157,7 @@ impl Publication {
                     u64::from(q.step.unwrap_or(255)),
                     q.last_trigger.map_or(u64::MAX, |t| t.0 as u64),
                     q.triggers,
+                    q.anchor.map_or(u64::MAX, |t| t.0 as u64),
                 ]);
             }
         }
@@ -205,6 +206,7 @@ impl Publication {
                     let n = HEADER + (d * SLOTS + i) * SLOT_WORDS;
                     PartState {
                         pattern: event_engine::live::PatternStatus {
+                            anchor: (w[n + 25] != u64::MAX).then_some(BeatTicks(w[n + 25] as i64)),
                             revision: w[n + 18],
                             pending_revision: (w[n + 19] != 0).then_some(w[n + 19]),
                             pending_at: (w[n + 20] != u64::MAX)

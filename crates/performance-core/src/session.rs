@@ -18,7 +18,7 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 use timebase::{BeatTicks, TempoChange, TempoMap};
-pub const VERSION: u16 = 2;
+pub const VERSION: u16 = 3;
 pub const MAX_DOCUMENT: usize = 512 * 1024;
 pub(crate) fn id() -> u64 {
     static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -106,6 +106,8 @@ impl Sound {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Composition {
+    #[serde(default)]
+    pub structure: crate::visualization::Structure,
     pub id: u64,
     pub name: String,
     pub parts: [Sound; SLOTS],
@@ -229,6 +231,7 @@ impl Project {
             }
         }
         for c in &self.compositions {
+            c.structure.validate()?;
             if !name(&c.name) {
                 return Err("Invalid composition name".into());
             }
@@ -323,6 +326,7 @@ impl Project {
         }
         let n = id();
         self.compositions.push(Composition {
+            structure: Default::default(),
             id: n,
             name: title,
             parts: std::array::from_fn(Sound::empty),
@@ -341,7 +345,7 @@ impl Project {
         }
         let mut p: Self =
             serde_json::from_slice(&b).map_err(|e| format!("Invalid session JSON: {e}"))?;
-        if p.version == 1 {
+        if (1..VERSION).contains(&p.version) {
             p.version = VERSION;
         }
         p.validate()?;
@@ -418,6 +422,8 @@ fn resolve(base: &Path, path: &str) -> PathBuf {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MediaInfo {
+    #[serde(default)]
+    pub waveform: Option<String>,
     pub deck: usize,
     pub slot: usize,
     pub path: String,
@@ -442,6 +448,10 @@ pub struct Workspace {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
+    Structure {
+        composition: u64,
+        structure: crate::visualization::Structure,
+    },
     Variation {
         composition: u64,
         slot: usize,
@@ -527,6 +537,7 @@ pub fn prepare(project: &Project, decks: [bool; 2], strict: bool) -> Result<Prep
         std::array::from_fn(|d| [decks[d]; SLOTS]),
         strict,
         None,
+        None,
     )
 }
 /// Decode only new voice definitions. Names/knobs/rules never duplicate resident PCM.
@@ -536,7 +547,13 @@ pub fn prepare_changes(
     decks: [bool; 2],
     strict: bool,
 ) -> Result<Prepared, String> {
-    prepare_mask(project, change_mask(project, before, decks), strict, None)
+    prepare_mask(
+        project,
+        change_mask(project, before, decks),
+        strict,
+        None,
+        None,
+    )
 }
 pub fn change_mask(project: &Project, before: &Project, decks: [bool; 2]) -> [[bool; SLOTS]; 2] {
     std::array::from_fn(|d| {
@@ -583,6 +600,26 @@ pub fn prepare_catalog(
         ),
         strict,
         Some(catalog),
+        None,
+    )
+}
+pub fn prepare_catalog_cached(
+    project: &Project,
+    before: Option<&Project>,
+    decks: [bool; 2],
+    strict: bool,
+    catalog: &crate::factory::Catalog,
+    cache: &crate::waveform::SharedCache,
+) -> Result<Prepared, String> {
+    prepare_mask(
+        project,
+        before.map_or_else(
+            || std::array::from_fn(|d| [decks[d]; SLOTS]),
+            |b| change_mask(project, b, decks),
+        ),
+        strict,
+        Some(catalog),
+        Some(cache),
     )
 }
 fn prepare_mask(
@@ -590,6 +627,7 @@ fn prepare_mask(
     changed: [[bool; SLOTS]; 2],
     strict: bool,
     catalog: Option<&crate::factory::Catalog>,
+    cache: Option<&crate::waveform::SharedCache>,
 ) -> Result<Prepared, String> {
     project.validate()?;
     let mut result = Prepared {
@@ -631,6 +669,7 @@ fn prepare_mask(
                 |p| p.display().to_string(),
             );
             let mut info = MediaInfo {
+                waveform: None,
                 deck: d,
                 slot,
                 path: path.clone(),
@@ -653,6 +692,24 @@ fn prepare_mask(
                 info.sample_rate = metadata.sample_rate;
                 info.channels = metadata.channels;
                 info.prepared_frames = metadata.prepared_frames;
+                if let Some(cache) = cache {
+                    let key = crate::waveform::Pyramid::identity(sample.interleaved(), 2, 48000);
+                    let found = cache
+                        .lock()
+                        .map_err(|_| "Waveform cache unavailable")?
+                        .get(&key)
+                        .is_some();
+                    if !found {
+                        let peaks =
+                            crate::waveform::Pyramid::analyze(sample.interleaved(), 2, 48000)
+                                .map_err(str::to_string)?;
+                        cache
+                            .lock()
+                            .map_err(|_| "Waveform cache unavailable")?
+                            .insert(peaks);
+                    }
+                    info.waveform = Some(key);
+                }
                 let part = Part {
                     id: PartId(p.id),
                     playback: PlaybackConfiguration {

@@ -18,6 +18,14 @@ pub struct Request {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Command {
+    Overview {
+        style: crate::visualization::Style,
+        columns: u16,
+        visible: Vec<crate::visualization::Address>,
+        #[serde(default)]
+        detail: Option<crate::visualization::Address>,
+        known: Option<String>,
+    },
     Catalog {
         rescan: bool,
     },
@@ -400,6 +408,7 @@ impl Reply {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "data", rename_all = "snake_case")]
 pub enum Response {
+    Overview(Box<crate::visualization::Reply>),
     Snapshot(Box<Snapshot>),
     Catalog(crate::factory::Catalog),
     Devices(Vec<Device>),
@@ -546,6 +555,8 @@ pub struct Selection {
 }
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Snapshot {
+    pub overview_revision: String,
+    pub overview_positions: Option<[crate::visualization::Position; 2]>,
     pub audition: Option<u64>,
     pub catalog_loading: bool,
     pub undo: usize,

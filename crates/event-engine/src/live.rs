@@ -36,6 +36,7 @@ pub enum EventOrigin {
 }
 #[derive(Clone, Copy, Debug, Default)]
 pub struct PatternStatus {
+    pub anchor: Option<BeatTicks>,
     pub running: bool,
     pub revision: u64,
     pub pending_revision: Option<u64>,
@@ -305,7 +306,11 @@ impl MusicalScheduler {
         Ok(())
     }
     pub fn pattern_status(&self, deck: usize, slot: usize) -> Option<PatternStatus> {
-        Some(self.patterns.get(deck)?.get(slot)?.status)
+        let p = self.patterns.get(deck)?.get(slot)?;
+        Some(PatternStatus {
+            anchor: p.anchor,
+            ..p.status
+        })
     }
     pub fn pattern_running(&self, deck: usize, slot: usize) -> bool {
         self.patterns

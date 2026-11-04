@@ -15,6 +15,13 @@ pub fn generated() -> String {
         profile::Action::Launch(Target::Selected),
     );
     let commands = vec![
+        Command::Overview {
+            style: crate::visualization::Style::Structure,
+            columns: 128,
+            visible: vec![crate::visualization::Address { deck: 0, slot: 0 }],
+            detail: None,
+            known: None,
+        },
         Command::Session {
             action: crate::session::Action::New {},
         },

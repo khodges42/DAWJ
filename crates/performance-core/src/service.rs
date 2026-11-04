@@ -278,7 +278,17 @@ struct PreviewJob {
     rx: Receiver<Result<audio_backend::samples::SampleVoice, String>>,
     key: String,
 }
+struct OverviewCache {
+    revision: String,
+    style: crate::visualization::Style,
+    columns: u16,
+    visible: Vec<crate::visualization::Address>,
+    detail: Option<crate::visualization::Address>,
+    data: crate::visualization::Material,
+}
 struct Worker {
+    waveforms: crate::waveform::SharedCache,
+    overview_cache: Option<OverviewCache>,
     catalog: crate::factory::Catalog,
     factory_roots: Vec<PathBuf>,
     indexing: Option<Receiver<Result<crate::factory::Catalog, String>>>,
@@ -308,6 +318,8 @@ impl Worker {
         let midi = Devices::new(profile.input.clone(), profile.output.clone());
         Self {
             catalog: Default::default(),
+            waveforms: Default::default(),
+            overview_cache: None,
             factory_roots: Vec::new(),
             indexing: None,
             preview_job: None,
@@ -389,6 +401,12 @@ impl Worker {
         s.undo = self.undo.len();
         s.redo = self.redo.len();
         s.session = Some(self.jam.clone());
+        s.overview_revision =
+            crate::visualization::revision(&self.jam, self.output.as_ref().map(|o| &o.coordinator));
+        s.overview_positions = self
+            .output
+            .as_ref()
+            .and_then(|o| crate::visualization::positions(&self.jam, &o.coordinator));
         s.midi_revision = self.mapper.revision;
         s.midi_dirty = self.mapper.dirty;
         s.midi_learning = self.mapper.learn.is_some();
@@ -404,11 +422,64 @@ impl Worker {
         s.midi_notice = format!("{} {}", self.notice, self.mapper.status);
         s
     }
+    fn pin_waveforms(&self) {
+        if let Ok(mut cache) = self.waveforms.lock() {
+            cache.pin(self.jam.media.iter().filter_map(|m| m.waveform.clone()));
+        }
+    }
     fn handle(&mut self, command: Command) -> Result<Response, Fault> {
         self.control_revision = self.control_revision.wrapping_add(1);
         use ErrorCode::*;
         let revision = self.mapper.revision;
         match command {
+            Command::Overview {
+                style,
+                columns,
+                visible,
+                detail,
+                known,
+            } => {
+                crate::visualization::validate_request(columns, &visible)
+                    .map_err(|e| Fault::new(Invalid, e))?;
+                let co = self.output.as_ref().map(|o| &o.coordinator);
+                let revision = crate::visualization::revision(&self.jam, co);
+                let reused = self.overview_cache.as_ref().is_some_and(|c| {
+                    c.revision == revision
+                        && c.style == style
+                        && c.columns == columns
+                        && c.visible == visible
+                        && c.detail == detail
+                });
+                if !reused {
+                    let data = crate::visualization::build(
+                        &self.jam,
+                        co,
+                        &self.waveforms,
+                        style,
+                        columns,
+                        &visible,
+                        detail,
+                    )
+                    .map_err(|e| Fault::new(Invalid, e))?;
+                    self.overview_cache = Some(OverviewCache {
+                        revision: revision.clone(),
+                        style,
+                        columns,
+                        visible,
+                        detail,
+                        data,
+                    });
+                }
+                let data = if reused && known.as_deref() == Some(&revision) {
+                    None
+                } else {
+                    self.overview_cache.as_ref().map(|c| c.data.clone())
+                };
+                return Ok(Response::Overview(Box::new(crate::visualization::Reply {
+                    revision,
+                    data,
+                })));
+            }
             Command::Catalog { rescan } => {
                 if rescan {
                     self.start_index();
@@ -462,14 +533,16 @@ impl Worker {
                     );
                 } else {
                     self.jam.project.settings.phrase_bars = phrase_bars;
-                    let (output, media) = OutputSession::open_project_catalog(
+                    let (output, media) = OutputSession::open_project_cached(
                         device,
                         cue,
                         &self.jam.project,
                         Some(&self.catalog),
+                        Some(&self.waveforms),
                     )
                     .map_err(|e| Fault::new(Failed, e))?;
                     self.jam.media = media;
+                    self.pin_waveforms();
                     self.output = Some(output);
                     self.jam.message =
                         "Output ready. Saved periodic definitions require explicit re-arming."
@@ -919,6 +992,12 @@ impl Worker {
                 }
             }
             Rename { name } => project.name = name,
+            Structure {
+                composition,
+                structure,
+            } => {
+                project.composition_mut(composition)?.structure = structure;
+            }
             Create { name, deck } => {
                 project.create(name, deck)?;
             }
@@ -1099,18 +1178,22 @@ impl Worker {
             before.composition_mut(n)?.parts[s].media = None;
         }
         let catalog = self.catalog.clone();
+        let waveforms = self.waveforms.clone();
         thread::Builder::new()
             .name("dawj-media-prepare".into())
             .spawn(move || {
                 let result = if opened {
-                    crate::session::prepare_catalog(&candidate, None, affected, strict, &catalog)
+                    crate::session::prepare_catalog_cached(
+                        &candidate, None, affected, strict, &catalog, &waveforms,
+                    )
                 } else {
-                    crate::session::prepare_catalog(
+                    crate::session::prepare_catalog_cached(
                         &candidate,
                         Some(&before),
                         affected,
                         strict,
                         &catalog,
+                        &waveforms,
                     )
                 };
                 let _ = tx.send(result);
@@ -1184,6 +1267,7 @@ impl Worker {
         };
         self.jam.media.retain(|m| !changed[m.deck][m.slot]);
         self.jam.media.extend(media);
+        self.pin_waveforms();
         if job.opened {
             self.undo.clear();
             self.redo.clear();
@@ -1469,6 +1553,46 @@ mod tests {
         .unwrap();
         settle_content(&mut w);
         assert_eq!(w.jam.media[0].sample_rate, 48000);
+        let waveform = w.jam.media[0].waveform.clone().unwrap();
+        assert_eq!(w.waveforms.lock().unwrap().analyses, 1);
+        w.session_action(Action::Import {
+            composition: n,
+            slot: 1,
+            path: path.display().to_string(),
+        })
+        .unwrap();
+        settle_content(&mut w);
+        assert_eq!(w.jam.media[1].waveform.as_deref(), Some(waveform.as_str()));
+        assert_eq!(w.waveforms.lock().unwrap().analyses, 1);
+        let original_time = std::fs::metadata(&path).unwrap().modified().unwrap();
+        let mut bytes = std::fs::read(&path).unwrap();
+        *bytes.last_mut().unwrap() = 64;
+        std::fs::write(&path, bytes).unwrap();
+        std::fs::File::options()
+            .write(true)
+            .open(&path)
+            .unwrap()
+            .set_times(std::fs::FileTimes::new().set_modified(original_time))
+            .unwrap();
+        w.session_action(Action::Import {
+            composition: n,
+            slot: 0,
+            path: path.display().to_string(),
+        })
+        .unwrap();
+        settle_content(&mut w);
+        assert_ne!(
+            w.jam
+                .media
+                .iter()
+                .find(|m| m.slot == 0)
+                .unwrap()
+                .waveform
+                .as_ref(),
+            Some(&waveform)
+        );
+        assert_eq!(w.waveforms.lock().unwrap().analyses, 2);
+
         let revision = w.jam.revision;
         std::fs::write(&path, b"unsupported MP3 or malformed WAV").unwrap();
         w.session_action(Action::Import {
@@ -1655,6 +1779,63 @@ mod tests {
         assert!(s.decks.is_none());
         service.shutdown();
         assert_eq!(client.admitted.load(Ordering::Acquire), 0);
+    }
+    #[test]
+    fn manual_sections_use_content_history_and_overviews_omit_unchanged_geometry() {
+        use crate::{
+            session::Action,
+            visualization::{Address, Section, Structure, Style},
+        };
+        let mut worker = Worker::new(Profile::default(), None);
+        worker
+            .session_action(Action::Create {
+                name: "Original markers".into(),
+                deck: 0,
+            })
+            .unwrap();
+        settle_content(&mut worker);
+        let composition = worker.jam.project.decks[0].unwrap();
+        let structure = Structure {
+            sections: vec![Section {
+                id: 1,
+                tick: 0,
+                label: "Intro".into(),
+                intensity: None,
+            }],
+            ..Default::default()
+        };
+        worker
+            .session_action(Action::Structure {
+                composition,
+                structure: structure.clone(),
+            })
+            .unwrap();
+        assert!(worker.preparation.is_none());
+        assert!(worker.jam.dirty);
+        worker.session_action(Action::Undo {}).unwrap();
+        assert!(
+            worker.jam.project.compositions[0]
+                .structure
+                .sections
+                .is_empty()
+        );
+        worker.session_action(Action::Redo {}).unwrap();
+        assert_eq!(worker.jam.project.compositions[0].structure, structure);
+        let request = |known| Command::Overview {
+            style: Style::Structure,
+            columns: 64,
+            visible: vec![Address { deck: 0, slot: 0 }],
+            detail: None,
+            known,
+        };
+        let Response::Overview(first) = worker.handle(request(None)).unwrap() else {
+            panic!("Overview reply")
+        };
+        assert!(first.data.is_some());
+        let Response::Overview(next) = worker.handle(request(Some(first.revision))).unwrap() else {
+            panic!("Overview reply")
+        };
+        assert!(next.data.is_none());
     }
     #[test]
     fn opt_in_timing_preserves_reply_and_releases_bounded_admission() {

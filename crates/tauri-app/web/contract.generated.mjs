@@ -108,6 +108,19 @@ export const contract = {
   "capacity": 32,
   "commands": [
     {
+      "columns": 128,
+      "detail": null,
+      "kind": "overview",
+      "known": null,
+      "style": "structure",
+      "visible": [
+        {
+          "deck": 0,
+          "slot": 0
+        }
+      ]
+    },
+    {
       "action": {
         "kind": "new"
       },

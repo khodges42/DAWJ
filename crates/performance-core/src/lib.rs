@@ -23,6 +23,8 @@ pub mod reliability;
 pub mod service;
 pub mod session;
 pub mod timeline;
+pub mod visualization;
+pub mod waveform;
 pub mod web_contract;
 pub mod web_timeline;
 pub use audio_backend::performance_state;
@@ -195,7 +197,10 @@ struct Receipt {
     parameters: Option<PartParameters>,
 }
 
+type PatternVersion = (u64, Option<parts::pattern::Pattern>);
 pub struct Coordinator {
+    pattern_versions: [[VecDeque<PatternVersion>; SLOTS]; 2],
+    confirmed_patterns: [[(u64, Option<parts::pattern::Pattern>); SLOTS]; 2],
     pub pattern_targets: [[u64; SLOTS]; 2],
     pub banks: [[Option<u8>; SLOTS]; 2],
     pub names: [[String; SLOTS]; 2],
@@ -224,6 +229,8 @@ impl Coordinator {
             .set_output_trim_db(DEMO_OUTPUT_TRIM_DB)
             .expect("demo trim is within engine bounds");
         Self {
+            pattern_versions: std::array::from_fn(|_| std::array::from_fn(|_| VecDeque::new())),
+            confirmed_patterns: [[(0, None); SLOTS]; 2],
             pattern_targets: [[0; SLOTS]; 2],
             banks: std::array::from_fn(|d| std::array::from_fn(|s| Some((d * SLOTS + s) as u8))),
             names: std::array::from_fn(|_| {
@@ -289,6 +296,11 @@ impl Coordinator {
                 .control
                 .submit(*d, *s, Request::Pattern(*p), Quantize::Immediate)?;
             self.pattern_targets[*d][*s] = ticket.id();
+            let versions = &mut self.pattern_versions[*d][*s];
+            versions.push_back((ticket.id(), *p));
+            while versions.len() > 32 {
+                versions.pop_front();
+            }
             self.feedback[*d][*s] = format!("Pattern #{} submitted; awaiting engine", ticket.id());
             self.receipts.push_back(Receipt {
                 ticket,
@@ -359,6 +371,14 @@ impl Coordinator {
     }
     pub fn poll(&mut self) {
         if let Some(next) = self.control.performance_state() {
+            for d in 0..2 {
+                for slot in 0..SLOTS {
+                    let revision = next.decks[d].slots[slot].pattern.revision;
+                    if let Some(definition) = self.pattern_definition(d, slot, revision) {
+                        self.confirmed_patterns[d][slot] = (revision, definition);
+                    }
+                }
+            }
             if self
                 .snapshot
                 .is_none_or(|old| old.generation != next.generation)
@@ -393,6 +413,25 @@ impl Coordinator {
     }
     pub fn stale(&self) -> bool {
         self.last_publication.elapsed() > Duration::from_secs(1)
+    }
+    /// Definition associated with an executed revision, distinct from the editable target.
+    pub fn pattern_definition(
+        &self,
+        deck: usize,
+        slot: usize,
+        revision: u64,
+    ) -> Option<Option<parts::pattern::Pattern>> {
+        if deck >= 2 || slot >= SLOTS {
+            return None;
+        }
+        let confirmed = self.confirmed_patterns[deck][slot];
+        if confirmed.0 == revision {
+            return Some(confirmed.1);
+        }
+        self.pattern_versions[deck][slot]
+            .iter()
+            .find(|(r, _)| *r == revision)
+            .map(|(_, p)| *p)
     }
     pub fn available(&self) -> bool {
         !self.terminal

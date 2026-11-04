@@ -103,6 +103,10 @@ impl LoadedSample {
     pub fn frames(&self) -> usize {
         self.pcm.len() / 2
     }
+    /// Read-only canonical stereo for non-realtime preparation/analysis. Never IPC PCM.
+    pub fn interleaved(&self) -> &[f32] {
+        &self.pcm
+    }
     pub fn decode(id: AssetId, bytes: &[u8], rate: u32) -> Result<Self, &'static str> {
         let invalid = "unsupported or malformed WAV";
         if bytes.len() > MAX_WAV_BYTES
