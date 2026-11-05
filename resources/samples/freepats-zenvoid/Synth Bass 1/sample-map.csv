@@ -1,0 +1,16 @@
+original_path,new_path,sha256
+samples/E1.wav,S01 Synth Bass 1 E1.wav,671c1572b2992db1332dbc49cce9c05b9708576605c1ab12a306d0c6e7291f04
+samples/G#1.wav,S02 Synth Bass 1 G#1.wav,356e33f0d2ce1f5cdc62e912abbae21c9935b58cc59006e50aeec09365189db0
+samples/C2.wav,S03 Synth Bass 1 C2.wav,18047594e7ab5a6ac6a2ce63af2f366b44ea3c27fc2793e06121ac9fe7a29b08
+samples/E2.wav,S04 Synth Bass 1 E2.wav,15724f58748a19b93bb5958048ff6c18ff3a3e9014c6690ce0ac78e134fce249
+samples/G#2.wav,S05 Synth Bass 1 G#2.wav,70d412126eb41c7d57b524de58f3f0f26bbec730615223ad66d42f9b3dfb5c32
+samples/C3.wav,S06 Synth Bass 1 C3.wav,fc881df0221eefa67b479188c8abc707345658bb442e5a54bbe2aabe88e84f3b
+samples/E3.wav,S07 Synth Bass 1 E3.wav,69a7ce2624212f4adc768179a95b33e5e4ba42447b93d74b92677310f0a2f60e
+samples/G#3.wav,S08 Synth Bass 1 G#3.wav,fad3b2e48bf62a165060d992ebadb78ab1618c7eab232f0efc8836f36e20d186
+samples/C4.wav,S09 Synth Bass 1 C4.wav,d7d91bf124bcbc22abcf9067a8799936b022f285ee77510f1f032f126c2625a7
+samples/E4.wav,S10 Synth Bass 1 E4.wav,9b36fe35403eaabe3da4b7bc9c89ba7301de0333327f8199550f599ad6a62719
+samples/G#4.wav,S11 Synth Bass 1 G#4.wav,9043603d248026fc8e3846dbbebfde16d43426fc6261cf0f7cf21c0de7a1bd42
+samples/C5.wav,S12 Synth Bass 1 C5.wav,046f583ceef094af8ac103757439e4f9f9d0e4c16f3f6ab643418e7d92c80b4e
+samples/E5.wav,S13 Synth Bass 1 E5.wav,fae817f657a31cf26ca5c551a4a42be21b8e26fc5d82725b8822281a20dcb66d
+samples/G#5.wav,S14 Synth Bass 1 G#5.wav,72c3af6a5abba215b15855167d6bb52cce7c63671603ff907404e412035f909f
+samples/C6.wav,S15 Synth Bass 1 C6.wav,b35bc5f56eb684a44fd7addca481280f00175e7eb9269203a823dabf94f39433

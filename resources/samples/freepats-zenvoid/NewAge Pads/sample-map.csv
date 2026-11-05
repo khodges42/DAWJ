@@ -1,0 +1,17 @@
+original_path,new_path,sha256
+samples/C2.wav,S01 NewAge Pads C2.wav,6381ff105c6cb47b69ed5b1ff4cb3073671273e4c0c41edf496851828c0453d3
+samples/E2.wav,S02 NewAge Pads E2.wav,3fd98dd3190bc891c7fdc7481c27ec749de0db0d0c1283944a06d822d4b84dd5
+samples/G#2.wav,S03 NewAge Pads G#2.wav,c2f3a52c9f6e9be9ba3623ad1b48189071e969c272ad27cde285ea07c0707cc8
+samples/C3.wav,S04 NewAge Pads C3.wav,09de0d723979d74ee759810caa2148733b784d05c49c2e9788919f156b1904b0
+samples/E3.wav,S05 NewAge Pads E3.wav,be21f2365c58cf9e015393dcc858ec71afc7afe2a248b79a7f0fdde264d81918
+samples/G#3.wav,S06 NewAge Pads G#3.wav,949ffb114c7d687942d4cc80f2a9c41437bcaef579bc0f532572a149e36c1db3
+samples/C4.wav,S07 NewAge Pads C4.wav,a1a9554d1f6c78f6bd23902d265bd7ce99b2015ba032e49a7a105c22cf8c9661
+samples/E4.wav,S08 NewAge Pads E4.wav,411b3dddc0f69192680c4ca25bfe62ce58f770d5a33185b6164928ca91fe764e
+samples/G#4.wav,S09 NewAge Pads G#4.wav,52e71a66fd938d71fef50090098791cee56ae32a387f607d3ebbe47ea57b469c
+samples/C5.wav,S10 NewAge Pads C5.wav,a3dead9a2cce3349151e46ac021032124dbc25172b6b9bd353d29ab91b3a5ae6
+samples/E5.wav,S11 NewAge Pads E5.wav,f17a99116d307d6a654b15615338258f2789d0629ae74cc6049718a49a3c00b7
+samples/G#5.wav,S12 NewAge Pads G#5.wav,c01fa950cff77fe86eba36d8e765f176ec5558f4c47bb76da58a911937d7493e
+samples/C6.wav,S13 NewAge Pads C6.wav,a9d1386254da877c43ec8d006343d6773c4dff8a69219d3071faad9b091802cd
+samples/E6.wav,S14 NewAge Pads E6.wav,da067950072c7a901bc13b7d7cc2aa116121084e9524512a95e8a6a0e0db73b8
+samples/G#6.wav,S15 NewAge Pads G#6.wav,c9bdaf94f5d495b384037458e6d412d15c57114d0b1201277b2b12af0d24e0cc
+samples/C7.wav,S16 NewAge Pads C7.wav,cefdf8ca73c6d9f2952b56f8509401a8b2b3df8d8d0f8c9c691a2665b793889f

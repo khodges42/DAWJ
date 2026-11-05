@@ -1,0 +1,14 @@
+original_path,new_path,sha256
+samples/C2.wav,S01 Sweep Pad C2.wav,bb516678bdc61fb034483e2610687fc8e7d4808dbd2b8ab52f18d17caa13bea5
+samples/E2.wav,S02 Sweep Pad E2.wav,4a3232a4401c8dc083e90061a116b47b670de52bbc9e6fceab79523a04c9e5b8
+samples/G#2.wav,S03 Sweep Pad G#2.wav,eea3bfb189787a2338cbc03d5bab52ef56b3824528f2fd6c34a8659dd82d01d3
+samples/C3.wav,S04 Sweep Pad C3.wav,2f1d0582d727245eadfc54834fa353177d43624855ee368aae47047cfad039c4
+samples/E3.wav,S05 Sweep Pad E3.wav,c5cd1a2fe576072104cbd2dc95c3ee03cefbf481916a2789a75fdb4ee6304b09
+samples/G#3.wav,S06 Sweep Pad G#3.wav,ae29c16e8671af993c54651b11bbc8628978a4b2acd83f52a1a5644ac31aa13f
+samples/C4.wav,S07 Sweep Pad C4.wav,89b636d022460ec0e13e644a8f785a0bbc2c4241306224e2e197bb43680f7a42
+samples/E4.wav,S08 Sweep Pad E4.wav,c6a0e3145fa6e70f35070248ce6ef7854fc63ec02e7b2cd20259b97b125c5c91
+samples/G#4.wav,S09 Sweep Pad G#4.wav,69a0ae2eb27dd988338ed475ca7964e2269385a7115a87d584566d9b05face0d
+samples/C5.wav,S10 Sweep Pad C5.wav,f2970e07ac6f1ced2cbc47ada4a363fb560d01376d5ed020ba37e702248973b1
+samples/E5.wav,S11 Sweep Pad E5.wav,243b7f424e29ebae13a09d10025b509d63bfdbbd63000263930c4b4ce4a13c6f
+samples/G#5.wav,S12 Sweep Pad G#5.wav,3f9b66f1e5ee8323e3b67c235911faaf5ae9345d2978fc38e98d04f18993a4b1
+samples/C6.wav,S13 Sweep Pad C6.wav,c496831137f81f727c91c6e22c953026284898f06741b1140bb2d2fbbf916517

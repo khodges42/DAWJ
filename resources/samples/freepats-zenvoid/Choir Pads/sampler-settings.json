@@ -1,0 +1,18 @@
+{
+  "original_file": "SynthPadChoir 20200516.sfz",
+  "original_sfz_text": "//+ Name: Synth Pad Choir\n//+ Date: 2020-05-16\n//+ URL: http://freepats.zenvoid.org/Synthesizer/synth-pad.html#Choir\n\n<global>\n //+ Instrument: Synth Pad Choir\n ampeg_release=2\n loop_mode=loop_continuous\n\n<group>\n<region>\n lokey=33 hikey=38\n pitch_keycenter=36\n loop_start=119520 loop_end=299519\n sample=samples/C2.wav\n<region>\n lokey=39 hikey=44\n pitch_keycenter=42\n loop_start=119520 loop_end=299519\n sample=samples/F#2.wav\n<region>\n lokey=45 hikey=50\n pitch_keycenter=48\n loop_start=119520 loop_end=299519\n sample=samples/C3.wav\n<region>\n lokey=51 hikey=56\n pitch_keycenter=54\n loop_start=119520 loop_end=299519\n sample=samples/F#3.wav\n<region>\n lokey=57 hikey=62\n pitch_keycenter=60\n loop_start=119520 loop_end=299519\n sample=samples/C4.wav\n<region>\n lokey=63 hikey=68\n pitch_keycenter=66\n loop_start=119520 loop_end=299519\n sample=samples/F#4.wav\n<region>\n lokey=69 hikey=74\n pitch_keycenter=72\n loop_start=119520 loop_end=299519\n sample=samples/C5.wav\n<region>\n lokey=75 hikey=80\n pitch_keycenter=78\n loop_start=119520 loop_end=299519\n sample=samples/F#5.wav\n<region>\n lokey=81 hikey=86\n pitch_keycenter=84\n loop_start=119520 loop_end=299519\n sample=samples/C6.wav\n<region>\n lokey=87 hikey=91\n pitch_keycenter=90\n loop_start=119520 loop_end=299519\n sample=samples/F#6.wav\n<region>\n lokey=92 hikey=97\n pitch_keycenter=96\n loop_start=119520 loop_end=299519\n sample=samples/C7.wav\n<region>\n lokey=98 hikey=108\n pitch_keycenter=102\n loop_start=119520 loop_end=299519\n sample=samples/F#7.wav\n",
+  "sample_paths": {
+    "samples/C2.wav": "S01 Choir Pads C2.wav",
+    "samples/F#2.wav": "S02 Choir Pads F#2.wav",
+    "samples/C3.wav": "S03 Choir Pads C3.wav",
+    "samples/F#3.wav": "S04 Choir Pads F#3.wav",
+    "samples/C4.wav": "S05 Choir Pads C4.wav",
+    "samples/F#4.wav": "S06 Choir Pads F#4.wav",
+    "samples/C5.wav": "S07 Choir Pads C5.wav",
+    "samples/F#5.wav": "S08 Choir Pads F#5.wav",
+    "samples/C6.wav": "S09 Choir Pads C6.wav",
+    "samples/F#6.wav": "S10 Choir Pads F#6.wav",
+    "samples/C7.wav": "S11 Choir Pads C7.wav",
+    "samples/F#7.wav": "S12 Choir Pads F#7.wav"
+  }
+}

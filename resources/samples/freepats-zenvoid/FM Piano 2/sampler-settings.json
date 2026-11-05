@@ -1,0 +1,18 @@
+{
+  "original_file": "FM-Piano2 20161112.sfz",
+  "original_sfz_text": "//+ Name: FM Piano 2\n//+ Date: 2016-11-12\n//+ URL: http://freepats.zenvoid.org/ElectricPiano/synthesized-piano.html#FM_Piano2\n\n<global>\n //+ Instrument: FM Piano 2\n ampeg_release=1.9\n\n<group>\n<region>\n lokey=26\n hikey=32\n pitch_keycenter=30\n sample=samples/F#1v80.wav\n<region>\n lokey=33\n hikey=38\n pitch_keycenter=36\n sample=samples/C2v80.wav\n<region>\n lokey=39\n hikey=44\n pitch_keycenter=42\n sample=samples/F#2v80.wav\n<region>\n lokey=45\n hikey=50\n pitch_keycenter=48\n sample=samples/C3v80.wav\n<region>\n lokey=51\n hikey=56\n pitch_keycenter=54\n sample=samples/F#3v80.wav\n<region>\n lokey=57\n hikey=62\n pitch_keycenter=60\n sample=samples/C4v80.wav\n<region>\n lokey=63\n hikey=68\n pitch_keycenter=66\n sample=samples/F#4v80.wav\n<region>\n lokey=69\n hikey=74\n pitch_keycenter=72\n sample=samples/C5v80.wav\n<region>\n lokey=75\n hikey=80\n pitch_keycenter=78\n sample=samples/F#5v80.wav\n<region>\n lokey=81\n hikey=86\n pitch_keycenter=84\n sample=samples/C6v80.wav\n<region>\n lokey=87\n hikey=92\n pitch_keycenter=90\n sample=samples/F#6v80.wav\n<region>\n lokey=93\n hikey=103\n pitch_keycenter=96\n sample=samples/C7v80.wav\n",
+  "sample_paths": {
+    "samples/F#1v80.wav": "S01 FM Piano 2 F#1 Vel80.wav",
+    "samples/C2v80.wav": "S02 FM Piano 2 C2 Vel80.wav",
+    "samples/F#2v80.wav": "S03 FM Piano 2 F#2 Vel80.wav",
+    "samples/C3v80.wav": "S04 FM Piano 2 C3 Vel80.wav",
+    "samples/F#3v80.wav": "S05 FM Piano 2 F#3 Vel80.wav",
+    "samples/C4v80.wav": "S06 FM Piano 2 C4 Vel80.wav",
+    "samples/F#4v80.wav": "S07 FM Piano 2 F#4 Vel80.wav",
+    "samples/C5v80.wav": "S08 FM Piano 2 C5 Vel80.wav",
+    "samples/F#5v80.wav": "S09 FM Piano 2 F#5 Vel80.wav",
+    "samples/C6v80.wav": "S10 FM Piano 2 C6 Vel80.wav",
+    "samples/F#6v80.wav": "S11 FM Piano 2 F#6 Vel80.wav",
+    "samples/C7v80.wav": "S12 FM Piano 2 C7 Vel80.wav"
+  }
+}

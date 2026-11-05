@@ -1,0 +1,21 @@
+{
+  "original_file": "SynthFifths 20200519.sfz",
+  "original_sfz_text": "//+ Name: Synth Fifths\n//+ Date: 2020-05-19\n//+ URL: http://freepats.zenvoid.org/Synthesizer/synth-lead.html#Fifths\n\n<global>\n //+ Instrument: Synth Fifths\n ampeg_release=0.25\n loop_mode=loop_continuous\n\n<group>\n<region>\n lokey=33 hikey=41\n pitch_keycenter=40\n loop_start=120000 loop_end=239999\n sample=samples/E2.wav\n<region>\n lokey=42 hikey=45\n pitch_keycenter=44\n loop_start=120000 loop_end=239999\n sample=samples/G#2.wav\n<region>\n lokey=46 hikey=49\n pitch_keycenter=48\n loop_start=120000 loop_end=239999\n sample=samples/C3.wav\n<region>\n lokey=50 hikey=53\n pitch_keycenter=52\n loop_start=120000 loop_end=239999\n sample=samples/E3.wav\n<region>\n lokey=54 hikey=57\n pitch_keycenter=56\n loop_start=120000 loop_end=239999\n sample=samples/G#3.wav\n<region>\n lokey=58 hikey=61\n pitch_keycenter=60\n loop_start=120000 loop_end=239999\n sample=samples/C4.wav\n<region>\n lokey=62 hikey=65\n pitch_keycenter=64\n loop_start=120000 loop_end=239999\n sample=samples/E4.wav\n<region>\n lokey=66 hikey=69\n pitch_keycenter=68\n loop_start=120000 loop_end=239999\n sample=samples/G#4.wav\n<region>\n lokey=70 hikey=73\n pitch_keycenter=72\n loop_start=120000 loop_end=239999\n sample=samples/C5.wav\n<region>\n lokey=74 hikey=77\n pitch_keycenter=76\n loop_start=120000 loop_end=239999\n sample=samples/E5.wav\n<region>\n lokey=78 hikey=81\n pitch_keycenter=80\n loop_start=120000 loop_end=239999\n sample=samples/G#5.wav\n<region>\n lokey=82 hikey=85\n pitch_keycenter=84\n loop_start=120000 loop_end=239999\n sample=samples/C6.wav\n<region>\n lokey=86 hikey=89\n pitch_keycenter=88\n loop_start=120000 loop_end=239999\n sample=samples/E6.wav\n<region>\n lokey=90 hikey=93\n pitch_keycenter=92\n loop_start=120000 loop_end=239999\n sample=samples/G#6.wav\n<region>\n lokey=94 hikey=101\n pitch_keycenter=96\n loop_start=120000 loop_end=239999\n sample=samples/C7.wav\n",
+  "sample_paths": {
+    "samples/E2.wav": "S01 Synth Fifths E2.wav",
+    "samples/G#2.wav": "S02 Synth Fifths G#2.wav",
+    "samples/C3.wav": "S03 Synth Fifths C3.wav",
+    "samples/E3.wav": "S04 Synth Fifths E3.wav",
+    "samples/G#3.wav": "S05 Synth Fifths G#3.wav",
+    "samples/C4.wav": "S06 Synth Fifths C4.wav",
+    "samples/E4.wav": "S07 Synth Fifths E4.wav",
+    "samples/G#4.wav": "S08 Synth Fifths G#4.wav",
+    "samples/C5.wav": "S09 Synth Fifths C5.wav",
+    "samples/E5.wav": "S10 Synth Fifths E5.wav",
+    "samples/G#5.wav": "S11 Synth Fifths G#5.wav",
+    "samples/C6.wav": "S12 Synth Fifths C6.wav",
+    "samples/E6.wav": "S13 Synth Fifths E6.wav",
+    "samples/G#6.wav": "S14 Synth Fifths G#6.wav",
+    "samples/C7.wav": "S15 Synth Fifths C7.wav"
+  }
+}

@@ -1,0 +1,16 @@
+original_path,new_path,sha256
+samples/E2.wav,S01 Synth Fifths E2.wav,ba67a98389863bb3e9c9f127b24ee1dd4e0410b63453d1252e519a3b4d233463
+samples/G#2.wav,S02 Synth Fifths G#2.wav,fa7304b1dc7726dae47c4223edf7e756eb309d1beab8dd42aceb29c4c13fbce9
+samples/C3.wav,S03 Synth Fifths C3.wav,1aaa693371aaafc4bddab889e036ff2092a80b434e4b2d638f610db913e09e4b
+samples/E3.wav,S04 Synth Fifths E3.wav,be1ae6f49277c42c448b5e5a8ad9a595430fac5ab8e9a55673914794a40269ff
+samples/G#3.wav,S05 Synth Fifths G#3.wav,f5fbb5831af771004e8529670e6e8f5968bc2441f48547578d0a2a311d69c3e5
+samples/C4.wav,S06 Synth Fifths C4.wav,0bd0e920e0da5d1b8dece2b39b4dfbd25f279b06005d6a7be9c040d3c0e2b77a
+samples/E4.wav,S07 Synth Fifths E4.wav,1bf4b370cd281906253dbdb4c90410ec83688b153c3b9774d6792150170e437d
+samples/G#4.wav,S08 Synth Fifths G#4.wav,f472f8fc192d070116be419b7560d9088b7b5a0fd5110f4db66192b99bcd14fc
+samples/C5.wav,S09 Synth Fifths C5.wav,42e04f6906473736d757141f7aaa312de66e091d5fde4eff23e552aae306bd61
+samples/E5.wav,S10 Synth Fifths E5.wav,6cc569daa2ca63a0441a8c52280a84b8fe1069a9ce2d6787dbe48e29d8b6845c
+samples/G#5.wav,S11 Synth Fifths G#5.wav,bda5b4946790b89402d45aca3cd70c361e7f3be93e5cd39545d60bfa2d6edca7
+samples/C6.wav,S12 Synth Fifths C6.wav,956d8bf55dc12ab8e029d3d99b2514f278e76c28147283a1a540ee4b81126efa
+samples/E6.wav,S13 Synth Fifths E6.wav,c6627e895b0c6abe1129688bd6cc92d65873dd8cec1e18fece6e34d486f2d7c0
+samples/G#6.wav,S14 Synth Fifths G#6.wav,ced97f033b2f2e28cf62eaeba76ea4fc0ea64c60f3854559752bf7e2f9eee2da
+samples/C7.wav,S15 Synth Fifths C7.wav,046e7ffb21cf4784c57244052dd11e04a646d79cd1b2a451c655df248556513b

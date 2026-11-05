@@ -1,0 +1,19 @@
+original_path,new_path,sha256
+samples/28.wav,S01 Synth Strings 2 E1 MIDI28.wav,c6e7747796726ca93e4ff3bd51fef865fda8d7e212e251c396682c8fe56aac0a
+samples/32.wav,S02 Synth Strings 2 G#1 MIDI32.wav,a6542a3a68db7a13ec05e72a3679abdbafd3e26975fc08714dc22964bd4f2302
+samples/36.wav,S03 Synth Strings 2 C2 MIDI36.wav,37ba053685fb283c6cab03db65a65aa9bf378fe4b909231d6d18dc5229f901e1
+samples/40.wav,S04 Synth Strings 2 E2 MIDI40.wav,c35fb97db1b42df42325b0aff5bdb54688b3f74727c6b0e2aa40ec6144b0be56
+samples/44.wav,S05 Synth Strings 2 G#2 MIDI44.wav,4b18a9e2d4d009db354a2d0246857e2d4d1241d369a8ee48417bf73afad9b463
+samples/48.wav,S06 Synth Strings 2 C3 MIDI48.wav,181e5fe09edaa6b36fb132aeaab9c6af33ed745b4f33bc4aafa3fad684e4188c
+samples/52.wav,S07 Synth Strings 2 E3 MIDI52.wav,9ce481e8e875d319536eb7f74eeb0236cd55071c87223e2f03b41db53ab8d636
+samples/56.wav,S08 Synth Strings 2 G#3 MIDI56.wav,33f28752591c2c08e83a1d641e60bebe748b68b0a1ec1ce4306d14f84abe6dfc
+samples/60.wav,S09 Synth Strings 2 C4 MIDI60.wav,78aaf07c5f07d4fdb0c98d4323e22a04525eb3c4d4c5378fa2cab784682e28cc
+samples/64.wav,S10 Synth Strings 2 E4 MIDI64.wav,cbd9b308e1ca6cb9fa15a58fbe308746ad75a764d784d242854daf62be114aff
+samples/68.wav,S11 Synth Strings 2 G#4 MIDI68.wav,b28740d8daa2c5ab726578ed5d220e4f39edb7637741d1075fd4cf7a84775559
+samples/72.wav,S12 Synth Strings 2 C5 MIDI72.wav,681728c0d48de94b9c0022517a696654799c31c7f0c72f3e2040bf8dbaacc03b
+samples/76.wav,S13 Synth Strings 2 E5 MIDI76.wav,737177ee0fd68254c6427b37e69ffeb37d0e79b91cefd58ce46572520633f631
+samples/80.wav,S14 Synth Strings 2 G#5 MIDI80.wav,01fb8629de249ca55ed1368724641805f6ccfa8fe3e578ec58a10d423ebc51a4
+samples/84.wav,S15 Synth Strings 2 C6 MIDI84.wav,79dcf3279cb9aa2648ee3cb58877c553e3aa3dcd2459774cfa425bfade1d45d7
+samples/88.wav,S16 Synth Strings 2 E6 MIDI88.wav,b4e099e8fb1b16b64841f13b16fdcd060bde884ae08c800061e6a57d7ca1c6ea
+samples/92.wav,S17 Synth Strings 2 G#6 MIDI92.wav,1d1cf0b0b1312e904e215bbe1b00d0f4ad578f6cda3ed4a7fad8d1dda5c0b1c8
+samples/96.wav,S18 Synth Strings 2 C7 MIDI96.wav,4201d6dc12394fe28a11c7175b6aaae62e4c5f772fbc4f5f22ab8009c2caae4d

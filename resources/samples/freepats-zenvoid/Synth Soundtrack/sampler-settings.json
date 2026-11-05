@@ -1,0 +1,21 @@
+{
+  "original_file": "SynthSoundtrack 20200521.sfz",
+  "original_sfz_text": "//+ Name: Synth Soundtrack\n//+ Date: 2020-05-21\n//+ URL: http://freepats.zenvoid.org/Synthesizer/synth-effects.html#Soundtrack\n\n<global>\n //+ Instrument: Synth Soundtrack\n ampeg_release=2\n loop_mode=loop_continuous\n\n<group>\n<region>\n lokey=33 hikey=38\n pitch_keycenter=36\n loop_start=205422 loop_end=430640\n sample=samples/C2.wav\n<region>\n lokey=39 hikey=42\n pitch_keycenter=40\n loop_start=179591 loop_end=395375\n sample=samples/E2.wav\n<region>\n lokey=43 hikey=46\n pitch_keycenter=44\n loop_start=160253 loop_end=356361\n sample=samples/G#2.wav\n<region>\n lokey=47 hikey=50\n pitch_keycenter=48\n loop_start=159718 loop_end=353466\n sample=samples/C3.wav\n<region>\n lokey=51 hikey=54\n pitch_keycenter=52\n loop_start=161509 loop_end=343073\n sample=samples/E3.wav\n<region>\n lokey=55 hikey=58\n pitch_keycenter=56\n loop_start=162852 loop_end=352957\n sample=samples/G#3.wav\n<region>\n lokey=59 hikey=62\n pitch_keycenter=60\n loop_start=149734 loop_end=345516\n sample=samples/C4.wav\n<region>\n lokey=63 hikey=66\n pitch_keycenter=64\n loop_start=157561 loop_end=341759\n sample=samples/E4.wav\n<region>\n lokey=67 hikey=70\n pitch_keycenter=68\n loop_start=154826 loop_end=342806\n sample=samples/G#4.wav\n<region>\n lokey=71 hikey=74\n pitch_keycenter=72\n loop_start=153431 loop_end=344699\n sample=samples/C5.wav\n<region>\n lokey=75 hikey=78\n pitch_keycenter=76\n loop_start=152815 loop_end=342043\n sample=samples/E5.wav\n<region>\n lokey=79 hikey=82\n pitch_keycenter=80\n loop_start=154269 loop_end=335724\n sample=samples/G#5.wav\n<region>\n lokey=83 hikey=86\n pitch_keycenter=84\n loop_start=155330 loop_end=309286\n sample=samples/C6.wav\n<region>\n lokey=87 hikey=90\n pitch_keycenter=88\n loop_start=142825 loop_end=282729\n sample=samples/E6.wav\n<region>\n lokey=91 hikey=96\n pitch_keycenter=92\n loop_start=153973 loop_end=320430\n sample=samples/G#6.wav\n",
+  "sample_paths": {
+    "samples/C2.wav": "S01 Synth Soundtrack C2.wav",
+    "samples/E2.wav": "S02 Synth Soundtrack E2.wav",
+    "samples/G#2.wav": "S03 Synth Soundtrack G#2.wav",
+    "samples/C3.wav": "S04 Synth Soundtrack C3.wav",
+    "samples/E3.wav": "S05 Synth Soundtrack E3.wav",
+    "samples/G#3.wav": "S06 Synth Soundtrack G#3.wav",
+    "samples/C4.wav": "S07 Synth Soundtrack C4.wav",
+    "samples/E4.wav": "S08 Synth Soundtrack E4.wav",
+    "samples/G#4.wav": "S09 Synth Soundtrack G#4.wav",
+    "samples/C5.wav": "S10 Synth Soundtrack C5.wav",
+    "samples/E5.wav": "S11 Synth Soundtrack E5.wav",
+    "samples/G#5.wav": "S12 Synth Soundtrack G#5.wav",
+    "samples/C6.wav": "S13 Synth Soundtrack C6.wav",
+    "samples/E6.wav": "S14 Synth Soundtrack E6.wav",
+    "samples/G#6.wav": "S15 Synth Soundtrack G#6.wav"
+  }
+}

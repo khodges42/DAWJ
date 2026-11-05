@@ -1,0 +1,24 @@
+{
+  "original_file": "SynthGoblins 20200612.sfz",
+  "original_sfz_text": "//+ Name: Synth Goblins\n//+ Date: 2020-06-12\n//+ URL: http://freepats.localhost/Synthesizer/synth-effects.html#Goblins\n\n<global>\n //+ Instrument: Synth Goblins\n ampeg_release=4\n loop_mode=loop_continuous\n\n<group>\n<region>\n lokey=34 hikey=37\n pitch_keycenter=36\n loop_start=159472 loop_end=299471\n sample=samples/C2.wav\n<region>\n lokey=38 hikey=41\n pitch_keycenter=40\n loop_start=159496 loop_end=299495\n sample=samples/E2.wav\n<region>\n lokey=42 hikey=45\n pitch_keycenter=44\n loop_start=159448 loop_end=299447\n sample=samples/G#2.wav\n<region>\n lokey=46 hikey=49\n pitch_keycenter=48\n loop_start=159469 loop_end=299468\n sample=samples/C3.wav\n<region>\n lokey=50 hikey=53\n pitch_keycenter=52\n loop_start=159571 loop_end=299570\n sample=samples/E3.wav\n<region>\n lokey=54 hikey=57\n pitch_keycenter=56\n loop_start=159469 loop_end=299468\n sample=samples/G#3.wav\n<region>\n lokey=58 hikey=61\n pitch_keycenter=60\n loop_start=159434 loop_end=299433\n sample=samples/C4.wav\n<region>\n lokey=62 hikey=65\n pitch_keycenter=64\n loop_start=159530 loop_end=299529\n sample=samples/E4.wav\n<region>\n lokey=66 hikey=69\n pitch_keycenter=68\n loop_start=159410 loop_end=299409\n sample=samples/G#4.wav\n<region>\n lokey=70 hikey=73\n pitch_keycenter=72\n loop_start=159487 loop_end=299486\n sample=samples/C5.wav\n<region>\n lokey=74 hikey=77\n pitch_keycenter=76\n loop_start=159515 loop_end=299514\n sample=samples/E5.wav\n<region>\n lokey=78 hikey=81\n pitch_keycenter=80\n loop_start=159472 loop_end=299471\n sample=samples/G#5.wav\n<region>\n lokey=82 hikey=85\n pitch_keycenter=84\n loop_start=158501 loop_end=298500\n sample=samples/C6.wav\n<region>\n lokey=86 hikey=89\n pitch_keycenter=88\n loop_start=159494 loop_end=299493\n sample=samples/E6.wav\n<region>\n lokey=90 hikey=93\n pitch_keycenter=92\n loop_start=159483 loop_end=299482\n sample=samples/G#6.wav\n<region>\n lokey=94 hikey=97\n pitch_keycenter=96\n loop_start=159487 loop_end=299486\n sample=samples/C7.wav\n<region>\n lokey=98 hikey=101\n pitch_keycenter=100\n loop_start=159507 loop_end=299506\n sample=samples/E7.wav\n<region>\n lokey=102 hikey=106\n pitch_keycenter=104\n loop_start=159496 loop_end=299495\n sample=samples/G#7.wav\n",
+  "sample_paths": {
+    "samples/C2.wav": "S01 Synth Goblins C2.wav",
+    "samples/E2.wav": "S02 Synth Goblins E2.wav",
+    "samples/G#2.wav": "S03 Synth Goblins G#2.wav",
+    "samples/C3.wav": "S04 Synth Goblins C3.wav",
+    "samples/E3.wav": "S05 Synth Goblins E3.wav",
+    "samples/G#3.wav": "S06 Synth Goblins G#3.wav",
+    "samples/C4.wav": "S07 Synth Goblins C4.wav",
+    "samples/E4.wav": "S08 Synth Goblins E4.wav",
+    "samples/G#4.wav": "S09 Synth Goblins G#4.wav",
+    "samples/C5.wav": "S10 Synth Goblins C5.wav",
+    "samples/E5.wav": "S11 Synth Goblins E5.wav",
+    "samples/G#5.wav": "S12 Synth Goblins G#5.wav",
+    "samples/C6.wav": "S13 Synth Goblins C6.wav",
+    "samples/E6.wav": "S14 Synth Goblins E6.wav",
+    "samples/G#6.wav": "S15 Synth Goblins G#6.wav",
+    "samples/C7.wav": "S16 Synth Goblins C7.wav",
+    "samples/E7.wav": "S17 Synth Goblins E7.wav",
+    "samples/G#7.wav": "S18 Synth Goblins G#7.wav"
+  }
+}

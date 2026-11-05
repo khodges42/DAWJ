@@ -1,0 +1,19 @@
+{
+  "original_file": "SweepPad 20190813.sfz",
+  "original_sfz_text": "//+ Name: Sweep Pad\n//+ Date: 2019-08-13\n//+ URL: http://freepats.zenvoid.org/Synthesizer/synth-pad.html#SweepPad\n\n<global>\n //+ Instrument: Sweep Pad\n ampeg_release=1.0\n loop_mode=loop_continuous\n\n<group>\n<region>\n lokey=33 hikey=37\n pitch_keycenter=36\n loop_start=32767\n loop_end=352255\n sample=samples/C2.wav\n<region>\n lokey=38 hikey=41\n pitch_keycenter=40\n loop_start=43199\n loop_end=336063\n sample=samples/E2.wav\n<region>\n lokey=42 hikey=45\n pitch_keycenter=44\n loop_start=27903\n loop_end=329471\n sample=samples/G#2.wav\n<region>\n lokey=46 hikey=49\n pitch_keycenter=48\n loop_start=34720\n loop_end=357321\n sample=samples/C3.wav\n<region>\n lokey=50 hikey=53\n pitch_keycenter=52\n loop_start=34303\n loop_end=321535\n sample=samples/E3.wav\n<region>\n lokey=54 hikey=57\n pitch_keycenter=56\n loop_start=36760\n loop_end=291327\n sample=samples/G#3.wav\n<region>\n lokey=58 hikey=61\n pitch_keycenter=60\n loop_start=21167\n loop_end=352511\n sample=samples/C4.wav\n<region>\n lokey=62 hikey=65\n pitch_keycenter=64\n loop_start=33791\n loop_end=346623\n sample=samples/E4.wav\n<region>\n lokey=66 hikey=69\n pitch_keycenter=68\n loop_start=31207\n loop_end=309247\n sample=samples/G#4.wav\n<region>\n lokey=70 hikey=73\n pitch_keycenter=72\n loop_start=17382\n loop_end=302079\n sample=samples/C5.wav\n<region>\n lokey=74 hikey=77\n pitch_keycenter=76\n loop_start=46591\n loop_end=329727\n sample=samples/E5.wav\n<region>\n lokey=78 hikey=81\n pitch_keycenter=80\n loop_start=24298\n loop_end=273147\n sample=samples/G#5.wav\n<region>\n lokey=82 hikey=96\n pitch_keycenter=84\n loop_start=28385\n loop_end=304344\n sample=samples/C6.wav\n",
+  "sample_paths": {
+    "samples/C2.wav": "S01 Sweep Pad C2.wav",
+    "samples/E2.wav": "S02 Sweep Pad E2.wav",
+    "samples/G#2.wav": "S03 Sweep Pad G#2.wav",
+    "samples/C3.wav": "S04 Sweep Pad C3.wav",
+    "samples/E3.wav": "S05 Sweep Pad E3.wav",
+    "samples/G#3.wav": "S06 Sweep Pad G#3.wav",
+    "samples/C4.wav": "S07 Sweep Pad C4.wav",
+    "samples/E4.wav": "S08 Sweep Pad E4.wav",
+    "samples/G#4.wav": "S09 Sweep Pad G#4.wav",
+    "samples/C5.wav": "S10 Sweep Pad C5.wav",
+    "samples/E5.wav": "S11 Sweep Pad E5.wav",
+    "samples/G#5.wav": "S12 Sweep Pad G#5.wav",
+    "samples/C6.wav": "S13 Sweep Pad C6.wav"
+  }
+}

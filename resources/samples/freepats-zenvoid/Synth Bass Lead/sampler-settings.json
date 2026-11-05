@@ -1,0 +1,24 @@
+{
+  "original_file": "SynthBassLead 20200522.sfz",
+  "original_sfz_text": "//+ Name: Synth Bass & Lead\n//+ Date: 2020-05-22\n//+ URL: http://freepats.zenvoid.org/Synthesizer/synth-lead.html#BassLead\n\n<global>\n //+ Instrument: Synth Bass & Lead\n ampeg_release=0.1\n loop_mode=loop_continuous\n\n<group>\n<region>\n lokey=21 hikey=32\n pitch_keycenter=29\n loop_start=64860 loop_end=205819\n sample=samples/F1.wav\n<region>\n lokey=33 hikey=37\n pitch_keycenter=36\n loop_start=66114 loop_end=206027\n sample=samples/C2.wav\n<region>\n lokey=38 hikey=41\n pitch_keycenter=40\n loop_start=103164 loop_end=213679\n sample=samples/E2.wav\n<region>\n lokey=42 hikey=45\n pitch_keycenter=44\n loop_start=81107 loop_end=168399\n sample=samples/G#2.wav\n<region>\n lokey=46 hikey=49\n pitch_keycenter=48\n loop_start=64150 loop_end=133771\n sample=samples/C3.wav\n<region>\n lokey=50 hikey=53\n pitch_keycenter=52\n loop_start=86857 loop_end=142649\n sample=samples/E3.wav\n<region>\n lokey=54 hikey=57\n pitch_keycenter=56\n loop_start=80440 loop_end=124723\n sample=samples/G#3.wav\n<region>\n lokey=58 hikey=61\n pitch_keycenter=60\n loop_start=90127 loop_end=124769\n sample=samples/C4.wav\n<region>\n lokey=62 hikey=65\n pitch_keycenter=64\n loop_start=91961 loop_end=119323\n sample=samples/E4.wav\n<region>\n lokey=66 hikey=69\n pitch_keycenter=68\n loop_start=95380 loop_end=117309\n sample=samples/G#4.wav\n<region>\n lokey=70 hikey=73\n pitch_keycenter=72\n loop_start=93620 loop_end=111025\n sample=samples/C5.wav\n<region>\n lokey=74 hikey=77\n pitch_keycenter=76\n loop_start=75108 loop_end=88922\n sample=samples/E5.wav\n<region>\n lokey=78 hikey=81\n pitch_keycenter=80\n loop_start=92704 loop_end=103721\n sample=samples/G#5.wav\n<region>\n lokey=82 hikey=85\n pitch_keycenter=84\n loop_start=73965 loop_end=82667\n sample=samples/C6.wav\n<region>\n lokey=86 hikey=89\n pitch_keycenter=88\n loop_start=86320 loop_end=93227\n sample=samples/E6.wav\n<region>\n lokey=90 hikey=93\n pitch_keycenter=92\n loop_start=68287 loop_end=73769\n sample=samples/G#6.wav\n<region>\n lokey=94 hikey=99\n pitch_keycenter=96\n loop_start=80546 loop_end=84897\n sample=samples/C7.wav\n<region>\n lokey=100 hikey=108\n pitch_keycenter=104\n loop_start=58583 loop_end=84600\n sample=samples/G#7.wav\n",
+  "sample_paths": {
+    "samples/F1.wav": "S01 Synth Bass Lead F1.wav",
+    "samples/C2.wav": "S02 Synth Bass Lead C2.wav",
+    "samples/E2.wav": "S03 Synth Bass Lead E2.wav",
+    "samples/G#2.wav": "S04 Synth Bass Lead G#2.wav",
+    "samples/C3.wav": "S05 Synth Bass Lead C3.wav",
+    "samples/E3.wav": "S06 Synth Bass Lead E3.wav",
+    "samples/G#3.wav": "S07 Synth Bass Lead G#3.wav",
+    "samples/C4.wav": "S08 Synth Bass Lead C4.wav",
+    "samples/E4.wav": "S09 Synth Bass Lead E4.wav",
+    "samples/G#4.wav": "S10 Synth Bass Lead G#4.wav",
+    "samples/C5.wav": "S11 Synth Bass Lead C5.wav",
+    "samples/E5.wav": "S12 Synth Bass Lead E5.wav",
+    "samples/G#5.wav": "S13 Synth Bass Lead G#5.wav",
+    "samples/C6.wav": "S14 Synth Bass Lead C6.wav",
+    "samples/E6.wav": "S15 Synth Bass Lead E6.wav",
+    "samples/G#6.wav": "S16 Synth Bass Lead G#6.wav",
+    "samples/C7.wav": "S17 Synth Bass Lead C7.wav",
+    "samples/G#7.wav": "S18 Synth Bass Lead G#7.wav"
+  }
+}

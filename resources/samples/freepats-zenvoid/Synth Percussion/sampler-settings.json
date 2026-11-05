@@ -1,0 +1,27 @@
+{
+  "original_file": "SynthesizerPercussion-20220718.sfz",
+  "original_sfz_text": "//+ Name: Synthesizer percussion\n//+ Date: 2022-07-18\n//+ URL: http://freepats.zenvoid.org/Percussion/electric-percussion.html#FSynthPercussion\n\n<global>\n //+ Instrument: Synthesizer percussion\n ampeg_release=100\n loop_mode=no_loop\n\n<group>\n // Bass Drum 1\n key=48\n<region>\n sample=samples/Kick04.wav\n\n<group>\n // Bass Drum 2\n key=49\n<region>\n sample=samples/Kick06.wav\n\n<group>\n // Snare Drum 1\n key=50\n<region>\n sample=samples/Snare09.wav\n\n<group>\n // Snare Drum 2\n key=51\n<region>\n sample=samples/Snare14.wav\n\n<group>\n // Closed Hi-Hat 1\n key=52\n<region>\n sample=samples/ClosedHiHat01-01.wav\n\n<group>\n // Closed Hi-Hat 2\n key=53\n<region>\n sample=samples/ClosedHiHat02-01.wav\n\n<group>\n // Open Hi-Hat\n key=54\n volume=-2\n<region>\n sample=samples/OpenHiHat02-01.wav\n\n<group>\n // Cymbal 1\n //+ RandomRegion: Yes\n key=55\n<region>\n lorand=0 hirand=0.333333\n sample=samples/Cymbal01-01.wav\n<region>\n lorand=0.333333 hirand=0.666666\n sample=samples/Cymbal01-02.wav\n<region>\n lorand=0.666666 hirand=1\n sample=samples/Cymbal01-03.wav\n\n<group>\n // Cymbal 2\n key=56\n volume=-3\n<region>\n sample=samples/Cymbal02.wav\n\n<group>\n // Low Tom 1\n key=57\n<region>\n sample=samples/LowTom02-01.wav\n\n<group>\n // Low Tom 2\n key=58\n<region>\n sample=samples/LowTom02-02.wav\n\n<group>\n // Mid Tom 1\n key=59\n<region>\n sample=samples/MidTom02-01.wav\n\n<group>\n // Mid Tom 2\n key=60\n<region>\n sample=samples/MidTom02-02.wav\n\n<group>\n // High Tom 1\n key=61\n<region>\n sample=samples/HighTom02-01.wav\n\n<group>\n // High Tom 2\n key=62\n<region>\n sample=samples/HighTom02-02.wav\n\n<group>\n // Clap\n key=63\n<region>\n sample=samples/Clap01.wav\n\n<group>\n // Shaker\n key=64\n volume=-7\n<region>\n sample=samples/Shaker04.wav\n\n<group>\n // Shaker long\n key=65\n volume=-4\n<region>\n sample=samples/ShakerLong01.wav\n\n<group>\n // Claves\n key=66\n volume=-2\n<region>\n sample=samples/Claves01.wav\n",
+  "sample_paths": {
+    "samples/Clap01.wav": "S01 Synth Percussion Clap01.wav",
+    "samples/Claves01.wav": "S02 Synth Percussion Claves01.wav",
+    "samples/ClosedHiHat01-01.wav": "S03 Synth Percussion ClosedHiHat01-01.wav",
+    "samples/ClosedHiHat02-01.wav": "S04 Synth Percussion ClosedHiHat02-01.wav",
+    "samples/Cymbal01-01.wav": "S05 Synth Percussion Cymbal01-01.wav",
+    "samples/Cymbal01-02.wav": "S06 Synth Percussion Cymbal01-02.wav",
+    "samples/Cymbal01-03.wav": "S07 Synth Percussion Cymbal01-03.wav",
+    "samples/Cymbal02.wav": "S08 Synth Percussion Cymbal02.wav",
+    "samples/HighTom02-01.wav": "S09 Synth Percussion HighTom02-01.wav",
+    "samples/HighTom02-02.wav": "S10 Synth Percussion HighTom02-02.wav",
+    "samples/Kick04.wav": "S11 Synth Percussion Kick04.wav",
+    "samples/Kick06.wav": "S12 Synth Percussion Kick06.wav",
+    "samples/LowTom02-01.wav": "S13 Synth Percussion LowTom02-01.wav",
+    "samples/LowTom02-02.wav": "S14 Synth Percussion LowTom02-02.wav",
+    "samples/MidTom02-01.wav": "S15 Synth Percussion MidTom02-01.wav",
+    "samples/MidTom02-02.wav": "S16 Synth Percussion MidTom02-02.wav",
+    "samples/OpenHiHat02-01.wav": "S17 Synth Percussion OpenHiHat02-01.wav",
+    "samples/Shaker04.wav": "S18 Synth Percussion Shaker04.wav",
+    "samples/ShakerLong01.wav": "S19 Synth Percussion ShakerLong01.wav",
+    "samples/Snare09.wav": "S20 Synth Percussion Snare09.wav",
+    "samples/Snare14.wav": "S21 Synth Percussion Snare14.wav"
+  }
+}

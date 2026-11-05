@@ -1,0 +1,13 @@
+original_path,new_path,sha256
+samples/C2.wav,S01 Choir Pads C2.wav,d78c3240536aa78e9eb284392e1c7ab2f74e459e91bf68fe4ae5cbd9d7b04707
+samples/F#2.wav,S02 Choir Pads F#2.wav,ecd96620260104744263e55b22457a690ae3eeee1be3cbe8fa25a97e430a94d4
+samples/C3.wav,S03 Choir Pads C3.wav,1ac98eefa5c567ce387b7741ec59956411808e5a8d3b75f3e3b26bcaf4395b8d
+samples/F#3.wav,S04 Choir Pads F#3.wav,68ded378c9345d385ea5d2ceb99e43f919aed7c76458afbe2fc3168552720c7e
+samples/C4.wav,S05 Choir Pads C4.wav,63407aeacaeb1030b918e035a892821eea447d58de8186a55c46a2ed19a45085
+samples/F#4.wav,S06 Choir Pads F#4.wav,939c41a680fcfca1ce22d77b93e10bdaab45197326766ec2391bf287a9ddea14
+samples/C5.wav,S07 Choir Pads C5.wav,5ff0945aea201d01904af1f9dd7f3e011c4a1b7e206b6e7bf4f977a9d8728604
+samples/F#5.wav,S08 Choir Pads F#5.wav,bc005253284e8a619ad53e74793399cc2d770a823fe015252e5c36e603520bec
+samples/C6.wav,S09 Choir Pads C6.wav,9a4e3c0cf3a83a6b3bad68c9da4542f8c9592439b99ad584a8a2748434fdcab5
+samples/F#6.wav,S10 Choir Pads F#6.wav,1d538d2df27d1b60b7dae1bb2db7be9215d7fea5a42f2019cedcbfabdf47fb24
+samples/C7.wav,S11 Choir Pads C7.wav,26ca6eb6d11b63fffeafe995a430caa2e6cb99b8505aaa3f30dce097678decc4
+samples/F#7.wav,S12 Choir Pads F#7.wav,47046e469f93a61ecdb45b160b6a34211ce31f6514c63a6a7ca0b9042bea6bde

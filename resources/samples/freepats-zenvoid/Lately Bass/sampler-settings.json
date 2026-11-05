@@ -1,0 +1,17 @@
+{
+  "original_file": "LatelyBass 20240409.sfz",
+  "original_sfz_text": "//+ Name: Lately Bass\n//+ Date: 2024-04-09\n\n<global>\n ampeg_release=0.2\n loop_mode=no_loop\n\n<group>\n<region>\n lokey=21 hikey=26\n pitch_keycenter=24\n sample=samples/C1.wav\n<region>\n lokey=27 hikey=32\n pitch_keycenter=30\n sample=samples/F#1.wav\n<region>\n lokey=33 hikey=38\n pitch_keycenter=36\n sample=samples/C2.wav\n<region>\n lokey=39 hikey=44\n pitch_keycenter=42\n sample=samples/F#2.wav\n<region>\n lokey=45 hikey=50\n pitch_keycenter=48\n sample=samples/C3.wav\n<region>\n lokey=51 hikey=56\n pitch_keycenter=54\n sample=samples/F#3.wav\n<region>\n lokey=57 hikey=62\n pitch_keycenter=60\n sample=samples/C4.wav\n<region>\n lokey=63 hikey=68\n pitch_keycenter=66\n sample=samples/F#4.wav\n<region>\n lokey=69 hikey=74\n pitch_keycenter=72\n sample=samples/C5.wav\n<region>\n lokey=75 hikey=80\n pitch_keycenter=78\n sample=samples/F#5.wav\n<region>\n lokey=81 hikey=103\n pitch_keycenter=84\n sample=samples/C6.wav\n",
+  "sample_paths": {
+    "samples/C1.wav": "S01 Lately Bass C1.wav",
+    "samples/F#1.wav": "S02 Lately Bass F#1.wav",
+    "samples/C2.wav": "S03 Lately Bass C2.wav",
+    "samples/F#2.wav": "S04 Lately Bass F#2.wav",
+    "samples/C3.wav": "S05 Lately Bass C3.wav",
+    "samples/F#3.wav": "S06 Lately Bass F#3.wav",
+    "samples/C4.wav": "S07 Lately Bass C4.wav",
+    "samples/F#4.wav": "S08 Lately Bass F#4.wav",
+    "samples/C5.wav": "S09 Lately Bass C5.wav",
+    "samples/F#5.wav": "S10 Lately Bass F#5.wav",
+    "samples/C6.wav": "S11 Lately Bass C6.wav"
+  }
+}

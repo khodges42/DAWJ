@@ -1,0 +1,17 @@
+{
+  "original_file": "SynthCrystal 20190812.sfz",
+  "original_sfz_text": "//+ Name: Synth Crystal\n//+ Date: 2019-08-12\n//+ URL: http://freepats.zenvoid.org/Synthesizer/synth-effects.html#Crystal\n\n<global>\n ampeg_release=2\n loop_mode=loop_continuous\n\n<group>\n<region>\n lokey=32 hikey=38\n loop_start=156227\n loop_end=239169\n pitch_keycenter=36\n sample=samples/C2.wav\n<region>\n lokey=39 hikey=44\n loop_start=156684\n loop_end=239169\n pitch_keycenter=42\n sample=samples/F#2.wav\n<region>\n lokey=45 hikey=50\n loop_start=157245\n loop_end=239169\n pitch_keycenter=48\n sample=samples/C3.wav\n<region>\n lokey=51 hikey=56\n loop_start=158115\n loop_end=239169\n pitch_keycenter=54\n sample=samples/F#3.wav\n<region>\n lokey=57 hikey=62\n loop_start=156065\n loop_end=239169\n pitch_keycenter=60\n sample=samples/C4.wav\n<region>\n lokey=63 hikey=68\n loop_start=154184\n loop_end=239169\n pitch_keycenter=66\n sample=samples/F#4.wav\n<region>\n lokey=69 hikey=74\n loop_start=158848\n loop_end=239169\n pitch_keycenter=72\n sample=samples/C5.wav\n<region>\n lokey=75 hikey=80\n loop_start=153768\n loop_end=239169\n pitch_keycenter=78\n sample=samples/F#5.wav\n<region>\n lokey=81 hikey=86\n loop_start=153497\n loop_end=239169\n pitch_keycenter=84\n sample=samples/C6.wav\n<region>\n lokey=87 hikey=92\n loop_start=159221\n loop_end=239169\n pitch_keycenter=90\n sample=samples/F#6.wav\n<region>\n lokey=93 hikey=103\n loop_start=158470\n loop_end=239169\n pitch_keycenter=96\n sample=samples/C7.wav\n",
+  "sample_paths": {
+    "samples/C2.wav": "S01 Synth Crystal C2.wav",
+    "samples/F#2.wav": "S02 Synth Crystal F#2.wav",
+    "samples/C3.wav": "S03 Synth Crystal C3.wav",
+    "samples/F#3.wav": "S04 Synth Crystal F#3.wav",
+    "samples/C4.wav": "S05 Synth Crystal C4.wav",
+    "samples/F#4.wav": "S06 Synth Crystal F#4.wav",
+    "samples/C5.wav": "S07 Synth Crystal C5.wav",
+    "samples/F#5.wav": "S08 Synth Crystal F#5.wav",
+    "samples/C6.wav": "S09 Synth Crystal C6.wav",
+    "samples/F#6.wav": "S10 Synth Crystal F#6.wav",
+    "samples/C7.wav": "S11 Synth Crystal C7.wav"
+  }
+}

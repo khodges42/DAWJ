@@ -1,0 +1,16 @@
+{
+  "original_file": "SynthBrass2 20240610.sfz",
+  "original_sfz_text": "//+ Name: Synth Brass 2\n//+ Date: 2024-06-10\n//+ URL: https://freepats.zenvoid.org/Synthesizer/synth-brass.html\n\n<global>\n //+ Instrument: Synth Brass 2\n ampeg_release=0.4\n width=100\n loop_mode=loop_continuous\n\n<group>\n<region>\n lokey=36 hikey=44\n ampeg_release=0.5\n pitch_keycenter=42\n loop_start=77630\n loop_end=116726\n sample=samples/F#2.wav\n<region>\n lokey=45 hikey=50\n ampeg_release=0.5\n pitch_keycenter=48\n loop_start=77619\n loop_end=116726\n sample=samples/C3.wav\n<region>\n lokey=51 hikey=56\n ampeg_release=0.46\n pitch_keycenter=54\n loop_start=77631\n loop_end=116726\n sample=samples/F#3.wav\n<region>\n lokey=57 hikey=62\n ampeg_release=0.42\n pitch_keycenter=60\n loop_start=77620\n loop_end=116726\n sample=samples/C4.wav\n<region>\n lokey=63 hikey=68\n ampeg_release=0.38\n pitch_keycenter=66\n loop_start=77751\n loop_end=116726\n sample=samples/F#4.wav\n<region>\n lokey=69 hikey=74\n ampeg_release=0.35\n pitch_keycenter=72\n loop_start=77788\n loop_end=116726\n sample=samples/C5.wav\n<region>\n lokey=75 hikey=80\n ampeg_release=0.32\n pitch_keycenter=78\n loop_start=77750\n loop_end=116726\n sample=samples/F#5.wav\n<region>\n lokey=81 hikey=86\n ampeg_release=0.292\n pitch_keycenter=84\n loop_start=73237\n loop_end=116726\n sample=samples/C6.wav\n<region>\n lokey=87 hikey=91\n ampeg_release=0.268\n pitch_keycenter=90\n loop_start=73400\n loop_end=116726\n sample=samples/F#6.wav\n<region>\n lokey=92 hikey=100\n ampeg_release=0.2\n pitch_keycenter=96\n loop_start=72900\n loop_end=116726\n sample=samples/C7.wav\n",
+  "sample_paths": {
+    "samples/F#2.wav": "S01 Synth Brass 2 F#2.wav",
+    "samples/C3.wav": "S02 Synth Brass 2 C3.wav",
+    "samples/F#3.wav": "S03 Synth Brass 2 F#3.wav",
+    "samples/C4.wav": "S04 Synth Brass 2 C4.wav",
+    "samples/F#4.wav": "S05 Synth Brass 2 F#4.wav",
+    "samples/C5.wav": "S06 Synth Brass 2 C5.wav",
+    "samples/F#5.wav": "S07 Synth Brass 2 F#5.wav",
+    "samples/C6.wav": "S08 Synth Brass 2 C6.wav",
+    "samples/F#6.wav": "S09 Synth Brass 2 F#6.wav",
+    "samples/C7.wav": "S10 Synth Brass 2 C7.wav"
+  }
+}

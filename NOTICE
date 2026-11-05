@@ -19,6 +19,12 @@ Egui's bundled unmodified fonts retain their OFL, Ubuntu Font Licence, MIT and
 Bitstream Vera notices. No proprietary MIDI driver/firmware is bundled. WebView2
 is a runtime prerequisite, not redistributed here.
 
+Factory sample audio retains its originating pack/sample licenses, independently
+of DAWJ's GPL. resources/samples/ATTRIBUTIONS.md aggregates the supplied provenance;
+each pack retains its original SOURCE.md, licenses, READMEs and original-name maps.
+Versioned pack.json manifests link stable sample identities to those source records.
+Undocumented fields are unknown, not a grant of rights or an attribution waiver.
+
 The user-supplied original design documents, schema and illustrative manifest are
 preserved as design inputs. No separate redistribution license accompanied that
 bundle; this notice does not assert ownership of or relicense those supplied

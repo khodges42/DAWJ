@@ -1,0 +1,24 @@
+{
+  "original_file": "SynthStrings2 20200528.sfz",
+  "original_sfz_text": "//+ Name: Synth Strings 2\n//+ Date: 2020-05-29\n//+ URL: http://freepats.localhost/Synthesizer/synth-strings.html#SynthStrings2\n\n<global>\n //+ Instrument: Synth Strings 2\n ampeg_attack=0.001\n ampeg_release=1.5\n\n<group>\n loop_mode=loop_continuous\n<region>\n lokey=24 hikey=30\n pitch_keycenter=28\n loop_start=40 loop_end=435700\n sample=samples/28.wav\n<region>\n lokey=31 hikey=34\n pitch_keycenter=32\n loop_start=40 loop_end=342047\n sample=samples/32.wav\n<region>\n lokey=35 hikey=38\n pitch_keycenter=36\n loop_start=16 loop_end=375641\n sample=samples/36.wav\n<region>\n lokey=39 hikey=42\n pitch_keycenter=40\n loop_start=20 loop_end=272083\n sample=samples/40.wav\n<region>\n lokey=43 hikey=46\n pitch_keycenter=44\n loop_start=17 loop_end=293349\n sample=samples/44.wav\n<region>\n lokey=47 hikey=50\n pitch_keycenter=48\n loop_start=20 loop_end=286255\n sample=samples/48.wav\n<region>\n lokey=51 hikey=54\n pitch_keycenter=52\n loop_start=20 loop_end=261607\n sample=samples/52.wav\n<region>\n lokey=55 hikey=58\n pitch_keycenter=56\n loop_start=17 loop_end=215477\n sample=samples/56.wav\n<region>\n lokey=59 hikey=62\n pitch_keycenter=60\n loop_start=18 loop_end=227846\n sample=samples/60.wav\n<region>\n lokey=63 hikey=66\n pitch_keycenter=64\n loop_start=18 loop_end=235614\n sample=samples/64.wav\n<region>\n lokey=67 hikey=70\n pitch_keycenter=68\n loop_start=17 loop_end=235171\n sample=samples/68.wav\n<region>\n lokey=71 hikey=74\n pitch_keycenter=72\n loop_start=18 loop_end=226257\n sample=samples/72.wav\n<region>\n lokey=75 hikey=78\n pitch_keycenter=76\n loop_start=20 loop_end=219815\n sample=samples/76.wav\n<region>\n lokey=79 hikey=82\n pitch_keycenter=80\n loop_start=17 loop_end=188031\n sample=samples/80.wav\n<region>\n lokey=83 hikey=86\n pitch_keycenter=84\n loop_start=20 loop_end=175906\n sample=samples/84.wav\n<region>\n lokey=87 hikey=90\n pitch_keycenter=88\n loop_start=16 loop_end=179845\n sample=samples/88.wav\n<region>\n lokey=91 hikey=94\n pitch_keycenter=92\n loop_start=16 loop_end=158479\n sample=samples/92.wav\n<region>\n lokey=95 hikey=101\n pitch_keycenter=96\n loop_start=17 loop_end=186108\n sample=samples/96.wav\n",
+  "sample_paths": {
+    "samples/28.wav": "S01 Synth Strings 2 E1 MIDI28.wav",
+    "samples/32.wav": "S02 Synth Strings 2 G#1 MIDI32.wav",
+    "samples/36.wav": "S03 Synth Strings 2 C2 MIDI36.wav",
+    "samples/40.wav": "S04 Synth Strings 2 E2 MIDI40.wav",
+    "samples/44.wav": "S05 Synth Strings 2 G#2 MIDI44.wav",
+    "samples/48.wav": "S06 Synth Strings 2 C3 MIDI48.wav",
+    "samples/52.wav": "S07 Synth Strings 2 E3 MIDI52.wav",
+    "samples/56.wav": "S08 Synth Strings 2 G#3 MIDI56.wav",
+    "samples/60.wav": "S09 Synth Strings 2 C4 MIDI60.wav",
+    "samples/64.wav": "S10 Synth Strings 2 E4 MIDI64.wav",
+    "samples/68.wav": "S11 Synth Strings 2 G#4 MIDI68.wav",
+    "samples/72.wav": "S12 Synth Strings 2 C5 MIDI72.wav",
+    "samples/76.wav": "S13 Synth Strings 2 E5 MIDI76.wav",
+    "samples/80.wav": "S14 Synth Strings 2 G#5 MIDI80.wav",
+    "samples/84.wav": "S15 Synth Strings 2 C6 MIDI84.wav",
+    "samples/88.wav": "S16 Synth Strings 2 E6 MIDI88.wav",
+    "samples/92.wav": "S17 Synth Strings 2 G#6 MIDI92.wav",
+    "samples/96.wav": "S18 Synth Strings 2 C7 MIDI96.wav"
+  }
+}

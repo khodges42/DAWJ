@@ -1,0 +1,17 @@
+original_path,new_path,sha256
+samples/C2.wav,S01 Synth Calliope C2.wav,27177a6032f539a95e270bb7ed340bc16abfd42a0659d6df63751982510a9d3a
+samples/E2.wav,S02 Synth Calliope E2.wav,59a7339d27e6bd5b4e9e721126dcf7a09a3d49339f18347e25be9a158daaa71f
+samples/G#2.wav,S03 Synth Calliope G#2.wav,3bb8f63253b5c4e3c00edc7835adffefdf97b0777f50e67336162912f4b263c4
+samples/C3.wav,S04 Synth Calliope C3.wav,c0fa9018fa6767e0262db3aead2bf829cfd4181f7090b765dc59e86027f3826b
+samples/E3.wav,S05 Synth Calliope E3.wav,b1b0f62dfb373dbbac5807c14456967bb215e2847638451b1f5f24695891957c
+samples/G#3.wav,S06 Synth Calliope G#3.wav,f5c74b7998d79735deaf834c8b023a782f09a7f0f89678cd89b72e3c113ac12c
+samples/C4.wav,S07 Synth Calliope C4.wav,77114d22ddeaf98bca6dec9ea2a548918776331011f571cb1d2cff6e85cdaa37
+samples/E4.wav,S08 Synth Calliope E4.wav,d5161e56e4ae76ce38af98a056e0598c14f394f9bdcc92dfa76ae59364534f29
+samples/G#4.wav,S09 Synth Calliope G#4.wav,60fa7dc6356a9b082775a67436a4da3e33f74db40a376e04b1bd8145e9b6320f
+samples/C5.wav,S10 Synth Calliope C5.wav,927fa7e40b2f069cf0ef8109f61db9796072dd07b469a7c704daa4aa408cc320
+samples/E5.wav,S11 Synth Calliope E5.wav,383fb57472ae70c9ec302f8da862ffcebc0fe412e86e3b373e64c3017cf7d52d
+samples/G#5.wav,S12 Synth Calliope G#5.wav,3ad213edfe70097aeab1934b5958bccd26fe1c99d6d2fc8cca4dbfabd79d560e
+samples/C6.wav,S13 Synth Calliope C6.wav,5d543574864711e675af46fdbce8cdf581de6f236a9685187063175233fc6fea
+samples/E6.wav,S14 Synth Calliope E6.wav,e79c2708903fa87b4c6dd14b39cc2ff09232f6c56ffaa790de269e8413e7ef3d
+samples/G#6.wav,S15 Synth Calliope G#6.wav,fcef1df1983f8b9ac80079818f25494815e312c20470d0cc428ed2ef71620690
+samples/C7.wav,S16 Synth Calliope C7.wav,7ba3bbf0856ac170742027f309292414cbb3b0e71b166c1b1012dc6271b064f3

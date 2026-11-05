@@ -1,0 +1,16 @@
+original_path,new_path,sha256
+samples/C2.wav,S01 Synth Soundtrack C2.wav,116a80ad985f79c9ea2a616bdd67fa8d9d68f1d904c0be82c2a463a5c60ed7a5
+samples/E2.wav,S02 Synth Soundtrack E2.wav,f9c228728b5a921de6f6324db1a3f447d428021b6e66f57a316b6eca76356064
+samples/G#2.wav,S03 Synth Soundtrack G#2.wav,20a17f6abc77a8dad177fe22b8b2494c063f2747239fd539a6b44b6812986b39
+samples/C3.wav,S04 Synth Soundtrack C3.wav,4a01c1a06446eb53998ebf635629b3ac0e264ba78598e61a896367411492c0fb
+samples/E3.wav,S05 Synth Soundtrack E3.wav,2e2356d5d9c9a6cf23c8582c15b62a8c891bed17d1c42f1925eeffe0d639dcae
+samples/G#3.wav,S06 Synth Soundtrack G#3.wav,7d0a1c44a0630f37c582fad744450ee67d61ab500d255c354a14c2125cc36f02
+samples/C4.wav,S07 Synth Soundtrack C4.wav,10dccc805a31361e8c1da48de7077c16a25564c4a31a45d04e66bfe04aef1e92
+samples/E4.wav,S08 Synth Soundtrack E4.wav,03a521df8850b3d983810a20c909119f745557dc240f6d4f51cf5d2016992f03
+samples/G#4.wav,S09 Synth Soundtrack G#4.wav,d87d6911e9830b910fa6d7ffc70f7c2e4faa31b48fec670ba6527fbe24a21759
+samples/C5.wav,S10 Synth Soundtrack C5.wav,2632b0d6e0d3d60a3792465033158e89167d36588298ec2581b055b39f9b5ba6
+samples/E5.wav,S11 Synth Soundtrack E5.wav,bb4c46d3f805c4ae5991074766953bc6aa41890f5390f83ef01b5cee08c3fa8b
+samples/G#5.wav,S12 Synth Soundtrack G#5.wav,511cb9b1834c15917fd520f0e8bf78fbe1655c3b0948d7ebf7d1adc96596e406
+samples/C6.wav,S13 Synth Soundtrack C6.wav,3584081ef1b3624f8ae7102cebe417815eebc1c0e4878f71261b0e9513dca8f6
+samples/E6.wav,S14 Synth Soundtrack E6.wav,2813212c266291e4e451095a1fd1e862d1448b3b7b187fbef8098e74931d07a7
+samples/G#6.wav,S15 Synth Soundtrack G#6.wav,eecad1643e3883723c04d8d8cc7e18be0405d12fad9272521080814fd9a53d71

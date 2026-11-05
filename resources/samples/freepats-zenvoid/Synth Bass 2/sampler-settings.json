@@ -1,0 +1,15 @@
+{
+  "original_file": "SynthBass2 20210405.sfz",
+  "original_sfz_text": "//+ Name: Synth Bass 2\n//+ Date: 2021-04-05\n//+ URL: http://freepats.zenvoid.org/Synthesizer/synth-bass.html#SynthBass2\n\n<global>\n //+ Instrument: Synth Bass 2\n ampeg_release=0.5\n\n<group>\n<region>\n lokey=28\n hikey=38\n pitch_keycenter=36\n sample=samples/C2.wav\n<region>\n lokey=39\n hikey=44\n pitch_keycenter=42\n sample=samples/F#2.wav\n<region>\n lokey=45\n hikey=50\n pitch_keycenter=48\n sample=samples/C3.wav\n<region>\n lokey=51\n hikey=56\n pitch_keycenter=54\n sample=samples/F#3.wav\n<region>\n lokey=57\n hikey=62\n pitch_keycenter=60\n sample=samples/C4.wav\n<region>\n lokey=63\n hikey=68\n pitch_keycenter=66\n sample=samples/F#4.wav\n<region>\n lokey=69\n hikey=74\n pitch_keycenter=72\n sample=samples/C5.wav\n<region>\n lokey=75\n hikey=80\n pitch_keycenter=78\n sample=samples/F#5.wav\n<region>\n lokey=81\n hikey=88\n pitch_keycenter=84\n sample=samples/C6.wav\n",
+  "sample_paths": {
+    "samples/C2.wav": "S01 Synth Bass 2 C2.wav",
+    "samples/F#2.wav": "S02 Synth Bass 2 F#2.wav",
+    "samples/C3.wav": "S03 Synth Bass 2 C3.wav",
+    "samples/F#3.wav": "S04 Synth Bass 2 F#3.wav",
+    "samples/C4.wav": "S05 Synth Bass 2 C4.wav",
+    "samples/F#4.wav": "S06 Synth Bass 2 F#4.wav",
+    "samples/C5.wav": "S07 Synth Bass 2 C5.wav",
+    "samples/F#5.wav": "S08 Synth Bass 2 F#5.wav",
+    "samples/C6.wav": "S09 Synth Bass 2 C6.wav"
+  }
+}

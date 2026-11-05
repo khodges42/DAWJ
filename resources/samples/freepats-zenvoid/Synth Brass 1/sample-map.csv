@@ -1,0 +1,13 @@
+original_path,new_path,sha256
+samples/F#1.wav,S01 Synth Brass 1 F#1.wav,0cf07e3da3549f9fd057e9f313bbd22cdd79bc1eebb6b8d900dec0dc771ca371
+samples/C2.wav,S02 Synth Brass 1 C2.wav,a7879b7d30e544ca6e88d23cebe3579bef66b9919f97d31290544c54a8fb6659
+samples/F#2.wav,S03 Synth Brass 1 F#2.wav,82912c8464da8b21791f686e8c823f850958ffef95a58f1d5cc7a9d9c81d93c7
+samples/C3.wav,S04 Synth Brass 1 C3.wav,40f15c50dc62464a087cc5723024d330aa066fc1295fe54fcb6bd83207a73f6d
+samples/F#3.wav,S05 Synth Brass 1 F#3.wav,4f0b503c24be2bb8163a3d683e1ffdd8252244d4d49910b96180ae20fa552f54
+samples/C4.wav,S06 Synth Brass 1 C4.wav,bb7140dcae458a846e8a4f83b75858407f21cc17a44362ab30775fd56f313067
+samples/F#4.wav,S07 Synth Brass 1 F#4.wav,5670dce5b0f414cba91a01fb403b895f50bb900be9c2774045fec6c4985013bf
+samples/C5.wav,S08 Synth Brass 1 C5.wav,a81ae264c71e641f2743cfeefaeab6a3649130f8397ed3ce34960e5d1656b238
+samples/F#5.wav,S09 Synth Brass 1 F#5.wav,c2c7c58b4dad3828fffd05ededeee7e73367cba9ada943cf11f643f2c9369423
+samples/C6.wav,S10 Synth Brass 1 C6.wav,da3cb698a3d6d0091b055c8f8b98052764c70d6863a3ae659af7938c3fc697fe
+samples/F#6.wav,S11 Synth Brass 1 F#6.wav,040c6ee436ca0f2743365a5955b7f286a44ee0cf664d8d9e29cfe7a7cef843ed
+samples/C7.wav,S12 Synth Brass 1 C7.wav,fd1e59035e55c7afe2f4e23db1dccf7d1ab09fdc5c593fa1e868c7fb3f3e93a1

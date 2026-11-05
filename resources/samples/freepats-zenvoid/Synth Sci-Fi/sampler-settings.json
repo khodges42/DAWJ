@@ -1,0 +1,27 @@
+{
+  "original_file": "SynthSciFi 20200517.sfz",
+  "original_sfz_text": "//+ Name: Synth Sci-Fi\n//+ Date: 2020-05-17\n//+ URL: http://freepats.zenvoid.org/Synthesizer/synth-effects.html#SciFi\n\n<global>\n //+ Instrument: Synth Sci-Fi\n ampeg_release=3\n loop_mode=loop_continuous\n\n<group>\n<region>\n lokey=31 hikey=37\n pitch_keycenter=36\n loop_start=180000 loop_end=299999\n sample=samples/C2.wav\n<region>\n lokey=38 hikey=40\n pitch_keycenter=39\n loop_start=180000 loop_end=299999\n sample=samples/D#2.wav\n<region>\n lokey=41 hikey=43\n pitch_keycenter=42\n loop_start=180000 loop_end=299999\n sample=samples/F#2.wav\n<region>\n lokey=44 hikey=46\n pitch_keycenter=45\n loop_start=180000 loop_end=299999\n sample=samples/A2.wav\n<region>\n lokey=47 hikey=49\n pitch_keycenter=48\n loop_start=180000 loop_end=299999\n sample=samples/C3.wav\n<region>\n lokey=50 hikey=52\n pitch_keycenter=51\n loop_start=180000 loop_end=299999\n sample=samples/D#3.wav\n<region>\n lokey=53 hikey=55\n pitch_keycenter=54\n loop_start=180000 loop_end=299999\n sample=samples/F#3.wav\n<region>\n lokey=56 hikey=58\n pitch_keycenter=57\n loop_start=180000 loop_end=299999\n sample=samples/A3.wav\n<region>\n lokey=59 hikey=61\n pitch_keycenter=60\n loop_start=180000 loop_end=299999\n sample=samples/C4.wav\n<region>\n lokey=62 hikey=64\n pitch_keycenter=63\n loop_start=180000 loop_end=299999\n sample=samples/D#4.wav\n<region>\n lokey=65 hikey=67\n pitch_keycenter=66\n loop_start=180000 loop_end=299999\n sample=samples/F#4.wav\n<region>\n lokey=68 hikey=70\n pitch_keycenter=69\n loop_start=180000 loop_end=299999\n sample=samples/A4.wav\n<region>\n lokey=71 hikey=73\n pitch_keycenter=72\n loop_start=180000 loop_end=299999\n sample=samples/C5.wav\n<region>\n lokey=74 hikey=76\n pitch_keycenter=75\n loop_start=180000 loop_end=299999\n sample=samples/D#5.wav\n<region>\n lokey=77 hikey=79\n pitch_keycenter=78\n loop_start=180000 loop_end=299999\n sample=samples/F#5.wav\n<region>\n lokey=80 hikey=82\n pitch_keycenter=81\n loop_start=180000 loop_end=299999\n sample=samples/A5.wav\n<region>\n lokey=83 hikey=85\n pitch_keycenter=84\n loop_start=180000 loop_end=299999\n sample=samples/C6.wav\n<region>\n lokey=86 hikey=88\n pitch_keycenter=87\n loop_start=180000 loop_end=299999\n sample=samples/D#6.wav\n<region>\n lokey=89 hikey=91\n pitch_keycenter=90\n loop_start=180000 loop_end=299999\n sample=samples/F#6.wav\n<region>\n lokey=92 hikey=94\n pitch_keycenter=93\n loop_start=180000 loop_end=299999\n sample=samples/A6.wav\n<region>\n lokey=95 hikey=101\n pitch_keycenter=96\n loop_start=180000 loop_end=299999\n sample=samples/C7.wav\n",
+  "sample_paths": {
+    "samples/C2.wav": "S01 Synth Sci-Fi C2.wav",
+    "samples/D#2.wav": "S02 Synth Sci-Fi D#2.wav",
+    "samples/F#2.wav": "S03 Synth Sci-Fi F#2.wav",
+    "samples/A2.wav": "S04 Synth Sci-Fi A2.wav",
+    "samples/C3.wav": "S05 Synth Sci-Fi C3.wav",
+    "samples/D#3.wav": "S06 Synth Sci-Fi D#3.wav",
+    "samples/F#3.wav": "S07 Synth Sci-Fi F#3.wav",
+    "samples/A3.wav": "S08 Synth Sci-Fi A3.wav",
+    "samples/C4.wav": "S09 Synth Sci-Fi C4.wav",
+    "samples/D#4.wav": "S10 Synth Sci-Fi D#4.wav",
+    "samples/F#4.wav": "S11 Synth Sci-Fi F#4.wav",
+    "samples/A4.wav": "S12 Synth Sci-Fi A4.wav",
+    "samples/C5.wav": "S13 Synth Sci-Fi C5.wav",
+    "samples/D#5.wav": "S14 Synth Sci-Fi D#5.wav",
+    "samples/F#5.wav": "S15 Synth Sci-Fi F#5.wav",
+    "samples/A5.wav": "S16 Synth Sci-Fi A5.wav",
+    "samples/C6.wav": "S17 Synth Sci-Fi C6.wav",
+    "samples/D#6.wav": "S18 Synth Sci-Fi D#6.wav",
+    "samples/F#6.wav": "S19 Synth Sci-Fi F#6.wav",
+    "samples/A6.wav": "S20 Synth Sci-Fi A6.wav",
+    "samples/C7.wav": "S21 Synth Sci-Fi C7.wav"
+  }
+}

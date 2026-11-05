@@ -1,0 +1,13 @@
+original_path,new_path,sha256
+samples/F#1v80.wav,S01 FM Piano 2 F#1 Vel80.wav,55ad5a9a3b75b2eea4731747bd7139875706225bff8939fc9c0b65acb1f3ac3c
+samples/C2v80.wav,S02 FM Piano 2 C2 Vel80.wav,6c83cb89d96ca3ce451c7785bbe0e3321133daaeb9ed5d68e93c10c31f1fa844
+samples/F#2v80.wav,S03 FM Piano 2 F#2 Vel80.wav,bdd36e863e8ba0f5ecee86e80d9b4745cd57c9e129cb5cc7da89aa7f525c2a9c
+samples/C3v80.wav,S04 FM Piano 2 C3 Vel80.wav,b68510469008ec29ff0050acc3fffec280f221ef70a870ac22640bc40f298b1a
+samples/F#3v80.wav,S05 FM Piano 2 F#3 Vel80.wav,3f05ba08df419647d6f1da08752a66930687885ce29e8c576483ad1f9f0fffab
+samples/C4v80.wav,S06 FM Piano 2 C4 Vel80.wav,397dd8512efe0a01d0e1dd5b173232e94767578503a82c701a25aea6eb99875b
+samples/F#4v80.wav,S07 FM Piano 2 F#4 Vel80.wav,a8bdf707389486aad86d5f6d7ae2c2f575ae91854e22fb0c21edf4f3d4d17029
+samples/C5v80.wav,S08 FM Piano 2 C5 Vel80.wav,f2b94c218c823570377cde0647903c4cedc3942301a591906aab48fe2dadf7ae
+samples/F#5v80.wav,S09 FM Piano 2 F#5 Vel80.wav,74db04b0499d47b7c5b2a9beb78114ebab34de0e8fb8b77179e7beceee7b8eb1
+samples/C6v80.wav,S10 FM Piano 2 C6 Vel80.wav,70fcf2ff9f96b207d0cf52ed243294499005ed4957f66ccb8be259862858b961
+samples/F#6v80.wav,S11 FM Piano 2 F#6 Vel80.wav,9ec036344051b2249f65bced730c06a3cac85663ea172e5c4125ad4865b902a6
+samples/C7v80.wav,S12 FM Piano 2 C7 Vel80.wav,47bf82dddeea2b19d9b2f87402721393fd48ba12cefd25b7491e415ff6a5c8c4

@@ -1,0 +1,18 @@
+{
+  "original_file": "SynthStrings1 20200528.sfz",
+  "original_sfz_text": "//+ Name: Synth Strings 1\n//+ Date: 2020-05-28\n//+ URL: http://freepats.zenvoid.org/Synthesizer/synth-strings.html#SynthStrings1\n\n<global>\n //+ Instrument: Synth Strings 1\n ampeg_release=1.2\n\n<group>\n loop_mode=loop_continuous\n<region>\n lokey=24 hikey=33\n pitch_keycenter=30\n loop_start=304 loop_end=620744\n sample=samples/F#1.wav\n<region>\n lokey=34 hikey=39\n pitch_keycenter=36\n loop_start=239 loop_end=218136\n sample=samples/C2.wav\n<region>\n lokey=40 hikey=45\n pitch_keycenter=42\n loop_start=147 loop_end=387489\n sample=samples/F#2.wav\n<region>\n lokey=46 hikey=51\n pitch_keycenter=48\n loop_start=118 loop_end=218916\n sample=samples/C3.wav\n<region>\n lokey=52 hikey=57\n pitch_keycenter=54\n loop_start=75 loop_end=216802\n sample=samples/F#3.wav\n<region>\n lokey=58 hikey=63\n pitch_keycenter=60\n loop_start=35 loop_end=354941\n sample=samples/C4.wav\n<region>\n lokey=64 hikey=69\n pitch_keycenter=66\n loop_start=20 loop_end=250855\n sample=samples/F#4.wav\n<region>\n lokey=70 hikey=75\n pitch_keycenter=72\n loop_start=40 loop_end=177603\n sample=samples/C5.wav\n<region>\n lokey=76 hikey=81\n pitch_keycenter=78\n loop_start=20 loop_end=125022\n sample=samples/F#5.wav\n<region>\n lokey=82 hikey=87\n pitch_keycenter=84\n loop_start=22 loop_end=75130\n sample=samples/C6.wav\n<region>\n lokey=88 hikey=93\n pitch_keycenter=90\n loop_start=46 loop_end=182387\n sample=samples/F#6.wav\n<region>\n lokey=94 hikey=100\n pitch_keycenter=96\n loop_start=30 loop_end=125918\n sample=samples/C7.wav\n",
+  "sample_paths": {
+    "samples/F#1.wav": "S01 Synth Strings 1 F#1.wav",
+    "samples/C2.wav": "S02 Synth Strings 1 C2.wav",
+    "samples/F#2.wav": "S03 Synth Strings 1 F#2.wav",
+    "samples/C3.wav": "S04 Synth Strings 1 C3.wav",
+    "samples/F#3.wav": "S05 Synth Strings 1 F#3.wav",
+    "samples/C4.wav": "S06 Synth Strings 1 C4.wav",
+    "samples/F#4.wav": "S07 Synth Strings 1 F#4.wav",
+    "samples/C5.wav": "S08 Synth Strings 1 C5.wav",
+    "samples/F#5.wav": "S09 Synth Strings 1 F#5.wav",
+    "samples/C6.wav": "S10 Synth Strings 1 C6.wav",
+    "samples/F#6.wav": "S11 Synth Strings 1 F#6.wav",
+    "samples/C7.wav": "S12 Synth Strings 1 C7.wav"
+  }
+}

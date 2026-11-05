@@ -1,0 +1,207 @@
+{
+  "version": 2,
+  "id": "laikas_basic_b_sample_pack",
+  "name": "laikas_basic_b_sample_pack",
+  "license": "CC0-1.0",
+  "creator": "DAWJ repository owner",
+  "provenance": "Original audio created and supplied by the repository owner; permissive release authorized in the Jam2 request, 2026-11-02.",
+  "extra": {},
+  "sources": {},
+  "samples": {
+    "analog_drums/A01_808_Kick_C.wav": {
+      "id": "sample-9dd4dad5-4afc-537b-b8ce-3ab4d504e395",
+      "source": null,
+      "original_path": "analog_drums/A01_808_Kick_C.wav",
+      "original_category": "analog_drums",
+      "sha256": "4f0a76477929c02aa60067233459dc762f2a49ff14fe57f72a3ba589f0b1f742",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    },
+    "analog_drums/A02_909_Snare_C.wav": {
+      "id": "sample-b8ef6bd6-c26b-57f3-b0af-bc1b70e35b4d",
+      "source": null,
+      "original_path": "analog_drums/A02_909_Snare_C.wav",
+      "original_category": "analog_drums",
+      "sha256": "8d0e462c2cce383516094aeaa0436d61e42f7a11ccdacbd2c68d0555c2b21d52",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    },
+    "analog_drums/A03_LM2_Closed_Hat_C.wav": {
+      "id": "sample-97ca9a8d-21e4-57be-a7a6-3a3a5138e455",
+      "source": null,
+      "original_path": "analog_drums/A03_LM2_Closed_Hat_C.wav",
+      "original_category": "analog_drums",
+      "sha256": "817be996845052cb576a514de4462d409341de45f2622b44d9f0d30cdf3139d6",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    },
+    "analog_drums/A04_LM2_Open_Hat_C.wav": {
+      "id": "sample-f94f9041-8deb-5cf5-86e5-7c8dc827a9fe",
+      "source": null,
+      "original_path": "analog_drums/A04_LM2_Open_Hat_C.wav",
+      "original_category": "analog_drums",
+      "sha256": "27d808d797cd5916118dee13e6415fc47e645748727da2d450366fb47e9c4db0",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    },
+    "analog_drums/A05_808_Clap_C.wav": {
+      "id": "sample-43840654-6edb-5406-86c8-07c6331b7133",
+      "source": null,
+      "original_path": "analog_drums/A05_808_Clap_C.wav",
+      "original_category": "analog_drums",
+      "sha256": "c2d35ea2558ae1ea08d4f535bce1b296cf70dec74abcaa03d18861003a05fbcf",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    },
+    "analog_drums/A06_505_Low_Tom_C.wav": {
+      "id": "sample-cbb0f8c7-a7cd-51c3-bf8b-3b854d06b8ea",
+      "source": null,
+      "original_path": "analog_drums/A06_505_Low_Tom_C.wav",
+      "original_category": "analog_drums",
+      "sha256": "9f99d4f14a345c5946eec2a7197c5365e6fa52572f49d31be51ebd1d40da0893",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    },
+    "analog_drums/A07_505_High_Tom_C.wav": {
+      "id": "sample-6acc167e-6627-53f9-adcc-4886ee545df3",
+      "source": null,
+      "original_path": "analog_drums/A07_505_High_Tom_C.wav",
+      "original_category": "analog_drums",
+      "sha256": "298a48bacc4d73388524ab2812148c88a542bd12d261da997af77cb9ff1f0018",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    },
+    "bass/B01_303_C.wav": {
+      "id": "sample-1e9e179c-ff17-5d75-8dc5-782fec7a6a36",
+      "source": null,
+      "original_path": "bass/B01_303_C.wav",
+      "original_category": "bass",
+      "sha256": "e80e09b58e9fdee76f47bee94ae9de1c194f30fc286e4ca392372ffa3fb123f9",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    },
+    "bass/B01_Reeses_Pieces_C.wav": {
+      "id": "sample-720e92c1-53a5-5a89-a9b4-478dbe070ddf",
+      "source": null,
+      "original_path": "bass/B01_Reeses_Pieces_C.wav",
+      "original_category": "bass",
+      "sha256": "c831b2d24bf196f4da35b071f0400bc611c7c4024a4b1767d766f7a23dec16b9",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    },
+    "bass/B03_303_Loop_130_C.wav": {
+      "id": "sample-67b61a3c-8ddd-54a8-b34c-97088ac6df26",
+      "source": null,
+      "original_path": "bass/B03_303_Loop_130_C.wav",
+      "original_category": "bass",
+      "sha256": "8865c70ee0cddbb33a676fee1b54a4aa57cbe7fd1c6e0f1eeb78f680e4fb6975",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    },
+    "experimental/E01_Kinda_Like_Contact.wav": {
+      "id": "sample-9606ba9d-a97c-544f-8a34-e8ea2e9ffb45",
+      "source": null,
+      "original_path": "experimental/E01_Kinda_Like_Contact.wav",
+      "original_category": "experimental",
+      "sha256": "0b7d5b8b47892690b13fab06b0a2558dd3295d8dafb1b6e06664889ca917de4b",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    },
+    "experimental/E01_Suffering_Machine.wav": {
+      "id": "sample-b815bea3-a004-5749-b402-cbe429588fac",
+      "source": null,
+      "original_path": "experimental/E01_Suffering_Machine.wav",
+      "original_category": "experimental",
+      "sha256": "6000d6a3356cee48e60eded642e865281feda8dfd77f91a6e27e63c665c0bced",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    },
+    "synth/S01_Mystery_Garage_Loop_130_A.wav": {
+      "id": "sample-005719af-6872-5ab3-97b1-a7d8f6b735db",
+      "source": null,
+      "original_path": "synth/S01_Mystery_Garage_Loop_130_A.wav",
+      "original_category": "synth",
+      "sha256": "94e091c8dd56e8a3cdbf9821e30957965e2b1c7937b0c59beafeabfc28ac9c1c",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    },
+    "synth/S02_Mystery_Garage_C.wav": {
+      "id": "sample-a7186bc5-c936-530a-a4f1-810302f618d1",
+      "source": null,
+      "original_path": "synth/S02_Mystery_Garage_C.wav",
+      "original_category": "synth",
+      "sha256": "408126cadd802f554e16facf8ed1b04cf4b28c912cc988b7acf579b36d59d05c",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    },
+    "synth/S03_Hypersaw_C.wav": {
+      "id": "sample-d2df1cb1-ae24-5f66-8db3-ebc10a3e0d6b",
+      "source": null,
+      "original_path": "synth/S03_Hypersaw_C.wav",
+      "original_category": "synth",
+      "sha256": "5236ca167e0acc224648dd316c1918e550881d9b7db28756856686058d309457",
+      "license": null,
+      "creator": null,
+      "attribution": null,
+      "metadata": {
+        "path_basis": "recorded_local"
+      }
+    }
+  }
+}

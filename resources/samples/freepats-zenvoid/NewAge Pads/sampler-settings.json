@@ -1,0 +1,22 @@
+{
+  "original_file": "NewAge 20190730.sfz",
+  "original_sfz_text": "//+ Name: New Age\n//+ Date: 2019-07-30\n//+ URL: http://freepats.zenvoid.org/Synthesizer/synth-pad.html#NewAge\n\n<global>\n //+ Instrument: New Age\n ampeg_release=1.9\n loop_mode=loop_continuous\n\n<group>\n<region>\n lokey=34\n hikey=37\n pitch_keycenter=36\n loop_start=182647\n loop_end=396799\n sample=samples/C2.wav\n<region>\n lokey=38\n hikey=41\n pitch_keycenter=40\n loop_start=161563\n loop_end=374291\n sample=samples/E2.wav\n<region>\n lokey=42\n hikey=45\n pitch_keycenter=44\n loop_start=164330\n loop_end=388482\n sample=samples/G#2.wav\n<region>\n lokey=46\n hikey=49\n pitch_keycenter=48\n loop_start=165283\n loop_end=395775\n sample=samples/C3.wav\n<region>\n lokey=50\n hikey=53\n pitch_keycenter=52\n loop_start=147455\n loop_end=374783\n sample=samples/E3.wav\n<region>\n lokey=54\n hikey=57\n pitch_keycenter=56\n loop_start=145307\n loop_end=345079\n sample=samples/G#3.wav\n<region>\n lokey=58\n hikey=61\n pitch_keycenter=60\n loop_start=112173\n loop_end=330803\n sample=samples/C4.wav\n<region>\n lokey=62\n hikey=65\n pitch_keycenter=64\n loop_start=115725\n loop_end=303615\n sample=samples/E4.wav\n<region>\n lokey=66\n hikey=69\n pitch_keycenter=68\n loop_start=103656\n loop_end=257543\n sample=samples/G#4.wav\n<region>\n lokey=70\n hikey=73\n pitch_keycenter=72\n loop_start=104269\n loop_end=265523\n sample=samples/C5.wav\n<region>\n lokey=74\n hikey=77\n pitch_keycenter=76\n loop_start=106254\n loop_end=252287\n sample=samples/E5.wav\n<region>\n lokey=78\n hikey=81\n pitch_keycenter=80\n loop_start=92965\n loop_end=228661\n sample=samples/G#5.wav\n<region>\n lokey=82\n hikey=85\n pitch_keycenter=84\n loop_start=94255\n loop_end=231353\n sample=samples/C6.wav\n<region>\n lokey=86\n hikey=89\n pitch_keycenter=88\n loop_start=97846\n loop_end=230695\n sample=samples/E6.wav\n<region>\n lokey=90\n hikey=93\n pitch_keycenter=92\n loop_start=90886\n loop_end=223248\n sample=samples/G#6.wav\n<region>\n hikey=98\n lokey=94\n pitch_keycenter=96\n loop_start=99363\n loop_end=232995\n sample=samples/C7.wav\n",
+  "sample_paths": {
+    "samples/C2.wav": "S01 NewAge Pads C2.wav",
+    "samples/E2.wav": "S02 NewAge Pads E2.wav",
+    "samples/G#2.wav": "S03 NewAge Pads G#2.wav",
+    "samples/C3.wav": "S04 NewAge Pads C3.wav",
+    "samples/E3.wav": "S05 NewAge Pads E3.wav",
+    "samples/G#3.wav": "S06 NewAge Pads G#3.wav",
+    "samples/C4.wav": "S07 NewAge Pads C4.wav",
+    "samples/E4.wav": "S08 NewAge Pads E4.wav",
+    "samples/G#4.wav": "S09 NewAge Pads G#4.wav",
+    "samples/C5.wav": "S10 NewAge Pads C5.wav",
+    "samples/E5.wav": "S11 NewAge Pads E5.wav",
+    "samples/G#5.wav": "S12 NewAge Pads G#5.wav",
+    "samples/C6.wav": "S13 NewAge Pads C6.wav",
+    "samples/E6.wav": "S14 NewAge Pads E6.wav",
+    "samples/G#6.wav": "S15 NewAge Pads G#6.wav",
+    "samples/C7.wav": "S16 NewAge Pads C7.wav"
+  }
+}

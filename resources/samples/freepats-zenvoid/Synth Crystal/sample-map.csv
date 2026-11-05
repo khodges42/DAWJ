@@ -1,0 +1,12 @@
+original_path,new_path,sha256
+samples/C2.wav,S01 Synth Crystal C2.wav,62cb547b7474648644c9fce8147433707ebf24680f3d8de4d4332aa05f9bc367
+samples/F#2.wav,S02 Synth Crystal F#2.wav,9979fd61685ca76ab3b8f19f49f47181c4814ad92623fee35c0d850f366f6689
+samples/C3.wav,S03 Synth Crystal C3.wav,f0b01ef63e60420f80bd61193ad8a152687be683f3785317bd78e986d5055a16
+samples/F#3.wav,S04 Synth Crystal F#3.wav,b947a402e716c267ac16d8c57bcd9f36cb4b97f421bebad7025556d3776f7d20
+samples/C4.wav,S05 Synth Crystal C4.wav,f0fb68b7aa3428c74ceb259c17df1dfc69540c422bc9018876180a34ea25dd67
+samples/F#4.wav,S06 Synth Crystal F#4.wav,ad2e5501a7917e88b26e8753352b9424475bdabdf52ef981ae2a9cdfc4969f24
+samples/C5.wav,S07 Synth Crystal C5.wav,cc328e6a8cf5e668f833f0ec23180deb1e884d29a550daada5c08671f628f4eb
+samples/F#5.wav,S08 Synth Crystal F#5.wav,8b9b60574923bf200f176a10b499191021b2f76f8c8d35f31b4f519f14b7d342
+samples/C6.wav,S09 Synth Crystal C6.wav,4e5ebc6466743b7ecf741a393ccb8378bb4928b773e9f763c729854b9100ed76
+samples/F#6.wav,S10 Synth Crystal F#6.wav,58f7d460e0c4d2361fca7b1b132a20e5b18781940aae9087a58a4029e839aa99
+samples/C7.wav,S11 Synth Crystal C7.wav,aa2b3f1c5521f5b22c6c66afb17e485022cf305026794eba248ff8a71c18646f
