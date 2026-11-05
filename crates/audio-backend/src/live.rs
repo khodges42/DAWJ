@@ -17,9 +17,18 @@ use std::sync::{
 };
 use timebase::SampleFrame;
 const CAPACITY: usize = 32;
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TransportAction {
+    Play,
+    Pause,
+    Stop,
+}
 pub const MAX_TRACE_EVENTS: usize = 128;
 #[derive(Clone, Copy, Debug)]
 pub enum Request {
+    Transport(TransportAction),
+    HaltDeck,
+    HaltPart,
     Launch(u8),
     Stop,
     Replace(u8),
@@ -292,6 +301,16 @@ impl LiveControl {
                 (11, u64::from(bank) | (u64::from(velocity) << 8))
             }
             Request::StopPreview => (12, 0),
+            Request::Transport(action) => (
+                13,
+                match action {
+                    TransportAction::Play => 0,
+                    TransportAction::Pause => 1,
+                    TransportAction::Stop => 2,
+                },
+            ),
+            Request::HaltDeck => (14, 0),
+            Request::HaltPart => (15, 0),
         };
         let quant = match q {
             Quantization::Immediate => 0,
@@ -385,6 +404,10 @@ impl std::ops::Index<usize> for ResidentBank {
     }
 }
 pub struct LiveEngine {
+    paused: bool,
+    pause_tail: [[f32; 2]; 2],
+    pause_left: u32,
+    resume_left: u32,
     preview: Option<Active>,
     pattern_receipts: [[Option<Receipt>; SLOTS]; 2],
     scheduler: MusicalScheduler,
@@ -487,6 +510,10 @@ impl LiveEngine {
         };
         let result = (
             Self {
+                paused: false,
+                pause_tail: [[0.; 2]; 2],
+                pause_left: 0,
+                resume_left: 0,
                 preview: None,
                 pattern_receipts: [[None; SLOTS]; 2],
                 scheduler,
@@ -513,6 +540,19 @@ impl LiveEngine {
     }
     pub fn scheduler(&self) -> &MusicalScheduler {
         &self.scheduler
+    }
+    fn halt_deck(&mut self, deck: usize) {
+        for slot in 0..SLOTS {
+            self.halt_part(deck, slot);
+        }
+    }
+    fn halt_part(&mut self, deck: usize, slot: usize) {
+        let _ = self.scheduler.halt_part(deck, slot);
+        self.active[deck][slot] = None;
+        self.transitions[deck][slot].begin((self.scheduler.rate() / 500).max(1));
+        if let Some(receipt) = self.pending[deck][slot].take() {
+            publish(&self.queue, receipt.row, receipt.id, Outcome::Cancelled);
+        }
     }
     pub fn frame(&self) -> SampleFrame {
         self.scheduler.frame()
@@ -549,7 +589,31 @@ impl LiveEngine {
                 _ => Quantization::Phrase,
             };
             let kind = (word >> 4) & 15;
-            let result = if kind == 10 {
+            let result = if kind == 13 {
+                if arg == 2 {
+                    self.halt_deck(0);
+                    self.halt_deck(1);
+                    self.preview = None;
+                    self.transitions = [[Transition::default(); SLOTS]; 2];
+                }
+                let pause = arg != 0;
+                if pause != self.paused {
+                    if pause {
+                        self.pause_left = (self.rate() / 500).max(1);
+                    } else {
+                        self.resume_left = (self.rate() / 500).max(1);
+                        self.pause_left = 0;
+                    }
+                }
+                self.paused = pause;
+                Ok(())
+            } else if kind == 15 {
+                self.halt_part(deck, slot);
+                Ok(())
+            } else if kind == 14 {
+                self.halt_deck(deck);
+                Ok(())
+            } else if kind == 10 {
                 let definition = if arg == 0 {
                     None
                 } else {
@@ -687,6 +751,30 @@ impl LiveEngine {
         }
         self.ingress();
         for frame in output.chunks_exact_mut(usize::from(routing.channels())) {
+            if self.paused {
+                // Musical time/voices freeze, while the device and coherent publications live.
+                // A bounded held-output fade avoids a discontinuity at pause.
+                let total = (self.rate() / 500).max(1) as f32;
+                let gain = if self.pause_left > 0 {
+                    self.pause_left -= 1;
+                    self.pause_left as f32 / total
+                } else {
+                    0.
+                };
+                for (ch, sample) in routing.master().into_iter().zip(self.pause_tail[0]) {
+                    frame[usize::from(ch)] = convert(sample * gain);
+                }
+                if let Some(pair) = routing.cue() {
+                    for (ch, sample) in pair.into_iter().zip(self.pause_tail[1]) {
+                        frame[usize::from(ch)] = convert(sample * gain);
+                    }
+                }
+                // Device-time mixer smoothing/meters continue; voices and musical
+                // scheduling do not. Audition resumes with musical transport.
+                self.mixer
+                    .mix_external_preview([[0.; 2]; 2], [1.; 2], [0.; 2]);
+                continue;
+            }
             let Self {
                 scheduler,
                 bank,
@@ -785,7 +873,14 @@ impl LiveEngine {
             } else {
                 [0.0; 2]
             };
-            let buses = self.mixer.mix_external_preview(sources, [1.0; 2], preview);
+            let mut buses = self.mixer.mix_external_preview(sources, [1.0; 2], preview);
+            if self.resume_left > 0 {
+                self.resume_left -= 1;
+                let gain = 1. - self.resume_left as f32 / (self.rate() / 500).max(1) as f32;
+                buses.master = buses.master.map(|v| v * gain);
+                buses.cue = buses.cue.map(|v| v * gain);
+            }
+            self.pause_tail = [buses.master, buses.cue];
             for (ch, sample) in routing.master().into_iter().zip(buses.master) {
                 frame[usize::from(ch)] = convert(sample);
             }
@@ -932,6 +1027,8 @@ impl LiveEngine {
             }),
             transport: if self.failed {
                 TransportState::Failed
+            } else if self.paused {
+                TransportState::Paused
             } else if self.frame().0 == 0 {
                 TransportState::Ready
             } else {

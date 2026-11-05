@@ -14,6 +14,7 @@ use timebase::{BeatTicks, SampleFrame};
 pub enum TransportState {
     Ready,
     Rendering,
+    Paused,
     Failed,
     Closed,
 }
@@ -93,7 +94,7 @@ impl Publication {
             s.frame.0 as u64,
             s.beat.0 as u64,
             u64::from(s.sample_rate),
-            s.failed as u64,
+            (s.failed as u64) | ((matches!(s.transport, TransportState::Paused) as u64) << 1),
             s.decks[0].phase.0 as u64,
             s.decks[1].phase.0 as u64,
             s.bpm.unwrap_or(f64::NAN).to_bits(),
@@ -183,8 +184,10 @@ impl Publication {
                 part: PartId(w[11]),
                 position: w[12],
             }),
-            transport: if w[3] != 0 {
+            transport: if w[3] & 1 != 0 {
                 TransportState::Failed
+            } else if w[3] & 2 != 0 {
+                TransportState::Paused
             } else if w[0] == 0 {
                 TransportState::Ready
             } else {
@@ -197,7 +200,7 @@ impl Publication {
             bpm: f64::from_bits(w[6])
                 .is_finite()
                 .then(|| f64::from_bits(w[6])),
-            failed: w[3] != 0,
+            failed: w[3] & 1 != 0,
             decks: std::array::from_fn(|d| DeckState {
                 phase: BeatTicks(w[4 + d] as i64),
                 epoch: BeatTicks(w[7 + d] as i64),

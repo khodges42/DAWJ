@@ -22,6 +22,42 @@ fn project() -> Project {
     p.create("Original".into(), 0).unwrap();
     p
 }
+#[test]
+fn live_trimmed_loop_cursor_wraps_elapsed_frames_instead_of_clamping_to_eof() {
+    use dawj_core::session::MediaInfo;
+    let (_, control, mixer) = demo::prepare().unwrap();
+    let mut co = Coordinator::new(control, mixer, false);
+    let mut p = project();
+    let part = &mut p.compositions[0].parts[0];
+    part.looping = true;
+    part.sample_start = 100;
+    part.sample_end = Some(500);
+    part.loop_start = 150;
+    part.loop_end = Some(350);
+    let mut observed = co.snapshot.unwrap();
+    observed.decks[0].slots[0].active = Some(parts::PartId(part.id));
+    observed.decks[0].slots[0].position = Some(1150);
+    co.snapshot = Some(observed);
+    let w = Workspace {
+        project: p,
+        media: vec![MediaInfo {
+            preparation_gain_db: 0.,
+            waveform: None,
+            deck: 0,
+            slot: 0,
+            path: "source.wav".into(),
+            filename: "source.wav".into(),
+            duration: 1.,
+            sample_rate: 48000,
+            channels: 2,
+            prepared_frames: 1000,
+            error: None,
+        }],
+        ..Default::default()
+    };
+    let positions = viz::positions(&w, &co).unwrap();
+    assert_eq!(positions[0].cursors[0].source, Some(0.75));
+}
 fn wave() -> Pyramid {
     Pyramid::analyze(&vec![0.5; 4800], 1, 48000).unwrap()
 }

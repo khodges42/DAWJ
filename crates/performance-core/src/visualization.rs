@@ -82,6 +82,7 @@ pub struct Address {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PartMaterial {
+    pub thumbnail: Option<Vec<Envelope>>,
     pub deck: usize,
     pub slot: usize,
     pub id: u64,
@@ -205,7 +206,8 @@ pub fn build(
     if detail.is_some_and(|a| !visible.contains(&a)) {
         return Err("Source detail must be a visible part".into());
     }
-    let columns = usize::from(columns).min(8192 / visible.len().max(1));
+    let columns =
+        usize::from(columns).min((8192 / visible.len().max(1)).saturating_sub(128).max(32));
     let bpm = co
         .and_then(|c| c.snapshot)
         .and_then(|s| s.bpm)
@@ -464,6 +466,16 @@ pub fn project_part(
         }
     });
     PartMaterial {
+        thumbnail: p.filter(|_| valid).map(|p| {
+            (0..columns.min(128))
+                .map(|i| {
+                    let count = columns.min(128) as u64;
+                    let a = start + duration * i as u64 / count;
+                    let b = start + duration * (i + 1) as u64 / count;
+                    p.envelope(a, b.max(a + 1).min(end))
+                })
+                .collect()
+        }),
         deck: 0,
         slot: 0,
         id: sound.id,
@@ -578,8 +590,11 @@ pub fn positions(w: &Workspace, co: &Coordinator) -> Option<[Position; 2]> {
                         .map_or(0, |m| m.prepared_frames as u64);
                     let (a, b) = source_region(p, frames);
                     if b > a {
+                        // Publication position is elapsed voice frames, not an absolute
+                        // asset cursor. Map the immutable prepared region at native 1x.
                         live.position.map(|v| {
-                            ((v.saturating_sub(a)) as f32 / (b - a) as f32).clamp(0.0, 1.0)
+                            let offset = if p.looping { v % (b - a) } else { v.min(b - a) };
+                            offset as f32 / (b - a) as f32
                         })
                     } else {
                         None

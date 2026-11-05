@@ -80,6 +80,13 @@ pub fn generated() -> String {
         Command::MidiFactory {},
     ];
     let actions = vec![
+        Action::Transport {
+            action: crate::TransportAction::Pause,
+        },
+        Action::DeckTransport {
+            deck: 0,
+            playing: false,
+        },
         Action::Selected {
             action: PartAction::Toggle,
         },

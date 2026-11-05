@@ -33,6 +33,7 @@ fn arbitrary_pack_directory_is_discovered_and_traversal_rejected() {
     assert!(catalog.entries[0].error.is_some());
     assert!(
         dawj_core::factory::Reference {
+            sample_id: None,
             pack: "a-new-user-pack".into(),
             path: "../outside.wav".into()
         }
@@ -50,6 +51,7 @@ fn factory_references_patterns_and_metadata_roundtrip_without_demo_identity() {
         let id = p.create(format!("Original {d}"), d).unwrap();
         let s = &mut p.composition_mut(id).unwrap().parts[0];
         s.factory = Some(dawj_core::factory::Reference {
+            sample_id: None,
             pack: format!("user-pack-{d}"),
             path: "Drums/Kick.wav".into(),
         });

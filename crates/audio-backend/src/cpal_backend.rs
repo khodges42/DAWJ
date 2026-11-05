@@ -6,6 +6,10 @@ use crate::routing::OutputRouting;
 use cpal::traits::StreamTrait;
 use cpal::traits::{DeviceTrait, HostTrait};
 use std::sync::{Arc, atomic::Ordering};
+/// Control-thread default endpoint identity; callers must reject ambiguous names.
+pub fn default_output_name() -> Option<String> {
+    cpal::default_host().default_output_device()?.name().ok()
+}
 
 #[derive(Clone, Copy, Debug)]
 pub enum SampleEncoding {

@@ -67,6 +67,41 @@ pub struct MusicalScheduler {
     manual_frame: [[Option<SampleFrame>; SLOTS]; 2],
 }
 impl MusicalScheduler {
+    /// Immediate deck stop: retain tempo/clock and pattern definitions, clear execution intent.
+    /// Fixed-size state only; safe on the render thread.
+    pub fn halt_deck(&mut self, deck: usize) -> Result<(), &'static str> {
+        if deck >= 2 {
+            return Err("Invalid deck");
+        }
+        for slot in 0..SLOTS {
+            self.halt_part(deck, slot)?;
+        }
+        Ok(())
+    }
+    pub fn halt_part(&mut self, deck: usize, slot: usize) -> Result<(), &'static str> {
+        if deck >= 2 || slot >= SLOTS {
+            return Err("Invalid part");
+        }
+        self.decks[deck].command(slot, Command::StopNow)?;
+        self.rules[deck][slot] = None;
+        self.started[deck][slot] = None;
+        self.immediate[deck][slot] = None;
+        self.manual_frame[deck][slot] = None;
+        let p = &mut self.patterns[deck][slot];
+        // A stopped pattern's accepted replacement becomes authoritative now.
+        if let Some((definition, revision, _)) = p.pending.take() {
+            p.definition = definition;
+            p.status.revision = revision;
+            p.status.bars = definition.map(|p| p.bars);
+        }
+        p.anchor = None;
+        p.next = 0;
+        p.status.running = false;
+        p.status.step = None;
+        p.status.pending_revision = None;
+        p.status.pending_at = None;
+        Ok(())
+    }
     pub fn new(
         mut map: TempoMap,
         epochs: [BeatTicks; 2],
@@ -337,6 +372,22 @@ impl MusicalScheduler {
         let active = self.state(deck, slot).and_then(State::active).is_some();
         if definition.is_none() && active {
             return Err("Stop the part before disabling its pattern");
+        }
+        if !active {
+            // Metadata for a stopped slot can become authoritative at admission,
+            // including while musical time is paused. No trigger is executed here.
+            let p = &mut self.patterns[deck][slot];
+            p.definition = definition;
+            p.pending = None;
+            p.anchor = None;
+            p.next = 0;
+            p.status.revision = revision;
+            p.status.bars = definition.map(|p| p.bars);
+            p.status.pending_revision = None;
+            p.status.pending_at = None;
+            p.status.running = false;
+            p.status.step = None;
+            return Ok(());
         }
         let at = self.boundary(
             deck,

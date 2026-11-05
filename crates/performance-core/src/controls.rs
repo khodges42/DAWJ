@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Semantic dispatch independent of GUI, keyboard or MIDI source.
 use super::*;
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum TransportAction {
+    Play,
+    Pause,
+    Stop,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum InputSource {
@@ -10,6 +16,7 @@ pub enum InputSource {
 }
 #[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 pub enum PartAction {
+    Halt,
     Launch,
     Stop,
     Cancel,
@@ -28,6 +35,58 @@ pub enum RuleAction {
 impl Coordinator {
     pub fn dispatch(&mut self, intent: Intent, source: InputSource) -> Result<(), &'static str> {
         match intent {
+            Intent::Halt => {
+                if !self.available() {
+                    return Err("Engine unavailable");
+                }
+                let (deck, slot) = self.focus.address();
+                return self.submit_request(deck, slot, Request::HaltPart, Quantize::Immediate);
+            }
+            Intent::Transport(action) => {
+                if !self.available() {
+                    return Err("Engine unavailable");
+                }
+                let action = match action {
+                    TransportAction::Play => audio_backend::live::TransportAction::Play,
+                    TransportAction::Pause => audio_backend::live::TransportAction::Pause,
+                    TransportAction::Stop => audio_backend::live::TransportAction::Stop,
+                };
+                return self.submit_request(0, 0, Request::Transport(action), Quantize::Immediate);
+            }
+            Intent::DeckTransport { deck, playing } => {
+                if !self.available() {
+                    return Err("Engine unavailable");
+                }
+                if deck >= 2 {
+                    return Err("Invalid deck");
+                }
+                if !playing {
+                    return self.submit_request(deck, 0, Request::HaltDeck, Quantize::Immediate);
+                }
+                let slots: Vec<_> = (0..SLOTS)
+                    .filter(|slot| {
+                        self.banks[deck][*slot].is_some()
+                            && self.snapshot.is_some_and(|s| {
+                                s.decks[deck].slots[*slot].active.is_none()
+                                    && s.decks[deck].slots[*slot].pending.is_none()
+                            })
+                    })
+                    .collect();
+                let resume = usize::from(
+                    self.snapshot
+                        .is_some_and(|s| s.transport == TransportState::Paused),
+                );
+                self.check_pattern_capacity(slots.len() + resume)?;
+                for slot in slots {
+                    self.submit_request(
+                        deck,
+                        slot,
+                        Request::Launch(self.banks[deck][slot].ok_or("No sound")?),
+                        self.focus.quantization,
+                    )?;
+                }
+                return Ok(());
+            }
             Intent::CrossfaderStep(delta) => {
                 if !delta.is_finite() {
                     return Err("Invalid crossfader step");
@@ -105,6 +164,9 @@ impl Coordinator {
                 PartAction::Retrigger => Intent::Retrigger,
                 PartAction::Toggle => Intent::Toggle,
                 PartAction::Gain(v) => Intent::Gain(v),
+                PartAction::Halt => {
+                    return self.submit_request(deck, slot, Request::HaltPart, Quantize::Immediate);
+                }
                 PartAction::Cutoff(v) => Intent::Cutoff(v),
             };
             let mut focus = self.focus;

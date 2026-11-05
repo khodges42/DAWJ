@@ -224,6 +224,13 @@ impl From<TriggerRule> for Rule {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
+    Transport {
+        action: crate::TransportAction,
+    },
+    DeckTransport {
+        deck: usize,
+        playing: bool,
+    },
     CrossfaderStep {
         delta: f32,
     },
@@ -304,9 +311,12 @@ pub enum Action {
 impl From<Action> for Intent {
     fn from(a: Action) -> Self {
         match a {
+            Action::Transport { action } => Self::Transport(action),
+            Action::DeckTransport { deck, playing } => Self::DeckTransport { deck, playing },
             Action::CrossfaderStep { delta } => Self::CrossfaderStep(delta),
             Action::SelectPart { deck, slot } => Self::SelectPart { deck, slot },
             Action::Selected { action } => match action {
+                PartAction::Halt => Self::Halt,
                 PartAction::Launch => Self::Launch,
                 PartAction::Stop => Self::Stop,
                 PartAction::Cancel => Self::Cancel,
@@ -417,6 +427,7 @@ pub enum Response {
 }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Device {
+    pub is_default: bool,
     pub id: usize,
     pub name: String,
 }
@@ -494,6 +505,7 @@ impl Lifecycle {
 pub enum Transport {
     Ready,
     Rendering,
+    Paused,
     Failed,
     Closed,
 }
@@ -503,6 +515,7 @@ impl From<audio_backend::performance_state::TransportState> for Transport {
         match t {
             T::Ready => Self::Ready,
             T::Rendering => Self::Rendering,
+            T::Paused => Self::Paused,
             T::Failed => Self::Failed,
             T::Closed => Self::Closed,
         }

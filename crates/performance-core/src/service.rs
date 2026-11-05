@@ -267,6 +267,7 @@ impl Drop for Service {
     }
 }
 struct Preparation {
+    changed: [[bool; parts::SLOTS]; 2],
     rx: Receiver<Result<crate::session::Prepared, String>>,
     project: crate::session::Project,
     affected: [bool; 2],
@@ -500,10 +501,13 @@ impl Worker {
                 .map_err(|e| Fault::new(Invalid, e))?,
             Command::Devices {} => {
                 self.devices = output::discover().map_err(|e| Fault::new(Failed, e))?;
+                let default_name = audio_backend::cpal_backend::default_output_name();
                 return Ok(Response::Devices(
                     self.devices
                         .iter()
                         .map(|d| Device {
+                            is_default: default_name.is_some()
+                                && d.name.as_ref().ok() == default_name.as_ref(),
                             id: d.ordinal,
                             name: d.name.clone().unwrap_or_default(),
                         })
@@ -911,9 +915,7 @@ impl Worker {
                 reference.validate()?;
                 let entry = self
                     .catalog
-                    .entries
-                    .iter()
-                    .find(|e| e.reference == reference)
+                    .entry(&reference)
                     .ok_or("Rescan factory catalog")?;
                 let hints = project
                     .sample_overrides
@@ -925,7 +927,7 @@ impl Worker {
                     .parts
                     .get_mut(slot)
                     .ok_or("Invalid slot")?;
-                p.factory = Some(reference);
+                p.factory = Some(entry.reference.clone());
                 p.media = None;
                 p.looping = hints.kind == "Loop";
                 p.name = hints.display_name.clone();
@@ -1151,12 +1153,14 @@ impl Worker {
         }
         self.begin_preparation(project, affected, true, self.jam.path.clone(), false, force)
     }
-    fn editable(&self, affected: [bool; 2]) -> bool {
+    fn editable(&self, changed: [[bool; parts::SLOTS]; 2]) -> bool {
         self.output.as_ref().is_none_or(|o| {
-            affected
-                .into_iter()
-                .enumerate()
-                .all(|(d, a)| !a || o.coordinator.deck_editable(d))
+            changed.iter().enumerate().all(|(d, slots)| {
+                slots
+                    .iter()
+                    .enumerate()
+                    .all(|(slot, change)| !*change || o.coordinator.slot_editable(d, slot))
+            })
         })
     }
     fn begin_preparation(
@@ -1168,14 +1172,19 @@ impl Worker {
         opened: bool,
         force: Option<(u64, usize)>,
     ) -> Result<(), String> {
-        if !self.editable(affected) {
-            return Err("Stop every part, cancel pending actions and remove periodic rules on the destination deck before changing its content. The other deck can keep playing.".into());
-        }
         let (tx, rx) = mpsc::sync_channel(1);
         let candidate = project.clone();
         let mut before = self.jam.project.clone();
         if let Some((n, s)) = force {
             before.composition_mut(n)?.parts[s].media = None;
+        }
+        let changed = if opened {
+            std::array::from_fn(|d| [affected[d]; parts::SLOTS])
+        } else {
+            crate::session::change_mask(&project, &before, affected)
+        };
+        if !self.editable(changed) {
+            return Err("Stop the destination part, cancel its queued action and remove its periodic rule before replacing audio. Other parts can continue. Use Stop part, then Assign again.".into());
         }
         let catalog = self.catalog.clone();
         let waveforms = self.waveforms.clone();
@@ -1200,6 +1209,7 @@ impl Worker {
             })
             .map_err(|e| e.to_string())?;
         self.preparation = Some(Preparation {
+            changed,
             rx,
             project,
             affected,
@@ -1229,8 +1239,8 @@ impl Worker {
         job: Preparation,
         prepared: crate::session::Prepared,
     ) -> Result<(), String> {
-        if !self.editable(job.affected) {
-            return Err("Destination became active while preparing. Stop it and retry.".into());
+        if !self.editable(job.changed) {
+            return Err("Destination part became active while preparing. Audio was kept unchanged. Stop that part and retry.".into());
         }
         let mut project = job.project;
         if let Some(o) = &self.output {
@@ -1613,6 +1623,7 @@ mod tests {
         let mut w = Worker::new(Profile::default(), None);
         let (_tx, rx) = mpsc::sync_channel(1);
         w.preparation = Some(Preparation {
+            changed: [[true; parts::SLOTS]; 2],
             rx,
             project: w.jam.project.clone(),
             affected: [true, false],

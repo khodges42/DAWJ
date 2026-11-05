@@ -423,6 +423,8 @@ fn resolve(base: &Path, path: &str) -> PathBuf {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MediaInfo {
     #[serde(default)]
+    pub preparation_gain_db: f32,
+    #[serde(default)]
     pub waveform: Option<String>,
     pub deck: usize,
     pub slot: usize,
@@ -669,6 +671,7 @@ fn prepare_mask(
                 |p| p.display().to_string(),
             );
             let mut info = MediaInfo {
+                preparation_gain_db: 0.,
                 waveform: None,
                 deck: d,
                 slot,
@@ -690,6 +693,7 @@ fn prepare_mask(
                 let (sample, metadata) = LoadedSample::prepare_file(asset, &resolved, 48000)?;
                 info.duration = metadata.frames as f64 / f64::from(metadata.sample_rate);
                 info.sample_rate = metadata.sample_rate;
+                info.preparation_gain_db = metadata.preparation_gain_db;
                 info.channels = metadata.channels;
                 info.prepared_frames = metadata.prepared_frames;
                 if let Some(cache) = cache {
@@ -791,17 +795,21 @@ pub fn install(
     prepared: Prepared,
     decks: [bool; 2],
 ) -> Result<Vec<MediaInfo>, String> {
-    if decks
-        .into_iter()
-        .enumerate()
-        .any(|(d, a)| a && !co.deck_editable(d))
-    {
-        return Err("Destination deck is active, pending or has installed rules".into());
+    if prepared.changed.iter().enumerate().any(|(d, slots)| {
+        slots
+            .iter()
+            .enumerate()
+            .any(|(s, changed)| *changed && !co.slot_editable(d, s))
+    }) {
+        return Err("Destination part is active, pending or has installed rules. Stop that part and retry; other parts can continue.".into());
     }
     let mut patterns = Vec::new();
     for (d, affected) in decks.into_iter().enumerate() {
         if affected {
             for slot in 0..SLOTS {
+                if !prepared.changed[d][slot] {
+                    continue;
+                }
                 let next = project.decks[d]
                     .and_then(|n| project.composition(n).ok())
                     .and_then(|c| c.parts[slot].pattern);
@@ -840,6 +848,9 @@ pub fn install(
             continue;
         }
         for slot in 0..SLOTS {
+            if !prepared.changed[d][slot] {
+                continue;
+            }
             let p = project.decks[d]
                 .and_then(|n| project.composition(n).ok())
                 .map(|c| &c.parts[slot]);

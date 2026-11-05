@@ -171,6 +171,167 @@ fn engine(rate: u32) -> (LiveEngine, LiveControl) {
 }
 
 #[test]
+fn musical_pause_freezes_clock_sources_deadlines_and_resumes_without_restart() {
+    use audio_backend::{live::TransportAction, performance_state::TransportState};
+    let (mut e, mut c) = engine(48000);
+    c.submit(0, 0, Request::Launch(0), Quantize::Immediate)
+        .unwrap();
+    e.render(&mut [0.; 1024], OutputRouting::stereo_master_only());
+    c.submit(1, 1, Request::Launch(1), Quantize::Bar).unwrap();
+    let pause = c
+        .submit(
+            0,
+            0,
+            Request::Transport(TransportAction::Pause),
+            Quantize::Immediate,
+        )
+        .unwrap();
+    let mut out = [0.; 2048];
+    e.render(&mut out, OutputRouting::stereo_master_only());
+    assert_eq!(pause.outcome(), Outcome::Applied);
+    let frozen = c.performance_state().unwrap();
+    assert_eq!(frozen.transport, TransportState::Paused);
+    for _ in 0..30 {
+        e.render(&mut out, OutputRouting::stereo_master_only());
+        assert!(out.iter().all(|v| *v == 0.));
+    }
+    let still = c.performance_state().unwrap();
+    assert_eq!(still.frame, frozen.frame);
+    assert_eq!(still.beat, frozen.beat);
+    assert_eq!(
+        still.decks[0].slots[0].position,
+        frozen.decks[0].slots[0].position
+    );
+    assert_eq!(
+        still.decks[1].slots[1].pending.unwrap().target,
+        frozen.decks[1].slots[1].pending.unwrap().target
+    );
+    assert!(still.generation > frozen.generation);
+    let mut p = parts::pattern::Pattern::default();
+    p.steps[0][0] = 127;
+    let edit = c
+        .submit(0, 2, Request::Pattern(Some(p)), Quantize::Immediate)
+        .unwrap();
+    e.render(&mut out, OutputRouting::stereo_master_only());
+    let edited = c.performance_state().unwrap();
+    assert_eq!(edited.frame, frozen.frame);
+    assert_eq!(edited.decks[0].slots[2].pattern.revision, edit.id());
+    assert_eq!(edited.decks[0].slots[2].pattern.pending_revision, None);
+    c.submit(
+        0,
+        0,
+        Request::Transport(TransportAction::Play),
+        Quantize::Immediate,
+    )
+    .unwrap();
+    e.render(&mut out, OutputRouting::stereo_master_only());
+    let resumed = c.performance_state().unwrap();
+    assert_eq!(resumed.frame.0, frozen.frame.0 + 1024);
+    assert!(out.iter().any(|v| *v != 0.));
+}
+#[test]
+fn pause_fades_both_logical_master_and_cue_buses_without_advancing_music() {
+    use audio_backend::live::TransportAction;
+    let (mut e, mut c) = engine(48000);
+    let routing = OutputRouting::new(4, [0, 1], Some([2, 3])).unwrap();
+    c.submit(1, 0, Request::Launch(1), Quantize::Immediate)
+        .unwrap();
+    let mut audio = [0.; 4800];
+    e.render(&mut audio, routing);
+    assert!(audio.chunks_exact(4).any(|v| v[2] != 0.));
+    let held = e.frame();
+    c.submit(
+        0,
+        0,
+        Request::Transport(TransportAction::Pause),
+        Quantize::Immediate,
+    )
+    .unwrap();
+    e.render(&mut audio, routing);
+    assert_eq!(e.frame(), held);
+    assert!(
+        audio[..384]
+            .chunks_exact(4)
+            .any(|v| v[0] != 0. && v[2] != 0.)
+    );
+    assert!(audio[384..].iter().all(|v| *v == 0.));
+    assert!(
+        audio
+            .iter()
+            .all(|v| v.abs() <= audio_backend::mixer::MASTER_CEILING)
+    );
+}
+
+#[test]
+fn deck_stop_clears_rules_and_pending_without_disturbing_other_deck_then_global_stop_pauses() {
+    use audio_backend::live::{RulePhase, RuleUnit, TransportAction, TriggerRule};
+    let (mut e, mut c) = engine(48000);
+    for d in 0..2 {
+        c.submit(d, 0, Request::Launch(0), Quantize::Immediate)
+            .unwrap();
+    }
+    e.render(&mut [0.; 1024], OutputRouting::stereo_master_only());
+    c.submit(
+        0,
+        1,
+        Request::Rule {
+            bank: 1,
+            rule: TriggerRule::Every {
+                n: 1,
+                unit: RuleUnit::Bars,
+                phase: RulePhase::Global,
+            },
+        },
+        Quantize::Immediate,
+    )
+    .unwrap();
+    let launch = c
+        .submit(0, 2, Request::Launch(0), Quantize::Phrase)
+        .unwrap();
+    c.submit(0, 0, Request::HaltDeck, Quantize::Immediate)
+        .unwrap();
+    e.render(&mut [0.; 1024], OutputRouting::stereo_master_only());
+    assert_eq!(launch.outcome(), Outcome::Cancelled);
+    let s = c.performance_state().unwrap();
+    assert!(
+        s.decks[0]
+            .slots
+            .iter()
+            .all(|p| p.active.is_none() && p.pending.is_none() && p.rule.is_none())
+    );
+    assert!(s.decks[1].slots[0].active.is_some());
+    c.submit(
+        0,
+        0,
+        Request::Transport(TransportAction::Stop),
+        Quantize::Immediate,
+    )
+    .unwrap();
+    e.render(&mut [0.; 1024], OutputRouting::stereo_master_only());
+    let frame = e.frame();
+    e.render(&mut [0.; 1024], OutputRouting::stereo_master_only());
+    assert_eq!(e.frame(), frame);
+    assert!(c.performance_state().unwrap().decks.iter().all(|d| {
+        d.slots
+            .iter()
+            .all(|p| p.active.is_none() && p.pending.is_none())
+    }));
+    c.submit(
+        0,
+        0,
+        Request::Transport(TransportAction::Play),
+        Quantize::Immediate,
+    )
+    .unwrap();
+    let mut silent = [1.; 1024];
+    e.render(&mut silent, OutputRouting::stereo_master_only());
+    assert!(
+        silent.iter().all(|v| *v == 0.),
+        "Stopped voices must not sound on resume"
+    );
+}
+
+#[test]
 fn hardening_rejects_preconfigured_active_pending_and_rule_schedulers() {
     use audio_backend::live::TriggerRule;
     use event_engine::live::Action;

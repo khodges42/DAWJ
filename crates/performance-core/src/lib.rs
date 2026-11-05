@@ -28,7 +28,7 @@ pub mod waveform;
 pub mod web_contract;
 pub mod web_timeline;
 pub use audio_backend::performance_state;
-pub use controls::{InputSource, PartAction, RuleAction};
+pub use controls::{InputSource, PartAction, RuleAction, TransportAction};
 
 /// Compensate the fixed demo's sample attenuation and two 1/8 mixing stages.
 /// The backend's existing master/cue limiters still cap final samples at 0.125.
@@ -42,6 +42,11 @@ pub enum Mode {
 
 #[derive(Clone, Copy, Debug)]
 pub enum Intent {
+    Transport(TransportAction),
+    DeckTransport {
+        deck: usize,
+        playing: bool,
+    },
     SelectPart {
         deck: usize,
         slot: usize,
@@ -51,6 +56,7 @@ pub enum Intent {
     Mode(Mode),
     Quantize(Quantize),
     Launch,
+    Halt,
     Stop,
     Toggle,
     Retrigger,
@@ -199,6 +205,9 @@ struct Receipt {
 
 type PatternVersion = (u64, Option<parts::pattern::Pattern>);
 pub struct Coordinator {
+    // Last admitted transport intent, for composing launch/resume without a
+    // stale-publication race. Playing/paused UI always uses PerformanceState.
+    transport_intent: Option<audio_backend::live::TransportAction>,
     pattern_versions: [[VecDeque<PatternVersion>; SLOTS]; 2],
     confirmed_patterns: [[(u64, Option<parts::pattern::Pattern>); SLOTS]; 2],
     pub pattern_targets: [[u64; SLOTS]; 2],
@@ -229,6 +238,7 @@ impl Coordinator {
             .set_output_trim_db(DEMO_OUTPUT_TRIM_DB)
             .expect("demo trim is within engine bounds");
         Self {
+            transport_intent: None,
             pattern_versions: std::array::from_fn(|_| std::array::from_fn(|_| VecDeque::new())),
             confirmed_patterns: [[(0, None); SLOTS]; 2],
             pattern_targets: [[0; SLOTS]; 2],
@@ -359,14 +369,22 @@ impl Coordinator {
         })
     }
     pub fn deck_editable(&self, deck: usize) -> bool {
+        deck < 2 && (0..SLOTS).all(|slot| self.slot_editable(deck, slot))
+    }
+    pub fn slot_editable(&self, deck: usize, slot: usize) -> bool {
         deck < 2
+            && slot < SLOTS
             && self.available()
-            && !self.receipts.iter().any(|r| r.deck == deck && !r.parameter)
+            && !self
+                .receipts
+                .iter()
+                .any(|r| r.deck == deck && r.slot == slot && !r.parameter)
             && self.snapshot.is_some_and(|s| {
-                s.decks[deck]
-                    .slots
-                    .iter()
-                    .all(|p| p.active.is_none() && p.pending.is_none() && p.rule.is_none())
+                let p = s.decks[deck].slots[slot];
+                p.active.is_none()
+                    && p.pending.is_none()
+                    && p.rule.is_none()
+                    && p.pattern.pending_revision.is_none()
             })
     }
     pub fn poll(&mut self) {
@@ -515,6 +533,35 @@ impl Coordinator {
         request: Request,
         q: Quantize,
     ) -> Result<(), &'static str> {
+        // A manual musical launch resumes a held transport through the shared
+        // semantic path, equally for GUI, keyboard and MIDI. Pending Play only
+        // deduplicates intent; it never substitutes for an engine publication.
+        if matches!(request, Request::Retrigger)
+            && self
+                .snapshot
+                .is_none_or(|s| s.decks[deck].slots[slot].active.is_none())
+        {
+            return Err("Retrigger requires an active part");
+        }
+        let held = self.transport_intent.map_or_else(
+            || {
+                self.snapshot
+                    .is_some_and(|s| s.transport == TransportState::Paused)
+            },
+            |action| action != audio_backend::live::TransportAction::Play,
+        );
+        let resume = matches!(request, Request::Launch(_) | Request::Retrigger) && held;
+        if resume {
+            if self.receipts.len() + 2 > 32 || self.control.remaining_capacity() < 2 {
+                return Err("Launch/resume admission full; retry");
+            }
+            self.submit_request(
+                deck,
+                slot,
+                Request::Transport(audio_backend::live::TransportAction::Play),
+                Quantize::Immediate,
+            )?;
+        }
         let parameters = if let Request::Parameters(p) = request {
             Some(p)
         } else {
@@ -535,6 +582,9 @@ impl Coordinator {
             return Err("UI receipt window full; wait for audio");
         }
         let ticket = self.control.submit(deck, slot, request, q)?;
+        if let Request::Transport(action) = request {
+            self.transport_intent = Some(action);
+        }
         self.feedback[deck][slot] = format!("#{} submitted; awaiting engine", ticket.id());
         self.notice = self.feedback[deck][slot].clone();
         self.latest_receipt = Some(ticket.id());
@@ -553,6 +603,64 @@ impl Coordinator {
 mod tests {
     use super::*;
     use audio_backend::{demo, routing::OutputRouting};
+
+    #[test]
+    fn launches_resume_through_shared_gui_keyboard_and_midi_path_without_fabricating_state() {
+        let (mut engine, control, mixer) = demo::prepare().unwrap();
+        let mut co = Coordinator::new(control, mixer, false);
+        co.focus.quantization = Quantize::Immediate;
+        for (index, source) in [InputSource::Gui, InputSource::Keyboard, InputSource::Midi]
+            .into_iter()
+            .enumerate()
+        {
+            co.try_act(Intent::Transport(TransportAction::Pause))
+                .unwrap();
+            engine.render(&mut [0.; 512], OutputRouting::stereo_master_only());
+            co.poll();
+            co.dispatch(
+                Intent::Part {
+                    deck: 0,
+                    slot: index,
+                    action: PartAction::Launch,
+                },
+                source,
+            )
+            .unwrap();
+            co.dispatch(
+                Intent::Part {
+                    deck: 1,
+                    slot: index,
+                    action: PartAction::Launch,
+                },
+                source,
+            )
+            .unwrap();
+            assert_eq!(co.snapshot.unwrap().transport, TransportState::Paused);
+            assert_eq!(
+                co.receipts.len(),
+                3,
+                "One resume and two launches, without redundant resume commands"
+            );
+            engine.render(&mut [0.; 512], OutputRouting::stereo_master_only());
+            co.poll();
+            assert_eq!(co.snapshot.unwrap().transport, TransportState::Rendering);
+            assert!(co.snapshot.unwrap().decks[1].slots[index].active.is_some());
+        }
+    }
+    #[test]
+    fn launch_after_an_unpublished_pause_keeps_command_order_and_does_not_stall() {
+        let (mut e, c, m) = demo::prepare().unwrap();
+        let mut co = Coordinator::new(c, m, false);
+        co.focus.quantization = Quantize::Immediate;
+        co.try_act(Intent::Transport(TransportAction::Pause))
+            .unwrap();
+        co.try_act(Intent::Launch).unwrap();
+        assert_eq!(co.snapshot.unwrap().transport, TransportState::Ready);
+        e.render(&mut [0.; 512], OutputRouting::stereo_master_only());
+        co.poll();
+        assert_eq!(co.snapshot.unwrap().transport, TransportState::Rendering);
+        assert!(co.snapshot.unwrap().decks[0].slots[0].active.is_some());
+    }
 
     #[test]
     fn replacement_projection_preserves_both_actual_and_pending_identity() {

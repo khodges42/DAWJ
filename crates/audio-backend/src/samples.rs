@@ -20,6 +20,8 @@ pub struct LoadedSample {
 }
 #[derive(Clone, Debug)]
 pub struct SampleInfo {
+    /// Nonpositive preparation-only headroom correction for finite float overs.
+    pub preparation_gain_db: f32,
     pub sample_rate: u32,
     pub channels: u16,
     pub frames: usize,
@@ -63,7 +65,8 @@ impl LoadedSample {
         if !(1000..=384000).contains(&rate) || target == 0 {
             return Err("Unsupported sample rate".into());
         }
-        let mut sample = Self::decode(id, &bytes, rate).map_err(str::to_owned)?;
+        let (mut sample, preparation_gain_db) =
+            Self::decode_prepared(id, &bytes, rate, true).map_err(str::to_owned)?;
         let frames = sample.frames();
         if rate != target {
             let count = (frames as u64 * u64::from(target)).div_ceil(u64::from(rate)) as usize;
@@ -84,6 +87,7 @@ impl LoadedSample {
             sample.rate = target;
         }
         let info = SampleInfo {
+            preparation_gain_db,
             sample_rate: rate,
             channels,
             frames,
@@ -108,6 +112,14 @@ impl LoadedSample {
         &self.pcm
     }
     pub fn decode(id: AssetId, bytes: &[u8], rate: u32) -> Result<Self, &'static str> {
+        Self::decode_prepared(id, bytes, rate, false).map(|(sample, _)| sample)
+    }
+    fn decode_prepared(
+        id: AssetId,
+        bytes: &[u8],
+        rate: u32,
+        attenuate_float: bool,
+    ) -> Result<(Self, f32), &'static str> {
         let invalid = "unsupported or malformed WAV";
         if bytes.len() > MAX_WAV_BYTES
             || bytes.len() < 12
@@ -118,10 +130,14 @@ impl LoadedSample {
         }
         let u16at = |b: &[u8], i| u16::from_le_bytes([b[i], b[i + 1]]);
         let u32at = |b: &[u8], i| u32::from_le_bytes([b[i], b[i + 1], b[i + 2], b[i + 3]]);
-        let end = (u32at(bytes, 4) as usize).checked_add(8).ok_or(invalid)?;
-        if end != bytes.len() {
+        let declared_end = (u32at(bytes, 4) as usize).checked_add(8).ok_or(invalid)?;
+        // Compatibility with complete files whose RIFF length counts one absent
+        // terminal alignment byte. Chunk bounds/frame alignment remain strict.
+        if declared_end != bytes.len() && declared_end != bytes.len() + 1 {
             return Err(invalid);
         }
+        let end = bytes.len();
+        let mut terminal_data = false;
         let mut fmt = None;
         let mut data = None;
         let mut offset = 12;
@@ -150,10 +166,21 @@ impl LoadedSample {
                 }
                 _ => {}
             }
-            offset = next.checked_add(len % 2).ok_or(invalid)?;
+            terminal_data = &bytes[offset..offset + 4] == b"data" && next == end;
+            // Some supplied 24-bit mono WAVs omit only the final DATA pad byte
+            // and declare that exact RIFF length. Their complete sample payload
+            // is valid for decoding; do not rewrite the user's original file.
+            offset = if next == end && &bytes[offset..offset + 4] == b"data" {
+                next
+            } else {
+                next.checked_add(len % 2).ok_or(invalid)?
+            };
             if offset > end {
                 return Err(invalid);
             }
+        }
+        if declared_end != end && !terminal_data {
+            return Err(invalid);
         }
         let f = fmt.ok_or(invalid)?;
         let data = data.ok_or(invalid)?;
@@ -184,6 +211,7 @@ impl LoadedSample {
             return Err("decoded PCM limit exceeded");
         }
         let mut pcm = Vec::with_capacity(data.len() / align * 2);
+        let mut peak = 1f64;
         for frame in data.chunks_exact(align) {
             let mut stereo = [0.0; 2];
             for ch in 0..usize::from(channels) {
@@ -199,20 +227,31 @@ impl LoadedSample {
                     (3, 32) => f32::from_le_bytes([b[0], b[1], b[2], b[3]]),
                     _ => return Err(invalid),
                 };
-                if !stereo[ch].is_finite() || stereo[ch].abs() > 1.0 {
+                if !stereo[ch].is_finite()
+                    || stereo[ch].abs() > 1.0 && !(attenuate_float && encoding == 3)
+                {
                     return Err("nonfinite or out-of-range WAV samples");
                 }
+                peak = peak.max(f64::from(stereo[ch].abs()));
             }
             if channels == 1 {
                 stereo[1] = stereo[0];
             }
             pcm.extend_from_slice(&stereo);
         }
-        Ok(Self {
-            id,
-            rate,
-            pcm: pcm.into_boxed_slice(),
-        })
+        if peak > 1. {
+            for value in &mut pcm {
+                *value = (f64::from(*value) / peak) as f32;
+            }
+        }
+        Ok((
+            Self {
+                id,
+                rate,
+                pcm: pcm.into_boxed_slice(),
+            },
+            (-20. * peak.log10()) as f32,
+        ))
     }
 }
 
@@ -537,6 +576,59 @@ mod tests {
         let mut wrong = part(PlaybackMode::OneShot);
         wrong.playback.asset = AssetId(2);
         assert!(SampleVoice::prepare(wrong, loaded(), 48000, BoundaryPolicy::Preserve).is_err());
+    }
+    #[test]
+    fn complete_terminal_odd_data_without_pad_decodes_but_truncated_payloads_do_not() {
+        let padded = wav(1, 1, 24, &[0, 0, 64]);
+        let mut unpadded = padded.clone();
+        unpadded.pop();
+        let size = (unpadded.len() - 8) as u32;
+        unpadded[4..8].copy_from_slice(&size.to_le_bytes());
+        let s = LoadedSample::decode(AssetId(1), &unpadded, 48000).unwrap();
+        assert_eq!(s.interleaved(), &[0.5, 0.5]);
+        assert_eq!(s.frames(), 1);
+        for end in 0..unpadded.len() {
+            assert!(LoadedSample::decode(AssetId(1), &unpadded[..end], 48000).is_err());
+        }
+        let mut truncated = unpadded.clone();
+        truncated.pop();
+        let size = (truncated.len() - 8) as u32;
+        truncated[4..8].copy_from_slice(&size.to_le_bytes());
+        assert!(LoadedSample::decode(AssetId(1), &truncated, 48000).is_err());
+        let mut junk = wav(1, 1, 16, &[0, 32]);
+        junk.extend(b"JUNK");
+        junk.extend(1u32.to_le_bytes());
+        junk.push(0);
+        let size = (junk.len() - 8) as u32;
+        junk[4..8].copy_from_slice(&size.to_le_bytes());
+        assert!(LoadedSample::decode(AssetId(1), &junk, 48000).is_err());
+        let mut overstated = wav(1, 1, 16, &[0, 32]);
+        let declared = (overstated.len() - 7) as u32;
+        overstated[4..8].copy_from_slice(&declared.to_le_bytes());
+        assert!(LoadedSample::decode(AssetId(1), &overstated, 48000).is_ok());
+        overstated.pop();
+        assert!(LoadedSample::decode(AssetId(1), &overstated, 48000).is_err());
+    }
+    #[test]
+    fn user_preparation_attenuates_finite_float_overs_without_clipping_or_file_changes() {
+        let bytes = wav(
+            1,
+            3,
+            32,
+            &[2f32, -1., 0.5]
+                .into_iter()
+                .flat_map(f32::to_le_bytes)
+                .collect::<Vec<_>>(),
+        );
+        let original = bytes.clone();
+        assert!(LoadedSample::decode(AssetId(1), &bytes, 48000).is_err());
+        let (prepared, gain) =
+            LoadedSample::decode_prepared(AssetId(1), &bytes, 48000, true).unwrap();
+        assert_eq!(bytes, original);
+        assert_eq!(prepared.interleaved(), &[1., 1., -0.5, -0.5, 0.25, 0.25]);
+        assert!((gain + 6.0206).abs() < 0.0001);
+        let bad = wav(1, 3, 32, &f32::NAN.to_le_bytes());
+        assert!(LoadedSample::decode_prepared(AssetId(1), &bad, 48000, true).is_err());
     }
     #[test]
     fn preparation_fades_and_short_onsets() {
