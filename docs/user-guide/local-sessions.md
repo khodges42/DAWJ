@@ -6,51 +6,43 @@ The egui fallback retains its supplied performance demo; authoring is in Tauri.
 
 ## Create and perform
 
-1. Press **Sketch** on Deck A. Enter a composition name and press **New**.
-2. Select a fixed part slot. Choose a pack/category, search, **Listen**, then
-   **Assign**. Use **External WAV...** for your own file. Read the source details;
-   filename pitch/key/BPM are optional hints, not audio analysis.
-3. Turn on **Pattern** for a one-shot sound, then press steps to add hits. Select
-   a step and set velocity (1-127; zero is rest). Velocity 115+ shows an accent.
-   Choose 1, 2 or 4 bars, then Page to edit each bar. Rotate, Clear and Duplicate
-   operate on the actual pattern. A looping sample must have Loop turned off
-   before using a pattern; use the Sample region section to change it.
-4. Repeat on Deck B with a distinct composition. Parts keep their eight stable
-   addresses on each deck. Select names/colors and assign more sounds as needed.
-5. Open **Audio output**, choose your intended output, routing and phrase length,
-   then **Start output**. Audition explicitly plays through the shared master,
-   including on stereo hardware; stop it with **Stop listen** in Sketch.
-6. Select **Performance** and launch parts. Mix A/B from the central strip, shape
-   the focused part with Gain/Filter, or use Extended for every part's contextual
-   control and scheduling details. Switching workspaces or Sketch keeps audio running.
-7. **File > Save As...** chooses a `.dawj.json` file; **Ctrl+S** saves subsequent
-   changes. Close DAWJ, reopen it and choose **File > Open...** to restore the session.
-   Playback never auto-resumes. Select and start your intended output again.
+Follow [Your first groove](../help/getting-started.md), the canonical in-app
+walkthrough. Sketch keeps the sound browser, sixteen-part selector and focused
+sequencer beside the mixer. Assigning the first sound can create its composition.
+Single-click selects; double-click toggles; visible launch/stop controls stay
+available. A manual launch resumes the shared clock, including keyboard/MIDI.
 
-**New empty**, **Supplied demo** and Open require output closed. Stop individual
-parts for musical stops; **Close output** shuts down the audio stream and clock.
-Unsaved changes appear beside the session name and in Session/Sketch. New/Open/Demo
-ask before discarding them. Save before closing; there is no autosave/crash recovery.
+Audio opens automatically without launching material. Play/Pause/Stop controls
+musical execution; device open/close lives in Settings. New/Open/Demo confirms
+discarding unsaved work, then the normal UI closes/reinitializes audio around the
+session replacement. Closing the Session dialog does not discard the session;
+uncommitted form edits receive a separate discard guard. There is no autosave.
 
 ## Factory packs and patterns
 
 Every immediate child folder in `resources/samples/` is discovered generically.
 Nested folders become categories. An optional `pack.json` supplies stable ID,
 display name, license and provenance; missing release metadata is reported.
-The checkout's user-supplied WAVs may be local and Git-ignored: a fresh clone can
-always import external WAVs or add its own packs. Do not redistribute samples
-without checking their actual license. No pack name is required by the workflow.
+The supplied factory assets and their original provenance documents are retained
+as application resources. Additional local WAVs can still be imported or added
+as packs. Samples keep their individual licenses independently of DAWJ code. No pack name is required by the workflow.
 
 The browser filters pack, category, name, type, pitch/key and source BPM range.
-Metadata corrections are saved in the session; they do not rename source files.
+Metadata corrections are saved in the session; they do not rename source files
+or rewrite provenance. About / Source / License resolves the stable sample ID
+through its originating source record and any per-sample license override. See
+[factory metadata](../development/factory-library.md).
 Unsupported/broken sounds report errors. Source BPM never changes playback speed.
-Sample regions use prepared 48 kHz frames. **Listen step** auditions its velocity.
+Graphical sample/loop handles and numerical region controls use prepared 48 kHz
+frames. Changes require only the affected part stopped, with no pending action
+or rule; other parts on that same deck can continue. A late activation during
+preparation rejects commit without replacing the previous sound. **Listen step** auditions its velocity.
 
 The Rust engine schedules sixteenth-note hits (240 ticks at 960 PPQ). Pattern
 steps loop over 1/2/4 bars and follow musical tempo. Editing a running pattern
 activates at the **next global bar**, resets its pattern phase at that boundary,
 and shows a separate pending-edit message until the engine confirms execution.
-Stopped-pattern edits activate at the next admitted frame. New edits replace the
+Stopped-pattern edits activate at callback admission, including while paused. New edits replace the
 pending edit for that part. Stop the part before disabling its pattern. Patterns
 and periodic rules cannot occupy the same slot simultaneously.
 

@@ -31,11 +31,13 @@ cargo fmt --all -- --check
 cargo check --workspace --locked --offline
 cargo clippy --workspace --all-targets --locked --offline -- -D warnings
 cargo test --workspace --locked --offline
-node --test crates/tauri-app/web/model.test.mjs crates/tauri-app/web/protocol.test.mjs crates/tauri-app/web/performance.test.mjs crates/tauri-app/web/skins.test.mjs crates/tauri-app/web/reliability.test.mjs crates/tauri-app/web/content.test.mjs crates/tauri-app/web/sketch.test.mjs crates/tauri-app/web/workspace.test.mjs crates/tauri-app/web/overview.test.mjs
+node --test crates/tauri-app/web/model.test.mjs crates/tauri-app/web/protocol.test.mjs crates/tauri-app/web/performance.test.mjs crates/tauri-app/web/skins.test.mjs crates/tauri-app/web/reliability.test.mjs crates/tauri-app/web/content.test.mjs crates/tauri-app/web/sketch.test.mjs crates/tauri-app/web/workspace.test.mjs crates/tauri-app/web/overview.test.mjs crates/tauri-app/web/instrument.test.mjs
 python scripts/audio_dependencies.py
 python scripts/test_web4_report.py
 python scripts/test_alpha_layout.py
 python scripts/check_docs.py
+python scripts/sample_manifests.py --check
+python scripts/test_sample_manifests.py
 cargo run -p dawj-core --example web_contract --locked --offline -- --check
 ```
 
@@ -114,3 +116,11 @@ suppression, workspace transitions and fresh-process preference/session restore.
 It captures Structure, Waveform, Hybrid and stopped/small-window examples.
 Actual local WAVs and a unique HyperX output are required. All captures and reports
 are produced under a fresh target subdirectory; only DAWJ windows are captured.
+
+Use `scripts/jam1_smoke.ps1 -Milestone ux1` for the instrument workflow, configured
+audio auto-initialization on fresh-process reopen, native part mute, rapid steps,
+safe same-deck assignments, loop conversion, draggable regions, direct BPM,
+transport, provenance, offline help, focus and desktop/scaling captures. Its
+WebView profile stays under the run directory. The unique HyperX requirement
+is enforced before any test startup opens audio. No physical controller/cue or
+human usability claim is made by these checks.

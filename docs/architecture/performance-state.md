@@ -13,20 +13,22 @@ A coherent initial snapshot is published at construction. Thereafter publication
 occurs at the end of every nonempty render block. Empty buffers do not admit
 commands, move the clock or change the generation. `frame` is the next unrendered
 frame, `beat` its nearest 960-PPQ position, and `sample_rate` is explicit. Neither
-is a DAC timestamp. Global clock runs continuously even with all slots stopped.
+is a DAC timestamp. Global clock runs while musical transport plays, including
+with all slots stopped; Pause holds it while callbacks keep publishing.
 Deck phase is independent of Part nominal length; each active Part phase is
 relative to its last start/retrigger. Tempo edits affect musical scheduling, not
 native-rate sample duration or time stretching.
 
 `TransportState::Ready` means no frames rendered; `Rendering` means the rendered
 transport has advanced (not necessarily audible, or a promise the OS is presently
-calling back); `Failed` records an engine scheduling failure. `Closed` means
+calling back); `Paused` means musical positions/deadlines are held while the
+device remains open; `Failed` records an engine scheduling failure. `Closed` means
 terminal command admission, overlaid from the monotonic lifecycle flag. The
 musical fields in Closed are the last coherent audio publication; an in-flight
 callback can finish afterward. `failed` records an engine failure, while device
 failure details still require `PlaybackMonitor`. Terminal stop/restart uses a
-new stream/engine with a new clock and generation domain; no pause/resume API is
-introduced. Closing a ready stream also reports Closed.
+new stream/engine with a new clock and generation domain. This is distinct from
+musical Pause/Stop. Closing a ready stream also reports Closed.
 
 M3 adds `bpm: Option<f64>` to the same coherent publication. This is the tempo
 at the next unrendered frame, resolved from the scheduler map at its rounded
@@ -68,10 +70,13 @@ focus, not an engine playback state.
 | QueuedStop | Present | Stop at target |
 | QueuedReplace | Present | Replace or retrigger at target |
 
-`active` is actual PartId and `position` is consumed source frames; both are
+`active` is actual PartId and `position` is elapsed voice frames, before region
+wrapping or asset-coordinate offset; both are
 None without an active source. These are independent of gain/mute, zero-valued
 PCM, crossfader, cue selection and measured energy. A muted/zero-valued source
-remains Playing and advances. A nominal musical cycle does not imply sample EOF.
+remains Playing and advances while transport runs. Pause keeps the active
+identity/lifecycle and freezes its position; the UI labels it Paused using the
+same transport publication. A nominal musical cycle does not imply sample EOF.
 
 `pending` includes a typed kind, target PartId, resolved BeatTicks boundary and
 command ID. Launch/stop/retrigger/replacement apply before the target sample.
@@ -175,8 +180,15 @@ are independent diagnostics and never reconstruct operational lifecycle.
 PatternStatus includes the actual scheduler anchor in the same coherent publication.
 This adds one fixed atomic word per slot; no waveform, file work, cache or locks
 enter the callback. Exact part-local pattern phase uses this anchor and the
-published beat, including rests and tempo changes. Sample cursors remain native
-canonical-frame positions, independent of nominal beat metadata.
+published beat, including rests and tempo changes. UX1 maps published elapsed
+frames through the immutable region (modulo its length for loops) to recover
+source coordinates. Trim start is added only when mapping into the whole source.
+Neither this mapping nor nominal beat metadata implies time stretching.
+
+UX1 encodes Paused in the existing flags word: publication size remains 429.
+Generations continue advancing during paused callbacks even though musical frame
+and beat are held. Stopped pattern edits can become authoritative at admission;
+running edits retain their next-global-bar semantics.
 
 The control worker publishes compact composition-relative positions and deadlines
 from this same snapshot. Confirmed/manual deadlines precede conditional projections

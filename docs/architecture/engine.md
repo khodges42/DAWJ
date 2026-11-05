@@ -23,7 +23,8 @@ continuation when a resident source or setup is unavailable.
 
 ## Clock and boundaries
 
-The global frame clock advances while streaming even with all parts stopped.
+The global frame clock advances while musical transport is playing, even with
+all parts stopped. Musical Pause freezes it while device callbacks continue.
 Time uses 960 ticks per beat, fixed 4/4, absolute nearest-frame rounding and deck
 phrase epochs. Nominal part length is metadata; it does not determine sample
 loop duration, phrase wrap, time stretching or the global tempo.
@@ -87,9 +88,10 @@ publications, lifecycle and parameter meanings. Independent diagnostic atomics
 must not be combined into a fabricated coherent state. Held peaks are not RMS
 meters, a historical waveform, or proof of physical output.
 
-Stream/engine failure and terminal stop close command admission. Unresolved
+Stream/engine failure and terminal device close stop command admission. Unresolved
 tickets become Closed even without another callback. Restart constructs a fresh
-engine/clock and stopped parts; no pause/resume transport is implied. A stale
+engine/clock and stopped parts. Musical Play/Pause/Stop are separate from this
+device lifecycle. A stale
 publication cannot be made fresh just by rereading the same generation.
 
 Run workspace regressions before changing these guarantees. Existing offline
@@ -99,8 +101,35 @@ rule precedence, bounded transitions, smoothing and concurrent publication.
 User content uses the same engine with an initially empty resident bank. Its
 64 cells support producer-only immutable publication; current and retired voices
 share a 256 MiB PCM cap until output closes. See the [ownership contract](overview.md#local-content-and-resident-publication).
-Loading/replacing content requires the affected deck(s) stopped with no pending
-actions or rules. Another deck can continue on the same sample-frame clock.
+Loading/replacing content requires each changed slot stopped with no pending
+action, pattern receipt or rule. Unchanged slots, including on the same deck,
+can continue. Both preflight and commit check slot quiescence. Composition
+replacement changes all its slots and therefore requires the destination deck
+stopped. Prepared voices remain immutable; no active source is hot-swapped.
+
+## Musical transport
+
+Play, Pause, global Stop, deck Stop and addressed Halt use the same bounded
+callback command ring. Pause freezes the scheduler, pattern phase, sample cursors
+and queued musical deadlines. Device callbacks, control admission, coherent
+publication and mixer smoothing/diagnostic decay continue. Part filter/gain state
+and voice elapsed frames hold. Native-rate audition also pauses. Bounded 2 ms
+master/cue fades handle pause/resume without cursor resets or allocation.
+
+Global Stop clears active/pending slots and installed rules on both decks,
+discards source cursors and freezes the clock at its current position. Accepted
+pattern replacements become stopped definitions; source data and tempo intent
+remain loaded. Play resumes the clock without relaunching material. Deck Stop
+does the same clearing for one deck without pausing the shared clock. Deck Play
+submits quantized launches for its loaded stopped slots. Shared core routing
+resumes paused transport for manual launches, including keyboard and MIDI.
+The last admitted transport intent composes commands before the next publication;
+it never substitutes for authoritative published playback state. Independent
+deck pause and seeking are absent.
+
+Addressed Halt provides immediate stop/cancel/rule-clear for the explicit
+**Stop / clear destination and assign** operation. It is not a source swap;
+ordinary preparation and both quiescence checks still follow it.
 
 ## Step patterns and live editing
 
@@ -111,10 +140,18 @@ or rendered audio. Launch anchors pattern phase; one-shot sample EOF does not st
 the pattern clock. Manual Stop does. Patterns and periodic rules are exclusive.
 
 A running pattern edit activates at the next global bar and resets the anchor;
-a stopped edit activates at the next admitted frame. The publication reports
+a stopped edit activates at callback admission, including while transport is
+paused; it executes no trigger. The publication reports
 current revision, pending revision/boundary, running step and trigger count. The
 application reports accepted target revision separately. Recall of a stored
 variation submits through this same bounded path. Disabling a running pattern
 requires stopping its slot. All file inspection, indexing, decoding and audition
 preparation run outside the callback. Preview playback is an explicitly shared
 master audition, never an isolated headphone substitute.
+
+Worker-side WAV preparation accepts complete terminal DATA chunks with an omitted
+alignment byte or a RIFF length overstated by exactly one byte; payload bounds and
+frame alignment remain strict. Finite floating-point overs are attenuated uniformly
+to unit peak before resampling; `MediaInfo.preparation_gain_db` reports the applied
+nonpositive gain. Strict `LoadedSample::decode` still rejects out-of-range PCM.
+Nonfinite values and truncated audio are rejected. No source file is rewritten.

@@ -28,8 +28,11 @@ notices. No third-party source has been modified. License-screening configuratio
 is not proof of every release obligation or a vulnerability audit.
 
 WebView2 is a Windows runtime prerequisite, not redistributed here. Proprietary
-MIDI SDKs, vendor firmware, downloaded sample libraries and a WebView installer
-are not bundled. Linux native/system component packaging requires its own review.
+MIDI SDKs, vendor firmware and a WebView installer are not bundled. Factory sample
+collections retain their own supplied licenses and provenance, independently of
+the application GPL. See [factory library metadata](factory-library.md), original
+SOURCE.md/README/license files and the aggregated sample attribution notice.
+Linux native/system component packaging requires its own review.
 
 ## Fonts and creative assets
 

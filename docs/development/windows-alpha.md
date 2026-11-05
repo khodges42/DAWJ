@@ -57,7 +57,8 @@ the driver. WebView2 is a prerequisite for Tauri, not bundled by this procedure.
 ```
 
 Safe mode ignores the saved skin for that run. Reset clears local user skin state.
-The native Appearance menu/shortcut also remains outside skin CSS. Keep the
+The native recovery accelerator remains outside skin CSS; the menu bar is hidden.
+Use Restore default interface in Audio settings or Ctrl+Alt+Shift+R. Keep the
 existing identifier/profile paths when making future branding changes.
 
 ## Before sharing or installing elsewhere

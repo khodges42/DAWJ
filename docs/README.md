@@ -4,6 +4,7 @@ Start with the [project introduction](../README.md) and [vision/roadmap](design/
 
 ## Use DAWJ
 
+- [Offline application help](help/index.md): getting started, interface, Sketch, performance, sounds and troubleshooting.
 - [Local sessions and your own sounds](user-guide/local-sessions.md): create, import WAV, save and reopen.
 
 - [Performance guide](user-guide/performance.md): two decks, keyboard, timeline and cue.

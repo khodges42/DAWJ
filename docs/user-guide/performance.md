@@ -2,7 +2,8 @@
 
 DAWJ keeps Deck A on the left, Deck B on the right and the mixer between them.
 Create your own material using [local sessions and Sketch](local-sessions.md),
-then start the intended audio output. The explicit Session demo is optional.
+then launch its parts. Audio initializes automatically on the configured or
+system-default endpoint; failures open recovery settings. The explicit Session demo is optional.
 
 ## Choose a workspace
 
@@ -16,32 +17,41 @@ then start the intended audio output. The explicit Session demo is optional.
 The three workspace buttons and each deck's Sketch button are always discoverable.
 Switching views does not restart output, change part identity or schedule music.
 The workspace preference survives restart through existing interface settings.
-The mixer stays in the center; narrow windows scroll vertically. At small widths,
-part cards form a single column within each deck. The minimum supported native
-smoke viewport is 1024x768; larger windows provide more room for editing.
+The mixer stays in the center. The default window targets 1600x900 and clamps
+to the monitor work area. The primary reference is 1920x1080; 1280x800 remains
+usable with vertical scrolling. Controls also support display scaling.
 
-![Performance workspace with original compositions](../images/jam3-performance.png)
+![Current performance interface](../images/ux1-performance.png)
 
-![Simple / Browse workspace](../images/jam3-browse.png)
+[Sketch and graphical trimming](../images/ux1-sketch.png) ·
+[Offline help](../images/ux1-help.png) ·
+[Source/license inspection](../images/ux1-source.png)
 
-![Extended workspace](../images/jam3-extended.png)
+## Musical transport
 
-Additional native captures show [Browse at 1024 pixels](../images/jam3-browse-small.png),
-[Performance at 1024 pixels](../images/jam3-performance-small.png),
-[Extended at 1024 pixels](../images/jam3-extended-small.png) and
-[Performance at 125% WebView zoom](../images/jam3-performance-hidpi.png).
+See [the canonical transport guide](../help/perform.md) for exact semantics.
+Play resumes the shared clock without launching all parts. Pause holds cursors,
+patterns and deadlines while the audio device remains open. Stop clears both
+decks' execution/rules and holds the current clock position. Deck Stop clears only
+one deck; Deck Play launches its loaded stopped parts at the selected grid.
+Manual Launch/Retrigger resumes the shared clock through the same Rust path for
+mouse, keyboard and MIDI. Independent deck pause and timeline seeking are deferred.
 
 ## Launch and shape parts
 
-Click a part name to focus it without launching. Launch, Stop, Cancel and Retrigger
+Click a part name to focus it without launching; double-click toggles it. Drag a
+browser sound onto a stopped part to assign it. Launch, Stop, Cancel and Retrigger
 have their own buttons. The label distinguishes a stopped or unavailable sound
 from a queued launch, stop or retrigger. Boundary labels use actual engine bar/beat
 positions. Loaded-material indicators remain visible even when nothing is queued;
 they are metadata/activity summaries, not fabricated waveforms or analyzed sections.
-Progress follows the published pattern step or nominal musical loop phase.
+Thumbnails show real source-region peaks or velocity-bearing pattern triggers.
+Progress follows actual pattern phase or the source cursor mapped through its
+trim/loop region. Paused parts are labelled separately using engine transport.
 Pending pattern changes have a dashed border and a separate boundary message.
 
-The focused part's Gain and Filter sliders work in Performance and Extended.
+The focused part's explicit Volume and Low-pass controls remain accessible,
+with deck/slot identity and actual applied values. They also work in Sketch.
 VOLUME/FILTER chooses what the per-part contextual sliders mean in Extended.
 Changing that mode never changes sound by itself. Filters are genuine smoothed
 part low-pass filters. Deck three-band EQ is a remaining engine dependency and
@@ -68,9 +78,11 @@ volume. Master L/R meters are lifetime peak holds after the existing limiter,
 whose ceiling remains 0.125 (about -18 dBFS). They are not loudness/RMS meters.
 Audition explicitly uses the shared master independently of the deck crossfader.
 
-Choose BPM and Apply BPM to queue a musical tempo change. Sample playback speed
-is unchanged; there is no time stretching. Stop a part to stop its musical activity.
-**Close output** destroys the stream; the next Start creates a fresh clock.
+Drag BPM to adjust it, hold Shift for fine changes, or double-click to type and
+press Enter. The applied readout is authoritative. Changes use the existing musical
+quantization and leave sample speed unchanged. Closing the audio device in Settings
+destroys the stream; reopening creates a fresh clock. Source Listen bypasses part
+shaping, so use part playback when checking volume and filter response.
 
 ## Navigation and shortcuts
 

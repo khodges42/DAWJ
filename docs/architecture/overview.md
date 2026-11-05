@@ -102,8 +102,11 @@ and returns through a capacity-one channel. Other deck actions and MIDI continue
 Destination quiescence is checked before work and before commit, including
 unacknowledged discrete receipts. Failed/stale preparation leaves content intact.
 Shutdown drops the receiver; it does not join a potentially stalled file read.
-New/Open requires output closed. A single-deck edit requires only affected decks
-stopped, with no pending actions or installed periodic rules.
+New/Open requires output closed; the normal Tauri workflow handles closing and
+reinitializing around a confirmed session replacement. Changed slots must be
+stopped, with no pending actions, pattern receipts or installed periodic rules.
+Unchanged slots on the same deck keep playing. Install updates only changed
+banks/definitions/parameter targets and rechecks them immediately before commit.
 
 The engine bank is a fixed array of 64 `OnceLock<SampleVoice>` cells shared with
 the sole `LiveControl` producer. Producer-only preflight checks rate, duplicate
@@ -166,7 +169,9 @@ material remains explicit. A current-tempo material preview is not an arrangemen
 or a promise of future starts; actual source and pattern positions are separate.
 
 The Overview IPC command caps requests at sixteen unique addresses, 1024 requested
-columns and 8192 projected columns total. Only the inspected source supplies an
+columns and 8192 projected/thumbnail columns total. Region thumbnails have at most
+128 columns per part and remain independent of global visualization style.
+Only the inspected source supplies an
 additional full-source envelope. Structure omits projected waveform arrays.
 Replies are cached by material revision, style, resolution and detail selection;
 unchanged requests can return no geometry. Continuous snapshots carry revision
@@ -180,3 +185,29 @@ definition and label its editable replacement separately until Rust activates it
 Manual sections and per-composition display length/label choices are validated
 version-3 local document metadata. Existing content actions/history handle edits,
 and versions 1/2 migrate on Open. Analysis caches are excluded from documents.
+
+## UX1 presentation, provenance and help
+
+The existing interface preference document additionally retains the selected
+audio endpoint name and cue configuration. Normal startup opens that configured
+endpoint, or the unique system default on first launch, without launching parts.
+Missing/ambiguous configured endpoints produce recovery UI. Native smoke disables
+default auto-open and explicitly selects a unique HyperX endpoint. UX1 smoke uses
+an isolated WebView data directory to preserve user preferences.
+
+The shared semantic transport actions freeze/clear callback-owned execution;
+they never close CPAL merely to pause. The global timeline is a persistent
+projection, not another scheduler. Direct tempo gestures are bounded/coalesced
+control intent. Rapid step edits serialize against accepted project state;
+there is no independently mutable frontend pattern model.
+
+Factory manifest version 2 keeps stable sample/pack IDs and source records
+separate from display hints. References optionally carry sample ID; legacy
+pack/path references remain valid. Reorganization and metadata corrections cannot
+rewrite provenance. See [factory metadata](../development/factory-library.md).
+
+The Tauri help adapter embeds canonical `docs/help/*.md` at compile time and
+returns them once to an offline DOM renderer. It supports restricted Markdown,
+local topic links and search; it does not evaluate raw HTML or load remote
+content. Engineering notes are excluded. No new Markdown/runtime dependency or
+parallel settings/content store is introduced.

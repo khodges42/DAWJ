@@ -54,7 +54,8 @@ stretches the waveform or synchronizes a free-running sample. A one-shot has one
 reference trigger in the material preview and is not turned into a loop. Actual
 future triggers come from queued actions/rules, not these preview reference starts.
 
-Extended shows each part's duration, repetition/pattern information and preview.
+Part slots show compact region waveforms or velocity patterns in Sketch and
+Performance as well as Extended. Extended retains more repetition/pattern detail.
 The progress indicator follows actual pattern phase or source position. In Sketch,
 the **Source / region** view shows the whole analyzed source, dimmed trim/loop
 exclusions and the actual source cursor. Stereo channels remain separate. Region
@@ -64,7 +65,8 @@ whole-source inspector retain that distinction.
 
 ## Author musical sections in Sketch
 
-1. Open the composition's **Sketch** view and find **Musical sections**.
+1. Open the composition's **Sketch** view, expand **Advanced musical sections**,
+   and find **Musical sections**.
 2. Set the composition display length (1-64 bars) and **Apply length / labels**.
    This changes the overview cycle, not the engine's 4/8-bar quantization phrase.
 3. Choose Intro, Groove, Build, Drop, Breakdown, Fill, Outro or a custom label.
