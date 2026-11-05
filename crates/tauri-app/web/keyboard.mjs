@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-export const HELP = 'A/B deck · 1–8 slot · Space launch/stop · X stop · Esc cancel · R retrigger · V/F persistent VOLUME/FILTER · Shift+V/F hold mode · F1 immediate/F2 beat/F3 bar/F4 phrase · ←/→ crossfader ±5% (repeat) · Q/W cue · H help. Typing in inputs keeps its keys.';
 export class Keyboard {
   constructor(){this.held=new Map()}
   handle(e,editing=false){

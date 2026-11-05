@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Fresh local fixtures and two actual application processes. HyperX only.
-param([ValidateSet('Debug','Release')][string]$Configuration='Debug',[ValidateSet('1','2','3','4')][string]$Milestone='1')
+param([ValidateSet('Debug','Release')][string]$Configuration='Debug',[ValidateSet('1','2','3','4','ux1')][string]$Milestone='1')
 $ErrorActionPreference='Stop'
 $workspacePath=Split-Path -Parent $PSScriptRoot
 $runPath=Join-Path $workspacePath ("target/jam1-"+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss-fff'))
@@ -9,7 +9,9 @@ $previousMilestone=$env:DAWJ_JAM_MILESTONE
 $env:DAWJ_JAM_MILESTONE=$Milestone
 $previousRoot=$env:DAWJ_JAM_ROOT
 $previousPhase=$env:DAWJ_JAM_PHASE
+$previousWebview=$env:WEBVIEW2_USER_DATA_FOLDER
 try {
+    if($Milestone -eq 'ux1'){$env:WEBVIEW2_USER_DATA_FOLDER=Join-Path $runPath 'webview'}
     $env:DAWJ_JAM_ROOT=$runPath
     # Actual PCM WAV media, independently prepared at 44.1/48 kHz; no bundled demo.
     @'
@@ -46,4 +48,5 @@ for filename,rate,channels,hz in [('my-percussion.wav',44100,1,190),('my-tone.wa
     $env:DAWJ_JAM_MILESTONE=$previousMilestone
     $env:DAWJ_JAM_ROOT=$previousRoot
     $env:DAWJ_JAM_PHASE=$previousPhase
+    $env:WEBVIEW2_USER_DATA_FOLDER=$previousWebview
 }

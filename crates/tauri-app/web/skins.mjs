@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import {BUNDLED} from './skins/bundled.mjs';
 import {validateSkin,skinStyles,exportSkin,MAX_PACKAGE_BYTES} from './skin-format.mjs';
-import {SkinStore,DEFAULT_PREFERENCES,preferences} from './skin-store.mjs';
+import {SkinStore,DEFAULT_PREFERENCES,preferences,launchPreferences} from './skin-store.mjs';
 import {inspectSurface,decodeAssets,nextPaint} from './skin-safety.mjs';
 export class SkinManager{
   constructor(storage,onStatus=()=>{}){
@@ -15,11 +15,10 @@ export class SkinManager{
     this.scheduleExpiry=callback=>setTimeout(callback,15000);
   }
   async initialize(mode='normal'){
-    if(mode==='reset')this.store.reset();
-    const saved=this.store.load();for(const skin of saved.library)this.skins.set('user:'+skin.metadata.id,skin);
-    this.prefs=mode==='normal'?saved.prefs:{...DEFAULT_PREFERENCES};
+    const saved=this.store.load();if(mode==='reset'){this.store.reset();saved.library=[];if(saved.prefs.audio?.device)this.store.savePreferences(launchPreferences(saved.prefs,mode))}for(const skin of saved.library)this.skins.set('user:'+skin.metadata.id,skin);
+    this.prefs=launchPreferences(saved.prefs,mode);
     if(!this.skins.has(this.prefs.selected)){this.store.warnings.push('Selected skin missing; bundled Dark used.');this.prefs.selected='bundled:dark'}
-    try{await this.paint(this.prefs.selected,this.prefs)}catch(e){this.status('Saved skin rejected: '+e.message);this.prefs={...DEFAULT_PREFERENCES};await this.paint('bundled:dark',this.prefs)}
+    try{await this.paint(this.prefs.selected,this.prefs)}catch(e){this.status('Saved skin rejected: '+e.message);this.prefs=launchPreferences(this.prefs,'safe');await this.paint('bundled:dark',this.prefs)}
     this.committed={...this.prefs};this.current=this.prefs.selected;
     if(this.store.warnings.length)this.status(this.store.warnings.join(' '));
     this.resize=()=>this.auditSoon();window.addEventListener('resize',this.resize);
@@ -57,9 +56,10 @@ export class SkinManager{
     if(!['structure','waveform','hybrid'].includes(visualization))throw Error('Unknown visualization');
     const next={...this.committed,visualization};this.store.savePreferences(next);this.committed=next;this.prefs={...this.prefs,visualization};
   }
+  setAudio(audio){const next={...this.committed,audio};this.store.savePreferences(next);this.committed=next;this.prefs={...this.prefs,audio};}
   keep(){
     if(!this.previewing)return;
-    try{this.prefs={...this.prefs,workspace:this.committed.workspace,visualization:this.committed.visualization};const users=[...this.skins].filter(([id])=>id.startsWith('user:')).map(([,s])=>s);this.store.saveLibrary(users);this.store.savePreferences(this.prefs);this.committed={...this.prefs};this.hidePreview();this.status('Skin and accessibility settings saved.')}
+    try{this.prefs={...this.prefs,workspace:this.committed.workspace,visualization:this.committed.visualization,audio:this.committed.audio};const users=[...this.skins].filter(([id])=>id.startsWith('user:')).map(([,s])=>s);this.store.saveLibrary(users);this.store.savePreferences(this.prefs);this.committed={...this.prefs};this.hidePreview();this.status('Skin and accessibility settings saved.')}
     catch(e){const message='Skin was not saved: '+e.message;void this.cancel().finally(()=>this.status(message))}
   }
   async restore(){try{await this.paint(this.committed?.selected??'bundled:dark',this.committed??DEFAULT_PREFERENCES)}catch{this.style.textContent='';this.prefs={...DEFAULT_PREFERENCES};this.committed={...this.prefs};await this.paint('bundled:dark',this.prefs)}}
@@ -67,12 +67,12 @@ export class SkinManager{
   hidePreview(){clearTimeout(this.timer);this.previewing=false;this.host.style.display='none'}
   reset(){
     this.skins=new Map(BUNDLED.map(s=>['bundled:'+s.metadata.id,validateSkin(s)]));
-    this.fallback('Default interface restored. User skins and old CSS overrides cleared.');this.store.reset();
+    this.fallback('Default interface restored. Audio configuration retained.');this.store.reset();if(this.prefs.audio?.device)this.store.savePreferences(this.prefs);
   }
   fallback(message){
     this.epoch++;this.hidePreview();clearTimeout(this.auditTimer);this.style.textContent='';
     document.documentElement.style.removeProperty('--font-scale');document.documentElement.dataset.enhancedContrast='false';document.documentElement.dataset.reducedMotion='true';
-    this.current='bundled:dark';this.prefs={...DEFAULT_PREFERENCES};this.committed={...this.prefs};
+    this.current='bundled:dark';this.prefs=launchPreferences(this.committed??this.prefs,'safe');this.committed={...this.prefs};
     // Immediate safe presentation, retaining imported packages for repair unless reset was explicit.
     this.style.textContent=skinStyles(this.skins.get('bundled:dark'));document.body.dataset.theme='dark';document.body.dataset.skin='bundled:dark';
     try{this.store.savePreferences(this.prefs)}catch{/* Safe presentation does not depend on writable storage. */}

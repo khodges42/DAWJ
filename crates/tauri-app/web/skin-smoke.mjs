@@ -21,7 +21,7 @@ export async function skinSmoke(manager,invoke){
   assert(new SkinStore(localStorage).load().prefs.selected===id,'selection persistence');assert(validateSkin(exportSkin(manager.skins.get(id))).assets.length===1,'asset roundtrip');
   const bad=validateSkin({...BUNDLED[0],metadata:{...BUNDLED[0].metadata,id:'bad-layout',name:'Bad layout'},css:'.deck { margin-left: 1800px; }'});manager.skins.set('user:bad-layout',bad);
   try{await manager.preview('user:bad-layout')}catch{/* A synchronous rejection or the resize audit can win. */}
-  assert(manager.current!=='user:bad-layout'&&!manager.previewing&&!inspectSurface().length,'unusable layout remained active: '+manager.current);assert(manager.skins.has(id),'automatic fallback deleted imported packages');
+  assert(manager.current!=='user:bad-layout'&&!manager.previewing&&!inspectSurface().length,'unusable layout remained active: '+manager.current+'; preview='+manager.previewing+'; '+inspectSurface().join('; '));assert(manager.skins.has(id),'automatic fallback deleted imported packages');
   const racing=manager.preview('bundled:psychic-genesis');manager.reset();await racing;assert(manager.current==='bundled:dark','queued preview won over reset');
   const expiry=manager.scheduleExpiry;manager.scheduleExpiry=callback=>setTimeout(callback,40);await manager.preview('bundled:psychic-genesis');await new Promise(r=>setTimeout(r,120));await nextPaint();assert(manager.current==='bundled:dark'&&!manager.previewing,'preview expiry failed');manager.scheduleExpiry=expiry;
   localStorage.setItem(PREFERENCES_KEY,JSON.stringify({...DEFAULT_PREFERENCES,selected:'user:bad-layout'}));manager.style.textContent='body{display:none!important}';assert(getComputedStyle(document.body).display==='none','broken CSS simulation');

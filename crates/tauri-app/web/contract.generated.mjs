@@ -3,6 +3,15 @@
 export const contract = {
   "actions": [
     {
+      "action": "Pause",
+      "kind": "transport"
+    },
+    {
+      "deck": 0,
+      "kind": "deck_transport",
+      "playing": false
+    },
+    {
       "action": "Toggle",
       "kind": "selected"
     },

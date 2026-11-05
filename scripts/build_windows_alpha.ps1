@@ -18,8 +18,8 @@ try {
  Invoke-Checked cargo (@('check','--workspace')+$locked)
  Invoke-Checked cargo (@('clippy','--workspace','--all-targets')+$locked+@('--','-D','warnings'))
  Invoke-Checked cargo (@('test','--workspace')+$locked)
- Invoke-Checked node @('--test','crates/tauri-app/web/model.test.mjs','crates/tauri-app/web/protocol.test.mjs','crates/tauri-app/web/performance.test.mjs','crates/tauri-app/web/skins.test.mjs','crates/tauri-app/web/reliability.test.mjs','crates/tauri-app/web/content.test.mjs')
- foreach($check in @('scripts/audio_dependencies.py','scripts/test_web4_report.py','scripts/test_alpha_layout.py','scripts/check_docs.py')){Invoke-Checked python @($check)}
+ Invoke-Checked node @('--test','crates/tauri-app/web/model.test.mjs','crates/tauri-app/web/protocol.test.mjs','crates/tauri-app/web/performance.test.mjs','crates/tauri-app/web/skins.test.mjs','crates/tauri-app/web/reliability.test.mjs','crates/tauri-app/web/content.test.mjs','crates/tauri-app/web/sketch.test.mjs','crates/tauri-app/web/workspace.test.mjs','crates/tauri-app/web/overview.test.mjs','crates/tauri-app/web/instrument.test.mjs')
+ foreach($check in @('scripts/audio_dependencies.py','scripts/test_web4_report.py','scripts/test_alpha_layout.py','scripts/test_sample_manifests.py','scripts/check_docs.py')){Invoke-Checked python @($check)}
  Invoke-Checked cargo (@('run','-p','dawj-core','--example','web_contract')+$locked+@('--','--check'))
  $targetPath=Join-Path $workspacePath 'target'
  Invoke-Checked cargo (@('build','--release','--target-dir',$targetPath,'-p','dawj','-p','dawj-egui')+$locked)
@@ -36,12 +36,19 @@ try {
   $artifacts+=[pscustomobject]@{name="$name.exe";sha256=(Get-FileHash -Algorithm SHA256 -LiteralPath $binary).Hash}
  }
  foreach($file in @('LICENSE','NOTICE')){Copy-Item -LiteralPath (Join-Path $workspacePath $file) -Destination $stagePath}
+ Invoke-Checked python @('scripts/sample_manifests.py','--check')
+ $resourcePath=Join-Path $stagePath 'resources'
+ New-Item -ItemType Directory -Path $resourcePath | Out-Null
+ Copy-Item -LiteralPath (Join-Path $workspacePath 'resources/samples') -Destination $resourcePath -Recurse
+ $helpPath=Join-Path $stagePath 'docs'
+ New-Item -ItemType Directory -Path $helpPath | Out-Null
+ Copy-Item -LiteralPath (Join-Path $workspacePath 'docs/help') -Destination $helpPath -Recurse
  Copy-Item -LiteralPath 'docs/development/windows-dependencies.json' -Destination $stagePath
  @'
 DAWJ DEVELOPMENT ALPHA - local release-profile validation build
 Launch dawj.exe (Tauri); dawj-egui.exe is the fallback.
 Windows x64 native runtimes and Microsoft WebView2 are prerequisites.
-Native Appearance > Restore default interface / Ctrl+Alt+Shift+R resets skins.
+Audio settings > Restore default interface / Ctrl+Alt+Shift+R resets skins.
 dawj.exe --safe-mode ignores the saved skin; --reset-skin clears local skin data.
 No live-show certification, signed installer or redistribution clearance is implied.
 Before sharing binaries, review corresponding source, dependency/font notices,

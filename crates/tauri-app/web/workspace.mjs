@@ -71,8 +71,9 @@ export class Workspace {
  renderLayout(){const $=this.$;document.body.dataset.workspace=this.layout;document.body.dataset.context=this.sketch.visible?'sketch':'perform';for(const value of WORKSPACES)$('workspace-'+value).setAttribute('aria-pressed',!this.sketch.visible&&this.layout===value);
   const browse=this.layout==='browse'&&!this.sketch.visible;this.libraryDock.hidden=!browse;this.compositionLibrary.hidden=!browse;for(const slots of document.querySelectorAll('.deck .slots'))slots.hidden=browse;for(const e of document.querySelectorAll('.browse-only'))e.hidden=!browse;if(browse)this.libraryDock.append(this.library);else if(this.sketch.visible)$('sketch').prepend(this.library);
   for(const e of document.querySelectorAll('.extended-only,.part-detail,.context'))e.hidden=this.sketch.visible||this.layout!=='extended';
-  for(const e of document.querySelectorAll('.deck .actions,.deck .part-source,.deck .part-position'))e.hidden=browse||this.sketch.visible;
-  $('phrase-panel').hidden=this.sketch.visible||this.layout!=='extended';$('inspector').hidden=this.sketch.visible||this.layout==='browse';
+  for(const e of document.querySelectorAll('.deck .actions,.deck .part-source,.deck .part-position'))e.hidden=browse;
+  $('phrase-panel').hidden=false;$('inspector').hidden=false;
+  this.instrument?.layout();
   this.visualization?.update(this.getState());
  }
  enabled(c){const s=this.getState();if(c.id==='edit.undo')return !!s.undo&&!s.session?.busy;if(c.id==='edit.redo')return !!s.redo&&!s.session?.busy;if(c.id.startsWith('deck.')||c.id==='mixer.center')return !!s.online;return !s.session?.busy||!c.id.startsWith('file.')}

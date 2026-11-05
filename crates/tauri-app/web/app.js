@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import {Transport} from './transport.mjs';
-import {Keyboard,HELP} from './keyboard.mjs';
+import {Keyboard} from './keyboard.mjs';
+import {Instrument,Dialogs,pickOutput} from './instrument.mjs';
 import {address,gestureTarget,partAction,contextValue,contextAction,slotView,meterDb,timelineHits,nearestMarker} from './performance.mjs';
 import {Workspace,shortcutCommand} from './workspace.mjs';
 import {MusicalOverview} from './overview.mjs';
@@ -10,8 +11,9 @@ import {MidiPanel} from './midi.mjs';
 import {SkinManager,SkinPanel} from './skins.mjs';
 import {browserStorage} from './skin-store.mjs';
 const $=id=>document.getElementById(id),invoke=window.__TAURI__.core.invoke;
-let state={online:false},errorText='',lastMode='Volume',hits=[],markerSignature='',dragging=new Map(),midi,content,sketch,workspace,visuals;
+let state={online:false},errorText='',lastMode='Volume',hits=[],markerSignature='',dragging=new Map(),midi,content,sketch,workspace,visuals,instrument,dialogs;
 let canAutoStart=false;
+let automaticAudio=false,devices=[];
 function error(e){errorText=String(e);$('error').textContent=errorText}
 const t=new Transport(invoke,show,error),keyboard=new Keyboard();
 const run=(a,source='Gui')=>{errorText='';$('error').textContent='';return t.call(a,source).catch(e=>{error(e);throw e})};
@@ -54,8 +56,9 @@ $('decks').replaceChildren($('deck-0'),$('mixer'),$('deck-1'),$('sketch'));
 document.querySelectorAll('input[type=range]:not(.context)').forEach(e=>{e.addEventListener('pointerdown',()=>dragging.set(e,{target:address(state)}));for(const event of ['pointerup','pointercancel','lostpointercapture'])e.addEventListener(event,()=>dragging.delete(e))});
 midi=new MidiPanel(t,error);
 content=new ContentPanel(t,()=>state,invoke,openDialog,error);
-async function ensureOutput(){if(state.online)return;if(state.decks)throw Error('Output failed or starting; stop/restart it first');if(!canAutoStart)throw Error('Select and start an intended audio output before audition');await run({kind:'start',device:Number($('device').value),cue:$('routing').value==='cue',phrase_bars:Number($('phrase').value)});const end=performance.now()+7000;while(performance.now()<end){await t.call({kind:'snapshot'});if(state.online)return;await new Promise(r=>setTimeout(r,20))}throw Error('Audio output did not publish a fresh state')}
+async function ensureOutput(){if(state.online)return;if(state.decks)throw Error('Audio failed or starting. Use Settings > Audio to close and retry.');if(!canAutoStart)throw Error('Select an output in Audio settings, then retry.');await run({kind:'start',device:Number($('device').value),cue:$('routing').value==='cue',phrase_bars:Number($('phrase').value)});const end=performance.now()+7000;while(performance.now()<end){await t.call({kind:'snapshot'});if(state.online)return;await new Promise(r=>setTimeout(r,20))}throw Error('Audio output did not publish a fresh state')}
 sketch=new Sketch({t,getState:()=>state,invoke,ensureOutput,onError:error,openSession:()=>openDialog('content')});
+sketch.onSuccess=()=>{errorText='';$('error').textContent='';if(instrument){instrument.region=null;instrument.regionKey=''}};
 bind('view-toggle',()=>workspace.toggleSketch());
 $('device').onchange=()=>{canAutoStart=true};
 
@@ -67,12 +70,12 @@ try {
   await window.__TAURI__.event.listen('dawj-drop-error',event=>content.error(event.payload));
 } catch(e){error('Audio drag/drop unavailable: '+e)}
 async function scan(){
-  const list=await run({kind:'devices'});$('device').replaceChildren();for(const device of list){const option=document.createElement('option');option.value=device.id;option.textContent=device.name;$('device').append(option)}
-  const preferred=list.filter(d=>d.name.toLowerCase().includes('hyperx'));canAutoStart=preferred.length===1;if(canAutoStart)$('device').value=preferred[0].id;
-  if(!list.length)error('No audio output device. Connect one and Rescan.');
+  devices=await run({kind:'devices'});$('device').replaceChildren();for(const device of devices){const option=document.createElement('option');option.value=device.id;option.textContent=device.name+(device.is_default?' (system default)':'');$('device').append(option)}
+  canAutoStart=false;if(automaticAudio){try{const selected=pickOutput(devices,skinManager.committed.audio?.device);$('device').value=selected.id;$('routing').value=skinManager.committed.audio?.cue?'cue':'stereo';canAutoStart=true}catch(e){error(e)}}else{const preferred=devices.filter(d=>d.name.toLowerCase().includes('hyperx'));canAutoStart=preferred.length===1;if(canAutoStart)$('device').value=preferred[0].id}
+  if(!devices.length)error('No audio output device. Connect one and Rescan.');
 }
 bind('rescan',scan);
-bind('start',()=>run({kind:'start',device:Number($('device').value),cue:$('routing').value==='cue',phrase_bars:Number($('phrase').value)}));
+bind('start',async()=>{const selected=devices.find(d=>d.id===Number($('device').value));if(!selected)throw Error('Select an output');skinManager.setAudio({device:selected.name,cue:$('routing').value==='cue'});canAutoStart=true;await ensureOutput();return run({kind:'transport',action:'Pause'})});
 bind('stop',()=>{t.dropContinuous();return run({kind:'stop'})});
 bind('tempo',()=>run({kind:'tempo',bpm:Number($('bpm').value)}));
 $('quantize').onchange=()=>fire({kind:'quantize',grid:$('quantize').value});
@@ -101,18 +104,19 @@ $('timeline').onmousemove=e=>{const r=$('timeline').getBoundingClientRect(),mark
 $('marker-list').onchange=()=>{const m=state.timeline?.markers[Number($('marker-list').value)];if(m)fire({kind:'select_part',deck:m.deck,slot:m.slot})};
 function release(){dragging.clear();void t.release('Gui');for(const c of keyboard.release())void t.release(c.source)}
 window.addEventListener('blur',release);document.addEventListener('visibilitychange',()=>{if(document.hidden)release()});
-function openDialog(id){release();if(!$(id).open)$(id).showModal()}
-bind('help-open',()=>openDialog('help'));$('bindings').textContent=HELP;
+function openDialog(id){if(dialogs)return dialogs.open(id);release();if(!$(id).open)$(id).showModal()}
+bind('help-open',()=>openDialog('help'));
 bind('midi-open',async()=>{openDialog('settings');await midi.open()});
 document.querySelectorAll('[data-close]').forEach(e=>e.onclick=()=>$(e.dataset.close).close());
 for(const type of ['keydown','keyup'])window.addEventListener(type,e=>{
+  if(type==='keydown'&&e.ctrlKey&&e.altKey&&e.shiftKey&&e.key.toLowerCase()==='r'){e.preventDefault();void invoke('restore_interface').catch(error);return}
   const shortcut=shortcutCommand(e);
   if(shortcut&&!(document.querySelector('dialog[open]')&&!['palette','file.save','file.save-as'].includes(shortcut))){if(['edit.undo','edit.redo'].includes(shortcut)&&e.target.closest?.('input,textarea,[contenteditable=true]'))return;e.preventDefault();void workspace.execute(shortcut).catch(error);return}
   const editing=!!document.querySelector('dialog[open]')||!!e.target.isContentEditable||!!e.target.closest?.('input,textarea,select,#sketch')||e.composedPath().some(n=>n?.hasAttribute?.('data-skin-ui'));
   if(type==='keydown'&&e.key==='Escape'&&document.querySelector('dialog[open]'))return;
   if(type==='keydown'&&sketch?.visible&&(e.ctrlKey||e.metaKey)&&!e.target.closest?.('input,textarea,[contenteditable=true]')&&['z','y'].includes(e.key.toLowerCase())){e.preventDefault();void sketch.send({kind:e.key.toLowerCase()==='y'||e.shiftKey?'redo':'undo'}).catch(error);return}
   const commands=keyboard.handle(e,editing);if(commands.length)e.preventDefault();
-  for(const c of commands){if(c.ui==='help'){if($('help').open)$('help').close();else openDialog('help')}else if(c.kind==='release_modes')void t.release(c.source);else{if(c.kind==='mode'||c.kind==='hold_mode')t.dropContinuous();fire(c,'Keyboard')}}
+  for(const c of commands){if(c.ui==='help'){if($('help').open)$('help').close();else $('help-open').click()}else if(c.kind==='release_modes')void t.release(c.source);else{if(c.kind==='mode'||c.kind==='hold_mode')t.dropContinuous();fire(c,'Keyboard')}}
 });
 // Skins remain a presentation-only boundary; no engine or performance IPC changes.
 const skinManager=new SkinManager(browserStorage(),message=>{$('skin-status').textContent=message;$('skin-status').title=message;if(/rejected|unsafe|not saved|unavailable/i.test(message))error(message)});
@@ -120,6 +124,10 @@ try{await skinManager.initialize(await invoke('skin_startup'))}catch(e){error('S
 const skinPanel=new SkinPanel(skinManager);
 workspace=new Workspace({getState:()=>state,run,release,sketch,skinManager,onError:error,openDialog});
 visuals=new MusicalOverview({t,getState:()=>state,workspace,sketch,skinManager,onError:error,run});
+dialogs=new Dialogs(release);
+instrument=new Instrument({t,getState:()=>state,run,sketch,workspace,visuals,skinManager,invoke,openDialog,ensureOutput,onError:error});
+content.beforeReplace=async()=>{if(state.decks)await run({kind:'stop'})};
+content.afterReplace=async()=>{await sketch.waitContent();if(automaticAudio){await ensureOutput();await run({kind:'transport',action:'Pause'})}};
 bind('skins-open',()=>{$('settings').close();skinPanel.refresh();openDialog('skins')});
 document.addEventListener('dawj-skin-applied',drawTimeline);
 function show(s){
@@ -133,7 +141,7 @@ function show(s){
   $('clock').textContent=s.online?`${s.transport} · ${Math.floor(s.beat/3840)+1}.${Math.floor(s.beat/960)%4+1} · ${s.bpm?.toFixed(1)} BPM`:(s.failed?'Output FAILED':'Output offline');
   if(s.bpm!=null)setValue('bpm',s.bpm);if(s.selection)setValue('quantize',s.selection.quantization);
   $('volume').setAttribute('aria-pressed',mode==='Volume');$('filter').setAttribute('aria-pressed',mode==='Filter');
-  $('mode-status').textContent=`${mode.toUpperCase()}${s.selection?.temporary?' (held; base '+s.selection.persistent_mode.toUpperCase()+')':' (persistent)'}`;
+  $('mode-status').textContent=`Part sliders: ${mode==='Filter'?'low-pass':'volume'}${s.selection?.temporary?' (held)':''}`;
   for(let deck=0;deck<2;deck++){
     const composition=s.session?.project.compositions.find(c=>c.id===s.session.project.decks[deck]);$('deck-'+deck).querySelector('h2').textContent=`${deck?'B':'A'} | ${s.session?.demo?(deck?'Glass Tide':'Copper Steps'):(composition?.name??'Empty deck')}`;
     $('deck-select-'+deck).setAttribute('aria-pressed',s.selection?.deck===deck);$('deck-select-'+deck).disabled=!s.online;
@@ -144,7 +152,7 @@ function show(s){
       card.querySelector('circle').setAttribute('fill',composition?.parts[slot]?.color??'currentColor');card.dataset.sketchEditing=!!sketch?.visible&&sketch.deck===deck&&sketch.slot===slot;
       card.querySelector('.identity').disabled=false;card.querySelector('[data-action=Launch]').disabled=!s.online||p?.available===false;
       card.querySelector('.identity').setAttribute('aria-pressed',v.selected);
-      const unavailable=s.session?.media.find(m=>m.deck===deck&&m.slot===slot)?.error;const label=(unavailable?'UNAVAILABLE':!p?(composition?.parts[slot]?.factory||composition?.parts[slot]?.media?'LOADED | output closed':'EMPTY'):p.available===false?'EMPTY':v.state)+(v.pending?` @ ${Math.floor(v.pending.tick/3840)+1}.${Math.floor(v.pending.tick/960)%4+1}`:'');card.querySelector('.state').textContent=label;card.querySelector('.state').title=label+(unavailable?' | '+unavailable:'')+' · '+v.feedback;
+      const unavailable=s.session?.media.find(m=>m.deck===deck&&m.slot===slot)?.error;const label=(unavailable?'UNAVAILABLE':!p?(composition?.parts[slot]?.factory||composition?.parts[slot]?.media?'LOADED | output closed':'EMPTY'):p.available===false?'EMPTY':s.transport==='Paused'&&v.active?'PAUSED':v.state)+(v.pending?` @ ${Math.floor(v.pending.tick/3840)+1}.${Math.floor(v.pending.tick/960)%4+1}`:'');card.querySelector('.state').textContent=label;card.querySelector('.state').title=label+(unavailable?' | '+unavailable:'')+' · '+v.feedback;
       card.querySelector('[data-action=Cancel]').disabled=!s.online||!v.pending;card.querySelector('[data-action=Retrigger]').disabled=!s.online||!v.active;
       const control=card.querySelector('.context');if(!dragging.has(control))control.value=contextValue(p,mode);control.setAttribute('aria-label',`${deck?'B':'A'}${slot+1} ${mode}`);control.title=mode==='Volume'?`Gain ${(p?.gain??1).toFixed(2)}`:`Cutoff ${p?.cutoff_hz==null?'bypassed':Math.round(p.cutoff_hz)+' Hz'}`;
     }
@@ -152,12 +160,14 @@ function show(s){
   const selected=address(s),part=s.decks?.[selected.deck]?.[selected.slot];
   $('selected-name').textContent=`${selected.deck?'B':'A'}${selected.slot+1} ${part?.name??''}`;
   setValue('part-gain',part?.gain??1);setValue('part-cutoff',contextValue(part,'Filter'));
+  for(const id of ['part-gain','part-cutoff','bypass'])$(id).disabled=!s.online||part?.available===false;
+  $('part-gain').closest('label').firstChild.textContent=`Volume ${Math.round((part?.gain??1)*100)}% `;$('part-cutoff').closest('label').firstChild.textContent=`Low-pass ${part?.cutoff_hz==null?'off':Math.round(part.cutoff_hz)+' Hz'} `;$('inspection').hidden=workspace?.layout!=='extended';
   $('launch-selected').disabled=!s.online||part?.available===false;
   $('cancel-selected').disabled=!s.online||!part?.pending;$('retrigger-selected').disabled=!s.online||part?.active==null;
   $('rule-toggle').disabled=!s.online||!part?.rule||part.rule.consumed;$('rule-remove').disabled=!s.online||!part?.rule;
   $('rule-toggle').textContent=part?.rule?.next!=null?'Pause rule':'Resume rule';
   $('rule-status').textContent=part?.rule?`${part.rule.consumed?'Spent':part.rule.next==null?'Paused':'Next tick '+part.rule.next} · fired ${part.rule.fired} / skipped ${part.rule.skipped}`:'No rule';
-  $('inspection').textContent=`Gain ${(part?.gain??1).toFixed(2)} · Filter ${part?.cutoff_hz==null?'bypassed':Math.round(part.cutoff_hz)+' Hz'} · `+(s.timeline?.inspector??'No engine publication')+' · '+(s.feedback?.[selected.deck]?.[selected.slot]??'');$('inspection').title=$('inspection').textContent;
+  $('inspection').textContent=`Volume ${Math.round((part?.gain??1)*100)}% · Low-pass ${part?.cutoff_hz==null?'off':Math.round(part.cutoff_hz)+' Hz'} · ${part?.pattern.running?'Pattern playing':part?.active!=null?'Sample playing':part?.available?'Loaded / stopped':'Choose a sound'}`+(workspace?.layout==='extended'?' · '+(s.timeline?.inspector??'')+' · '+(s.feedback?.[selected.deck]?.[selected.slot]??''):'');$('inspection').title=$('inspection').textContent;
   setValue('cross',s.crossfader??.5);setValue('trim',s.output_trim_db??36);$('trim-value').textContent=s.output_trim_db??36;
   $('cue-status').textContent=s.cue_available?'Master 1–2 / cue 3–4; physical isolation unverified':'Stereo master only · no isolated headphone cue';
   for(const [i,channel]of ['l','r'].entries()){$('meter-'+channel).value=s.peaks?.[i]??0;$('peak-'+channel).textContent=meterDb(s.peaks?.[i]??0)}
@@ -169,7 +179,7 @@ function show(s){
   for(const deck of [0,1])$('cancel-fill-'+(deck?'b':'a')).disabled=!s.online||!s.decks?.[deck]?.[7]?.pending;
   if(s.timeline){setValue('zoom',s.timeline.zoom_bars);$('follow').checked=s.timeline.follow;$('phrase-position').textContent=s.timeline.phrase_position.map((p,i)=>`${i?'B':'A'} ${p[0]}/${p[1]}`).join(' · ')}
   if(!s.decks&&s.session&&!s.session.demo){setValue('bpm',s.session.project.settings.bpm);setValue('phrase',s.session.project.settings.phrase_bars)}
-  workspace?.update(s);visuals?.update(s);drawTimeline();midi?.update(s);content?.update(s);sketch?.update(s);
+  workspace?.update(s);visuals?.update(s);drawTimeline();midi?.update(s);content?.update(s);sketch?.update(s);instrument?.update(s);
 }
 function drawTimeline(){
   if($('phrase-panel').hidden)return;
@@ -190,13 +200,15 @@ function drawTimeline(){
 }
 window.addEventListener('resize',drawTimeline);
 setInterval(()=>{void t.flush()},20);
-try{await scan();show(await t.call({kind:'snapshot'}))}catch(e){error(e)}
 const reliability=await invoke('reliability_options');
 const jam=await invoke('jam_options');
-if(jam?.milestone==='4'){const {runJam4Smoke}=await import('./jam4-smoke.mjs');await runJam4Smoke({t,getState:()=>state,invoke,sketch,workspace,visuals,skinManager,options:jam})}
+const isSmoke=await invoke('smoke_enabled'),testAutoStartup=jam?.milestone==='ux1'&&jam.phase==='reopen';automaticAudio=testAutoStartup||!jam&&!isSmoke&&!reliability.seconds;
+try{await scan();show(await t.call({kind:'snapshot'}));if(testAutoStartup){const matches=devices.filter(d=>d.name.toLowerCase().includes('hyperx'));if(matches.length!==1||skinManager.committed.audio?.device!==matches[0].name)throw Error('UX1 startup requires the saved unique HyperX output; no fallback.')}if(automaticAudio)await instrument.initializeAudio()}catch(e){error(e);if(automaticAudio)openDialog('audio-settings')}
+if(jam?.milestone==='ux1'){const {runUx1Smoke}=await import('./ux1-smoke.mjs');await runUx1Smoke({t,getState:()=>state,invoke,sketch,workspace,visuals,instrument,skinManager,ensureOutput,options:jam})}
+else if(jam?.milestone==='4'){const {runJam4Smoke}=await import('./jam4-smoke.mjs');await runJam4Smoke({t,getState:()=>state,invoke,sketch,workspace,visuals,skinManager,options:jam})}
 else if(jam?.milestone==='3'){const {runJam3Smoke}=await import('./jam3-smoke.mjs');await runJam3Smoke({t,getState:()=>state,invoke,sketch,workspace,skinManager,options:jam})}
 else if(jam?.milestone==='2'){const {runJam2Smoke}=await import('./jam2-smoke.mjs');await runJam2Smoke({t,getState:()=>state,invoke,sketch,options:jam})}
 else if(jam){const {runJamSmoke}=await import('./jam-smoke.mjs');await runJamSmoke({t,getState:()=>state,invoke,content,options:jam})}
 else if(reliability.seconds){const {runReliability}=await import('./reliability.mjs');await runReliability({t,getState:()=>state,invoke,skinManager,options:reliability})}
-else if(await invoke('smoke_enabled')){const {runSmoke}=await import('./smoke.mjs');await runSmoke({t,getState:()=>state,invoke,show,skinManager,workspace})}
+else if(isSmoke){const {runSmoke}=await import('./smoke.mjs');await runSmoke({t,getState:()=>state,invoke,show,skinManager,workspace})}
 async function poll(){try{await t.call({kind:'snapshot'})}catch(e){error(e)}setTimeout(poll,33)}poll();

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import {validateSkin,exportSkin} from './skin-format.mjs';
 export const LIBRARY_KEY='dawj.skins.v1',PREFERENCES_KEY='dawj.skin-preferences.v1';
-export const DEFAULT_PREFERENCES={version:1,workspace:'performance',visualization:'structure',selected:'bundled:dark',fontScale:1,enhancedContrast:false,reducedMotion:true};
+export const DEFAULT_PREFERENCES={version:1,workspace:'performance',visualization:'structure',audio:{device:null,cue:false},selected:'bundled:dark',fontScale:1,enhancedContrast:false,reducedMotion:true};
+export function launchPreferences(saved,mode){return mode==='normal'?saved:{...DEFAULT_PREFERENCES,audio:saved.audio??DEFAULT_PREFERENCES.audio}}
 export function browserStorage(){try{return globalThis.localStorage}catch{return {getItem(){throw Error('Storage unavailable')},setItem(){throw Error('Storage unavailable')},removeItem(){throw Error('Storage unavailable')}}}}
 export function preferences(value){
   if(!value||value.version!==1||typeof value.selected!=='string'||value.selected.length>80||!Number.isFinite(value.fontScale)||value.fontScale<.9||value.fontScale>1.25||typeof value.enhancedContrast!=='boolean'||typeof value.reducedMotion!=='boolean')return {...DEFAULT_PREFERENCES};
-  return {version:1,workspace:['browse','performance','extended'].includes(value.workspace)?value.workspace:'performance',visualization:['structure','waveform','hybrid'].includes(value.visualization)?value.visualization:'structure',selected:value.selected,fontScale:value.fontScale,enhancedContrast:value.enhancedContrast,reducedMotion:value.reducedMotion};
+  return {version:1,workspace:['browse','performance','extended'].includes(value.workspace)?value.workspace:'performance',visualization:['structure','waveform','hybrid'].includes(value.visualization)?value.visualization:'structure',audio:{device:typeof value.audio?.device==='string'&&value.audio.device.length<=300?value.audio.device:null,cue:value.audio?.cue===true},selected:value.selected,fontScale:value.fontScale,enhancedContrast:value.enhancedContrast,reducedMotion:value.reducedMotion};
 }
 export class SkinStore{
   constructor(storage){this.storage=storage;this.warnings=[]}

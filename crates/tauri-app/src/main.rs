@@ -9,6 +9,11 @@ use tauri::{
     menu::{Menu, MenuItem, Submenu},
 };
 const SKIN_RESET_SCRIPT: &str = include_str!("../web/skin-recovery.js");
+mod help;
+#[tauri::command]
+fn restore_interface(app: tauri::AppHandle) -> Result<(), String> {
+    restore_skin(&app)
+}
 fn restore_skin(app: &tauri::AppHandle) -> Result<(), String> {
     // Existing semantic release path; no new engine command or audio ownership.
     let client = app.state::<Client>();
@@ -267,6 +272,17 @@ fn report(app: tauri::AppHandle, metrics: serde_json::Value) -> Result<(), Strin
 fn main() {
     tauri::Builder::default()
         .setup(|app|{
+            let window=app.get_webview_window("main").ok_or("Main window unavailable")?;
+            // Keep native recovery accelerators registered without a permanent menu bar.
+            window.hide_menu()?;
+            if !smoke_enabled() && let Some(monitor)=window.current_monitor()? {
+                let area=monitor.work_area();let scale=monitor.scale_factor();
+                let width=(f64::from(area.size.width)/scale-16.).clamp(320.,1600.);
+                let height=(f64::from(area.size.height)/scale-48.).clamp(240.,900.);
+                window.set_size(tauri::LogicalSize::new(width,height))?;
+                let outer=window.outer_size()?;
+                window.set_position(tauri::PhysicalPosition::new(area.position.x+(area.size.width.saturating_sub(outer.width)/2) as i32,area.position.y+(area.size.height.saturating_sub(outer.height)/2) as i32))?;
+            }
             // Scripted DOM gestures remain testable without a visible capture
             // window stealing focus or accepting incidental desktop input.
             if std::env::args().any(|a| a == "--jam-smoke") {
@@ -306,6 +322,8 @@ fn main() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            help::help_documents,
+            restore_interface,
             request,
             pick_local_file,
             jam_options,

@@ -18,7 +18,7 @@ export class ContentPanel {
     const $=id=>document.getElementById(id);this.$=$;
     for(let s=0;s<8;s++){$('jam-slot').add(new Option(String(s+1),String(s)))}
     const bind=(id,fn)=>$(id).onclick=()=>Promise.resolve().then(()=>{ $('jam-error').textContent='';return fn()}).catch(e=>this.error(e));
-    this.send=action=>t.call(sessionCommand(action));
+    this.send=async action=>{const replacing=['new','open','demo'].includes(action.kind);if(replacing)await this.beforeReplace?.();const result=await t.call(sessionCommand(action));document.dispatchEvent(new Event('dawj-content-committed'));if(replacing)await this.afterReplace?.();return result};
     const discard=()=>!this.getState().session?.dirty||window.confirm('Discard unsaved session changes?');
     bind('jam-new',()=>{if(discard())return this.send({kind:'new'})});
     bind('jam-demo',()=>{if(discard())return this.send({kind:'demo'})});
@@ -58,6 +58,7 @@ export class ContentPanel {
     const p=c?contentTarget(w,this.deck,this.slot).part:null;$('jam-part-name').value=p?.name??'';$('jam-loop').checked=p?.looping??true;$('jam-loop-start').value=p?.loop_start??0;$('jam-loop-end').value=p?.loop_end??'';$('jam-length').value=(p?.nominal_ticks??3840)/960;
     const info=w.media.find(m=>m.deck===this.deck&&m.slot===this.slot);
     $('jam-media').textContent=info?(info.error?`${info.path}: ${info.error}`:`${info.filename} | ${info.duration.toFixed(3)} s | ${info.sample_rate} Hz | ${info.channels} ch | ${info.prepared_frames} prepared frames | ${info.path}`):(p?.media??'No sound assigned');
+    if(info?.preparation_gain_db<0)$('jam-media').textContent+=` | float-source headroom ${info.preparation_gain_db.toFixed(2)} dB (original unchanged)`;
     $('jam-restore-rule').disabled=w.busy||!s.online||!p?.rule;
   }
 }
